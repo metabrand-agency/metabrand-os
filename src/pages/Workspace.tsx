@@ -134,7 +134,7 @@ export default function Workspace() {
 
       <main className="min-w-0 flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-line bg-ink/85 px-8 backdrop-blur">
-          <div className="text-[13px] text-muted">{info.name} <span className="px-1">/</span> <span className="text-text">{TABS.find((t) => t.id === tab)?.label}</span>{tab === 'lenses' && <><span className="px-1">/</span><span className="text-text">{sub === 'seo' ? 'SEO content gap' : sub === 'branding' ? 'Competitor branding' : sub === 'methods' ? 'Methodologies' : 'Market maps'}</span></>}</div>
+          <div className="text-[13px] text-muted"><Link to={`/${slug}/overview`} className="hover:text-text">{info.name}</Link> <span className="px-1">/</span> <Link to={`/${slug}/${tab}`} className="text-text hover:underline">{TABS.find((t) => t.id === tab)?.label}</Link>{tab === 'lenses' && <><span className="px-1">/</span><span className="text-text">{sub === 'seo' ? 'SEO content gap' : sub === 'branding' ? 'Competitor branding' : sub === 'methods' ? 'Methodologies' : 'Market maps'}</span></>}</div>
           {!chatOpen && <button onClick={() => setChatOpen(true)} className="brand-dot rounded-full px-3 py-1 text-[12px] font-medium text-brand-ink hover:brightness-95">✦ Ask AI</button>}
         </div>
         {tab === 'guide' && <Guide info={info} section={sub || focus || undefined} />}
