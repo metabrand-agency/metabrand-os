@@ -44,6 +44,11 @@ export default function Workspace() {
   useEffect(() => {
     api<WsInfo>(`/w/${slug}/info`).then(setInfo).catch((e) => setErr(e.message));
   }, [slug, rev]);
+  // brand tools on the client's own site (e.g. a generative art page), kept in the brand kit, shown in the sidebar
+  const [tools, setTools] = useState<{ title: string; url: string }[]>([]);
+  useEffect(() => {
+    api<{ data: { links?: { title: string; url: string }[] } } | null>(`/w/${slug}/research/brand_kit`).then((r) => setTools(r?.data?.links || [])).catch(() => setTools([]));
+  }, [slug, rev, tab === 'assets']);
 
   if (err) return <div className="p-10 text-muted">{err}</div>;
   if (!info) return <div className="p-10 text-muted">Loading…</div>;
@@ -96,6 +101,12 @@ export default function Workspace() {
                     </div>
                   );
                 })}
+                {g.title === 'Brand OS' && tools.map((l) => (
+                  <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] text-muted transition hover:bg-panel-2 hover:text-text">
+                    <span className="w-4 text-center text-[12px] opacity-70">↗</span>
+                    <span className="flex-1 truncate">{l.title}</span>
+                  </a>
+                ))}
               </div>
             );
           })}

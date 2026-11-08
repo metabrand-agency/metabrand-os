@@ -200,10 +200,11 @@ function KitView({ kit, agency, onChange }: { kit: Kit; agency: boolean; onChang
         </div>
       </div>
 
-      {/* Brand tools and pages on the client's own site (generative art, brand book, press kit) */}
-      {(!!kit.links?.length || edit) && (
+      {/* Brand tools on the client's own site (generative art, brand book, press kit): shown in the sidebar, edited here */}
+      {edit && (
         <section>
-          <h2 className="mb-3 text-[17px] font-semibold tracking-tight">Brand tools</h2>
+          <h2 className="text-[17px] font-semibold tracking-tight">Brand tools</h2>
+          <p className="mb-3 mt-1 text-[12px] text-muted">Links shown in the left panel under Brand OS.</p>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {(kit.links || []).map((l, i) => (
               <Card key={l.url} className="group overflow-hidden">
@@ -396,7 +397,7 @@ function LogoTile({ l, v, busy, onSvg, onPng }: { l: KitLogo; v: KitVariant; bus
         <img src={dataUri(svg)} alt={v.file} className={`max-h-full max-w-full ${v.bg ? 'h-full' : l.w / l.h > 2 ? 'max-h-10' : 'h-14'}`} />
       </div>
       <div className="flex items-center justify-between gap-1 border-t border-line px-2 py-1.5 text-[11px]">
-        <span className="truncate text-muted" title={v.file}>{v.bg ? 'Background' : 'Transparent'}</span>
+        <span className="truncate text-muted" title={v.file}>{l.w / l.h > 2 ? (v.bg ? 'Background' : 'Transparent') : ''}</span>
         <span className="flex shrink-0 gap-1.5">
           <button onClick={onSvg} className="hover:underline">SVG</button>
           <button onClick={onPng} disabled={busy} className="hover:underline">{busy ? '…' : 'PNG'}</button>
