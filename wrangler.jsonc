@@ -1,0 +1,16 @@
+// Used when deploying as a Cloudflare Worker (dashboard: build `npm run build`, deploy `npx wrangler deploy`).
+// The D1 database is created automatically on the first deploy. Secrets are set in the dashboard.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "metabrand-os",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [{ "binding": "DB", "database_name": "metabrand-os" }],
+  "observability": { "enabled": true }
+}
