@@ -49,7 +49,7 @@ async function pngBlob(svg: string, w: number, h: number): Promise<Blob> {
   c.getContext('2d')!.drawImage(img, 0, 0, w, h);
   return new Promise((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error('PNG failed'))), 'image/png'));
 }
-function save(blob: Blob, name: string) {
+export function save(blob: Blob, name: string) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -59,7 +59,7 @@ function save(blob: Blob, name: string) {
 const svgBlob = (svg: string) => new Blob([svg], { type: 'image/svg+xml' });
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-async function logoPng(l: KitLogo, v: KitVariant, width: number) {
+export async function logoPng(l: KitLogo, v: KitVariant, width: number) {
   const { svg, w, h } = logoSvg(l, v, width);
   return pngBlob(svg, width, Math.round((width / w) * h));
 }

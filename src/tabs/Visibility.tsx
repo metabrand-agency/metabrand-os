@@ -4,7 +4,8 @@ import { lazy, ReactNode, Suspense } from 'react';
 import { Btn, Card, Label } from '../components/ui';
 import { Bar, Bars } from './Bars';
 import type { WsInfo } from '../pages/Workspace';
-import { Company, EmptyResearch, RefreshButton, companyById, fmtNum, focusOrder, shortName, useActivityRefresh, useClientColor, useResearch } from './marketShared';
+import { Company, EmptyResearch, MarketData, RefreshButton, companyById, fmtNum, focusOrder, shortName, useActivityRefresh, useClientColor, useResearch } from './marketShared';
+import { Favicon } from '../components/ui';
 
 const WorldMap = lazy(() => import('./WorldMap'));
 
@@ -55,6 +56,8 @@ export default function Visibility({ info }: { info: WsInfo }) {
         {chart(<Bars accent={accent} title="Last round" hint="Amount, Apollo and research" rows={bars((c) => money(c.last_round || c.funding), (c) => (c.last_round || c.funding || '').replace(/\s*\(.*?\)/, ''))} format={fmtMoney} />)}
       </div>
 
+      <AiVisibility data={data} ids={ids} accent={accent} busy={busy} />
+
       <div>
         <Label>Headquarters</Label>
         <Card className="p-2">
@@ -70,3 +73,61 @@ export default function Visibility({ info }: { info: WsInfo }) {
   );
 }
 
+
+const PLATFORMS: [string, string][] = [['ai_overviews', 'AI Overviews'], ['ai_mode', 'AI Mode'], ['chatgpt', 'ChatGPT'], ['gemini', 'Gemini'], ['perplexity', 'Perplexity'], ['copilot', 'Copilot']];
+
+/** How often AI answers cite each site (Ahrefs AI responses): all platforms as bars, then per platform. */
+export function AiVisibility({ data, ids, accent, busy }: { data: MarketData; ids: string[]; accent: string; busy: boolean }) {
+  const ai = (id: string) => data.activity?.[id]?.ai;
+  const known = ids.filter((id) => ai(id));
+  const rows: Bar[] = ids.map((id) => ({ id, c: companyById(data, id), value: ai(id)?.citations ?? null }));
+  const max = (k: string) => Math.max(1, ...known.map((id) => (ai(id)!.by as any)[k] || 0));
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <Label>AI visibility</Label>
+        <span className="text-[11px] text-muted">Ahrefs: citations in AI answers, refreshed weekly</span>
+      </div>
+      {!known.length ? (
+        <Card className="p-5 text-[13px] text-muted">{busy ? 'Collecting AI citations…' : 'No AI citations yet. Update the data to collect them.'}</Card>
+      ) : (
+        <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <Bars accent={accent} title="AI citations" hint="All AI platforms" rows={rows} />
+          <Card className="overflow-x-auto p-4">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="text-left text-[11px] text-muted">
+                  <th className="pb-2 font-normal">Company</th>
+                  {PLATFORMS.map(([k, l]) => <th key={k} className="pb-2 text-right font-normal">{l}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {[...ids].sort((a, b) => (ai(b)?.citations || 0) - (ai(a)?.citations || 0)).map((id) => {
+                  const c = companyById(data, id), x = ai(id);
+                  return (
+                    <tr key={id} className="border-t border-line">
+                      <td className={`py-1.5 pr-3 ${id === '__client' ? 'font-medium' : ''}`}><span className="flex min-w-0 items-center gap-1.5"><Favicon url={c.url} name={c.name} size={14} /><span className="truncate">{id === '__client' ? c.name : shortName(c)}</span></span></td>
+                      {PLATFORMS.map(([k]) => {
+                        const v = (x?.by as any)?.[k];
+                        return (
+                          <td key={k} className="num py-1.5 text-right">
+                            {v == null ? <span className="text-muted">—</span> : (
+                              <span className="inline-flex items-center justify-end gap-1.5">
+                                <span className="h-1.5 rounded-full" style={{ width: Math.max(2, (v / max(k)) * 36), background: id === '__client' ? accent : 'var(--mb-muted)', opacity: v ? 1 : 0.3 }} />
+                                {fmtNum(v)}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}

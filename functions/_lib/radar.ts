@@ -80,7 +80,7 @@ const POSTY = /\/(blog|news|articles?|posts?|insights|resources\/blog|changelog|
 const NOT_POST = /\/(category|categories|tag|tags|topic|topics|author|authors|page)(\/|$)/i;
 const titleFromSlug = (u: string) => decodeURIComponent(u.replace(/\/$/, '').split('/').pop() || '').replace(/[-_]+/g, ' ').replace(/\.\w+$/, '').replace(/^\w/, (c) => c.toUpperCase());
 
-export const ACTIVITY_V = 3; // bump when collection changes, so pages re-collect on their next visit
+export const ACTIVITY_V = 4; // bump when collection changes, so pages re-collect on their next visit
 const CHECK = 8; // article pages opened per company (each is one outbound request)
 
 async function fromSitemap(origin: string): Promise<Post[]> {
@@ -247,19 +247,41 @@ export async function newLinksFor(env: Env, url: string) {
   return { count_30d: latest.length, capped: (j?.backlinks || []).length >= 20, latest, checked_at: Date.now() };
 }
 
+/** AI visibility (Ahrefs): how often AI answers cite the site, all platforms and each one. ~120 API units per call. */
+export async function aiFor(env: Env, url: string) {
+  if (!env.AHREFS_API_KEY) return null;
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
+  const select = 'all_platforms,google_ai_overviews,google_ai_mode,chatgpt,gemini,perplexity,copilot,grok';
+  const r = await fetch(`https://api.ahrefs.com/v3/site-explorer/ai-responses-count?${new URLSearchParams({ target: host, mode: 'subdomains', select })}`, {
+    headers: { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json' }, signal: AbortSignal.timeout(20000),
+  }).catch(() => null);
+  if (!r?.ok) return null;
+  const j: any = ((await r.json().catch(() => null)) as any)?.ai_responses_count;
+  if (!j) return null;
+  const n = (k: string) => j[k]?.citations ?? null;
+  return {
+    citations: n('all_platforms'), pages: j.all_platforms?.pages ?? null,
+    by: { ai_overviews: n('google_ai_overviews'), ai_mode: n('google_ai_mode'), chatgpt: n('chatgpt'), gemini: n('gemini'), perplexity: n('perplexity'), copilot: n('copilot'), grok: n('grok') },
+    checked_at: Date.now(),
+  };
+}
+
 /** Refreshes one company (one request per company keeps us within the platform's outbound request limit). */
 export async function refreshOne(env: Env, c: any, prev?: any, forceLinks = false) {
   const hq = c?.hq?.split('/')[0]?.trim();
   // Ahrefs links cost units: reuse them for a week unless someone asks for an update
   const linksFresh = !forceLinks && prev?.links && Date.now() - prev.links.checked_at < 7 * 864e5;
+  const aiFresh = !forceLinks && prev?.ai && Date.now() - prev.ai.checked_at < 7 * 864e5;
   // No Google News: it blocks requests from Cloudflare's servers. Press coverage comes from Ahrefs backlinks.
-  const [act, ah, geo, links] = await Promise.all([
+  const [act, ah, geo, links, ai] = await Promise.all([
     c.url ? activityFor(c.url).catch(() => null) : null,
     c.url ? ahrefs(env, c.url, c.short || c.name) : null,
     hq && c.geo?.q !== hq ? geocode(hq) : null,
     linksFresh ? prev.links : c.url ? newLinksFor(env, c.url).catch(() => null) : null,
+    aiFresh ? prev.ai : c.url ? aiFor(env, c.url).catch(() => null) : null,
   ]);
-  const extra = { links: links || prev?.links || null };
+  const extra = { links: links || prev?.links || null, ai: ai || prev?.ai || null };
   return {
     activity: act ? { ...act, ...extra } : links ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), ...extra } : null,
     ahrefs: ah ? { ...(c.ahrefs || {}), ...ah } : undefined,

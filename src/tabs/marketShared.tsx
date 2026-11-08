@@ -29,8 +29,9 @@ export type SeoCountry = {
 };
 export type News = { query: string; count_30d: number; latest: { title: string; url: string; date?: string; source?: string; site?: string }[]; checked_at: number };
 export type Links = { count_30d: number; capped?: boolean; latest: { title: string; url: string; date?: string; published?: string; source?: string; dr?: number; type?: string }[]; checked_at: number };
-export type Activity = { links?: Links | null; v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
-export const ACTIVITY_V = 3; // matches the server; older entries are collected again
+export type Ai = { citations: number | null; pages: number | null; by: Record<'ai_overviews' | 'ai_mode' | 'chatgpt' | 'gemini' | 'perplexity' | 'copilot' | 'grok', number | null>; checked_at: number };
+export type Activity = { ai?: Ai | null; links?: Links | null; v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
+export const ACTIVITY_V = 4; // matches the server; older entries are collected again
 export type Branding = { v?: number; palette: { hex: string; role: 'accent' | 'neutral'; share: number }[]; accent: string | null; fonts: { family: string; source: string }[]; image: string | null; theme_color?: string | null; checked_at: number };
 export type MarketData = {
   branding?: Record<string, Branding>;
