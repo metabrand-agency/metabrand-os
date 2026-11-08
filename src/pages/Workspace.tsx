@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { Favicon, Logo, ThemeSwitch } from '../components/ui';
+import { Icon } from '../components/icons';
 import Chat from '../components/Chat';
 import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
@@ -22,12 +23,12 @@ export type WsInfo = {
 
 type Tab = { id: string; label: string; icon: string; soon?: boolean; children?: { id: string; label: string }[] };
 const GROUPS: { title?: string; tabs: Tab[] }[] = [
-  { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
-  { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
-  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: '◉' }, { id: 'monitor', label: 'PR Monitor', icon: '∿' }] },
-  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏' }, { id: 'merch', label: 'Merch', icon: '◇' }, { id: 'generate', label: 'Generate', icon: '✦' }] },
+  { tabs: [{ id: 'overview', label: 'Overview', icon: 'overview' }] },
+  { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: 'memory' }, { id: 'competitors', label: 'Competitors', icon: 'competitors' }] },
+  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: 'lenses', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: 'visibility' }, { id: 'monitor', label: 'PR Monitor', icon: 'monitor' }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: 'assets' }, { id: 'guide', label: 'Online guide', icon: 'guide' }, { id: 'merch', label: 'Merch', icon: 'merch' }, { id: 'generate', label: 'Generate', icon: 'generate' }] },
 ];
-const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
+const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: 'settings' }];
 
 export default function Workspace() {
   const { slug = '' } = useParams();
@@ -66,15 +67,16 @@ export default function Workspace() {
   return (
     <div className="flex h-full">
       <aside className="flex w-[232px] shrink-0 flex-col border-r border-line bg-panel">
-        <div className="flex h-12 items-center border-b border-line px-5"><Link to="/"><Logo /></Link></div>
-        <Link to="/" className="mx-2 my-3 flex items-center gap-2.5 rounded-md border border-line px-3 py-2 hover:bg-panel-2">
-          <Favicon url={info.client_url} name={info.name} size={26} />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[13px] font-medium">{info.name}</div>
+        {/* the project on top; Metabrand OS sits at the bottom with Settings */}
+        <Link to="/" title={info.access.isAgency ? 'All projects' : undefined} className="flex h-12 shrink-0 items-center gap-2.5 border-b border-line px-5 hover:bg-panel-2">
+          <Favicon url={info.client_url} name={info.name} size={22} />
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="truncate text-[13px] font-semibold tracking-tight">{info.name}</div>
             {info.access.isAgency && info.stage && <div className="text-[11px] text-muted">{info.stage}</div>}
           </div>
-          {info.access.isAgency && <span className="text-[11px] text-muted">⇅</span>}
+          {info.access.isAgency && <Icon name="switch" className="h-4 w-4 shrink-0 text-muted" />}
         </Link>
+        <div className="h-3 shrink-0" />
         <nav className="flex-1 space-y-5 overflow-y-auto px-2">
           {GROUPS.map((g, gi) => {
             const tabs = g.tabs.filter((t) => !hidden.includes(t.id) && (info.access.isAgency || !t.soon) && (t.id !== 'merch' || hasMerch));
@@ -92,7 +94,7 @@ export default function Workspace() {
                         onClick={() => (t.children ? setOpenGroups(open ? openGroups.filter((x) => x !== t.id) : [...openGroups, t.id]) : go(t.id))}
                         className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition disabled:cursor-default ${active ? 'bg-panel-2 font-medium text-text' : tab === t.id ? 'text-text' : 'text-muted hover:bg-panel-2 hover:text-text'}`}
                       >
-                        <span className="w-4 text-center text-[12px] opacity-70">{t.icon}</span>
+                        <Icon name={t.icon} className="h-4 w-4 shrink-0 opacity-80" />
                         <span className="flex-1">{t.label}</span>
                         {t.soon && <span className="rounded border border-line px-1.5 text-[10px] text-muted">soon</span>}
                         {t.children && <svg viewBox="0 0 16 16" className={`h-3 w-3 text-muted transition ${open ? '' : '-rotate-90'}`}><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
@@ -110,7 +112,7 @@ export default function Workspace() {
                 })}
                 {g.title === 'Brand OS' && tools.map((l) => (
                   <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-[13px] text-muted transition hover:bg-panel-2 hover:text-text">
-                    <span className="w-4 text-center text-[12px] opacity-70">↗</span>
+                    <Icon name="link" className="h-4 w-4 shrink-0 opacity-80" />
                     <span className="flex-1 truncate">{l.title}</span>
                   </a>
                 ))}
@@ -121,11 +123,12 @@ export default function Workspace() {
         <div className="border-t border-line px-2 py-2">
           {!hidden.includes('settings') && (
             <button onClick={() => go('settings')} className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] ${tab === 'settings' ? 'bg-panel-2 font-medium' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
-              <span className="w-4 text-center text-[12px] opacity-70">⚙</span>Settings
+              <Icon name="settings" className="h-4 w-4 shrink-0 opacity-80" />Settings
             </button>
           )}
           <div className="px-3 pt-2 text-[11px] text-muted">{info.access.isAgency ? 'Agency' : 'Client'}, {info.access.level.replace('_', ' ')}</div>
           <div className="px-3 pt-2"><ThemeSwitch /></div>
+          <Link to="/" className="mt-2 flex items-center border-t border-line px-3 pb-1 pt-3"><Logo /></Link>
         </div>
       </aside>
 

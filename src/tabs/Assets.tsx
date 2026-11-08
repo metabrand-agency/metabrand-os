@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Btn, Card, Input, Label, Select, Badge } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
-import BrandKit from './BrandKit';
+import BrandKit, { type Kit, type KitVideo } from './BrandKit';
+import Lightbox from '../components/Lightbox';
 import { LINK_KINDS } from './Memory';
 
 const KIND_LABEL: Record<string, string> = { figma: 'Figma', github_repo: 'GitHub', video: 'Video', webflow_site: 'Webflow', website: 'Website', link: 'Link', logo: 'Logo', font: 'Font' };
@@ -19,6 +20,8 @@ export default function Assets({ info }: { info: WsInfo }) {
   // sites, Webflow and repositories live in Project memory
   const load = async () => setRows(((await api<any[]>(`/w/${s}/assets`)) || []).filter((a) => !LINK_KINDS.includes(a.kind)));
   useEffect(() => { load(); }, [s]);
+  const [kit, setKit] = useState<Kit | null>(null);
+  useEffect(() => { api<{ data: Kit } | null>(`/w/${s}/research/brand_kit`).then((r) => setKit(r?.data || null)).catch(() => setKit(null)); }, [s]);
 
   return (
     <div className="space-y-8">
@@ -28,6 +31,7 @@ export default function Assets({ info }: { info: WsInfo }) {
       </div>
 
       <BrandKit info={info} />
+      <Backgrounds kit={kit} />
 
       <h2 className="border-t border-line pt-8 text-[17px] font-semibold tracking-tight">Figma and video</h2>
 
@@ -66,11 +70,82 @@ export default function Assets({ info }: { info: WsInfo }) {
       </div>
       {!rows.length && <div className="text-[13px] text-muted">No assets yet.</div>}
 
+      <CaseVideos kit={kit} />
+
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-8" onClick={() => setPreview(null)}>
           <iframe src={figmaEmbed(preview.url)} className="h-full w-full max-w-6xl rounded-md border border-line bg-panel" allowFullScreen />
         </div>
       )}
     </div>
+  );
+}
+
+/** Generative art backgrounds from the brand kit: full-size files to download, a viewer to flip through them. */
+function Backgrounds({ kit }: { kit: Kit | null }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const bgs = kit?.backgrounds || [];
+  if (!bgs.length) return null;
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-[17px] font-semibold tracking-tight">Generative backgrounds</h2>
+        <span className="text-[12px] text-muted">{bgs.length} images, JPG</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {bgs.map((b, i) => (
+          <Card key={b.src} className="group overflow-hidden">
+            <button onClick={() => setOpen(i)} className="block aspect-[2500/1816] w-full cursor-zoom-in overflow-hidden bg-[#0B0B0E]">
+              <img src={b.thumb || b.src} alt={b.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+            </button>
+            <div className="flex items-center justify-between gap-2 px-3 py-2 text-[12px]">
+              <span className="truncate text-[13px] font-medium">{b.name}</span>
+              <span className="flex shrink-0 items-center gap-2 text-muted">
+                {b.w && <span>{b.w}×{b.h}</span>}
+                <a href={b.src} download className="rounded border border-line px-2 py-0.5 text-text hover:bg-panel-2">JPG ↓</a>
+              </span>
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Lightbox items={bgs.map((b) => ({ src: b.src, title: b.name, label: 'Backgrounds' }))} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
+    </section>
+  );
+}
+
+function VideoTile({ v }: { v: KitVideo }) {
+  const [hover, setHover] = useState(false);
+  const tall = (v.h || 0) > (v.w || 0);
+  return (
+    <Card className="overflow-hidden">
+      <a href={v.src} target="_blank" rel="noreferrer" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+        className="relative block aspect-[1920/1360] overflow-hidden bg-[#0B0B0E]">
+        {hover
+          ? <video src={v.light || v.src} poster={v.poster} autoPlay muted loop playsInline className={`h-full w-full ${tall ? 'object-contain' : 'object-cover'}`} />
+          : <img src={v.poster} alt={v.title} loading="lazy" className={`h-full w-full ${tall ? 'object-contain' : 'object-cover'}`} />}
+        {!hover && <span className="absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-black/40 text-white backdrop-blur"><svg viewBox="0 0 16 16" className="ml-0.5 h-3.5 w-3.5"><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg></span>}
+      </a>
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <span className="truncate text-[13px] font-medium">{v.title}</span>
+        <a href={v.src} target="_blank" rel="noreferrer" className="shrink-0 rounded border border-line px-2 py-0.5 text-[12px] hover:bg-panel-2">MP4 ↗</a>
+      </div>
+    </Card>
+  );
+}
+
+/** Videos from the agency's case study, as links. */
+function CaseVideos({ kit }: { kit: Kit | null }) {
+  const vids = kit?.videos || [];
+  if (!vids.length) return null;
+  return (
+    <section className="border-t border-line pt-8">
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h2 className="text-[17px] font-semibold tracking-tight">Case videos</h2>
+        <a href={kit?.guide?.film?.link || '#'} target="_blank" rel="noreferrer" className="text-[12px] text-muted hover:text-text">{vids.length} films from the case study ↗</a>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {vids.map((v) => <VideoTile key={v.src} v={v} />)}
+      </div>
+    </section>
   );
 }

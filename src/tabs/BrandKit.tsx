@@ -14,10 +14,12 @@ export type KitColor = { name: string; hex: string; rgb?: string; cmyk?: string;
 export type KitFont = { family: string; google?: boolean; weights?: number[]; use?: string; styles?: { name: string; tag?: string; weight: number; size: number; lh: number; ls: number; upper?: boolean; sample: string }[] };
 export type KitIcon = { id: string; name: string; w: number; h: number; svg: string; mono?: boolean };
 export type KitLink = { title: string; url: string; note?: string };
-export type GuideSlide = { img: string; title?: string; text?: string; fit?: 'contain'; bg?: string };
+export type GuideSlide = { img?: string; title?: string; text?: string; fit?: 'contain'; bg?: string; statement?: boolean };
 export type GuideSection = { id: string; num: string; title: string; summary?: string; cover?: string; kit?: 'logos' | 'colours' | 'fonts' | 'icons'; video?: { src: string; title?: string; text?: string }; motion?: string[]; grid?: boolean; slides: GuideSlide[] };
-export type Guide = { title: string; version?: string; intro?: string; hero?: { video?: string; poster?: string; bg?: string; caption?: string }; sections: GuideSection[] };
-export type Kit = { guide?: Guide; links?: KitLink[]; brand: string; source?: string; logos: KitLogo[]; colors: { group: string; items: KitColor[] }[]; fonts: KitFont[]; icons: KitIcon[]; icon_color?: string };
+export type Guide = { title: string; version?: string; intro?: string; hero?: { video?: string; poster?: string; bg?: string; caption?: string }; film?: { src: string; poster?: string; title?: string; caption?: string; link?: string }; sections: GuideSection[] };
+export type KitVideo = { title: string; src: string; light?: string; poster?: string; w?: number; h?: number };
+export type KitBackground = { name: string; src: string; thumb?: string; w?: number; h?: number };
+export type Kit = { guide?: Guide; links?: KitLink[]; videos?: KitVideo[]; backgrounds?: KitBackground[]; brand: string; source?: string; logos: KitLogo[]; colors: { group: string; items: KitColor[] }[]; fonts: KitFont[]; icons: KitIcon[]; icon_color?: string };
 
 // ---------- drawing and files ----------
 const svgDoc = (inner: string, w: number, h: number, outW = w, outH = h) =>

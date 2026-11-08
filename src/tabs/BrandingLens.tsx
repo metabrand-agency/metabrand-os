@@ -25,6 +25,66 @@ function hsl(hex: string) {
 const isLight = (hex: string) => { const [r, g, b] = rgbOf(hex); return 0.299 * r + 0.587 * g + 0.114 * b > 160; };
 const segmentOf = (h: number) => Math.round(h / 30) % 12;
 
+// ---------- what the first screen really shows ----------
+// CSS lists every colour a site declares, including ones it barely uses. The homepage screenshot says how much
+// of each colour people actually see, so the palette bar and the wheel are weighted by it.
+type Shares = Record<string, number>;
+const MINOR = 0.015; // an accent under 1.5% of the first screen is a detail, not the brand colour
+const pixCache = new Map<string, Promise<Uint8ClampedArray | null>>();
+function shotPixels(url: string) {
+  if (!pixCache.has(url)) {
+    pixCache.set(url, (async () => {
+      for (let i = 0; i < 6; i++) {
+        const img = new Image();
+        img.src = `/api/shot?u=${encodeURIComponent(url)}`;
+        const ok = await img.decode().then(() => true, () => false);
+        if (ok && img.naturalWidth >= 1000) {
+          const c = document.createElement('canvas');
+          c.width = 160; c.height = 100;
+          const ctx = c.getContext('2d', { willReadFrequently: true });
+          if (!ctx) return null;
+          ctx.drawImage(img, 0, 0, 160, 100);
+          return ctx.getImageData(0, 0, 160, 100).data;
+        }
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      return null;
+    })());
+  }
+  return pixCache.get(url)!;
+}
+/** Share of the first screen closest to each palette colour (pixels far from all of them are left out). */
+function sharesOf(px: Uint8ClampedArray, hexes: string[]): Shares {
+  const pal = hexes.map(rgbOf), counts = hexes.map(() => 0), n = px.length / 4;
+  const vivid = pal.map((c) => Math.max(...c) - Math.min(...c) > 60);
+  for (let i = 0; i < px.length; i += 4) {
+    let best = -1, bd = 60 * 60;
+    // a grey pixel never counts as an accent colour
+    const grey = Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) < 40;
+    for (let j = 0; j < pal.length; j++) {
+      if (grey && vivid[j]) continue;
+      const d = (px[i] - pal[j][0]) ** 2 + (px[i + 1] - pal[j][1]) ** 2 + (px[i + 2] - pal[j][2]) ** 2;
+      if (d < bd) { bd = d; best = j; }
+    }
+    if (best >= 0) counts[best]++;
+  }
+  return Object.fromEntries(hexes.map((h, j) => [h, counts[j] / n]));
+}
+function useMeasured(ids: string[], urlOf: (id: string) => string | undefined, brandOf: (id: string) => Branding | undefined) {
+  const [m, setM] = useState<Record<string, Shares>>({});
+  const key = ids.map((id) => `${id}:${urlOf(id) || ''}:${(brandOf(id)?.palette || []).map((p) => p.hex).join(',')}`).join('|');
+  useEffect(() => {
+    let live = true;
+    for (const id of ids) {
+      const url = urlOf(id), pal = brandOf(id)?.palette.map((p) => p.hex) || [];
+      if (!url || !pal.length || id === '__client') continue;
+      shotPixels(url).then((px) => { if (live && px) setM((x) => ({ ...x, [id]: sharesOf(px, pal) })); });
+    }
+    return () => { live = false; };
+  }, [key]);
+  return m;
+}
+
 /** The client's palette and fonts come from its brand kit when there is one (exact), not from scraping. */
 export function kitBranding(kit: Kit | null, scraped?: Branding): Branding | undefined {
   if (!kit?.colors?.length) return scraped;
@@ -69,6 +129,7 @@ export default function BrandingLens({ info, data, accept, extra }: { info: WsIn
   const brandOf = (id: string) => (id === '__client' ? kitBranding(kit, data.branding?.[id]) : data.branding?.[id]);
   useEffect(() => { warmShots(ids.map((id) => companyById(data, id)?.url)); }, [ids.join()]);
   useFonts(ids.flatMap((id) => brandOf(id)?.fonts.map((f) => f.family) || []));
+  const measured = useMeasured(ids, (id) => companyById(data, id)?.url, brandOf);
 
   return (
     <div className="space-y-6">
@@ -84,24 +145,28 @@ export default function BrandingLens({ info, data, accept, extra }: { info: WsIn
       </div>
       {err && <div className="text-[12px] text-[var(--color-direct)]">{err}</div>}
 
-      <HueWheel data={data} ids={ids} brandOf={brandOf} />
+      <HueWheel data={data} ids={ids} brandOf={brandOf} measured={measured} />
 
       <div className="grid gap-3 @3xl:grid-cols-2 @6xl:grid-cols-3">
-        {ids.map((id) => <BrandCard key={id} data={data} id={id} b={brandOf(id)} working={progress.active.includes(id)} busy={busy} />)}
+        {ids.map((id) => <BrandCard key={id} data={data} id={id} b={brandOf(id)} shares={measured[id]} working={progress.active.includes(id)} busy={busy} />)}
       </div>
     </div>
   );
 }
 
-function HueWheel({ data, ids, brandOf }: { data: MarketData; ids: string[]; brandOf: (id: string) => Branding | undefined }) {
-  // each company's accents (up to two), placed at their hue
+function HueWheel({ data, ids, brandOf, measured }: { data: MarketData; ids: string[]; brandOf: (id: string) => Branding | undefined; measured: Record<string, Shares> }) {
+  // each company's accents (up to two) at their hue, the most visible first; an accent that barely shows on
+  // the first screen is drawn as a ring and does not claim the hue (the client's brand kit always does)
   const marks = useMemo(() => ids.flatMap((id) => {
-    const accents = (brandOf(id)?.palette || []).filter((p) => p.role === 'accent').slice(0, 2);
-    return accents.map((p, i) => ({ id, hex: p.hex, h: hsl(p.hex).h, main: i === 0 }));
-  }), [ids, brandOf]);
-  const neutralOnly = ids.filter((id) => brandOf(id) && !brandOf(id)!.palette.some((p) => p.role === 'accent'));
-  const owners = HUES.map((_, i) => [...new Set(marks.filter((m) => m.main && segmentOf(m.h) === i).map((m) => m.id))]);
-  const seconds = HUES.map((_, i) => [...new Set(marks.filter((m) => !m.main && segmentOf(m.h) === i).map((m) => m.id))].filter((id) => !owners[i].includes(id)));
+    const sh = measured[id];
+    const accents = (brandOf(id)?.palette || []).filter((p) => p.role === 'accent')
+      .sort((a, b) => (sh ? (sh[b.hex] || 0) - (sh[a.hex] || 0) : 0)).slice(0, 2);
+    return accents.map((p, i) => ({ id, hex: p.hex, h: hsl(p.hex).h, main: i === 0, minor: id !== '__client' && !!sh && (sh[p.hex] || 0) < MINOR, seen: sh?.[p.hex] }));
+  }), [ids, brandOf, measured]);
+  const hasMain = (id: string) => marks.some((m) => m.id === id && m.main && !m.minor);
+  const neutralOnly = ids.filter((id) => brandOf(id) && !hasMain(id));
+  const owners = HUES.map((_, i) => [...new Set(marks.filter((m) => m.main && !m.minor && segmentOf(m.h) === i).map((m) => m.id))]);
+  const seconds = HUES.map((_, i) => [...new Set(marks.filter((m) => (!m.main || m.minor) && segmentOf(m.h) === i).map((m) => m.id))].filter((id) => !owners[i].includes(id)));
 
   const W = 520, cx = W / 2, cy = W / 2, R1 = 150, R0 = 112;
   const pt = (deg: number, r: number) => [cx + r * Math.sin((deg * Math.PI) / 180), cy - r * Math.cos((deg * Math.PI) / 180)];
@@ -119,7 +184,7 @@ function HueWheel({ data, ids, brandOf }: { data: MarketData; ids: string[]; bra
   }
   // labels outside the ring for each company's main accent, pushed apart when close
   const labels: { id: string; h: number; r: number }[] = [];
-  for (const m of marks.filter((x) => x.main).sort((a, b) => a.h - b.h)) {
+  for (const m of marks.filter((x) => x.main && !x.minor).sort((a, b) => a.h - b.h)) {
     let r = R1 + 22;
     while (labels.some((l) => Math.abs(((l.h - m.h + 540) % 360) - 180) < 14 && l.r === r)) r += 16;
     labels.push({ id: m.id, h: m.h, r });
@@ -137,8 +202,8 @@ function HueWheel({ data, ids, brandOf }: { data: MarketData; ids: string[]; bra
           );
         })}
         {placed.map(({ x, y, m }) => (
-          <circle key={m.id + m.hex} cx={x} cy={y} r={m.main ? (m.id === '__client' ? 8 : 6.5) : 4} fill={m.hex} stroke={m.id === '__client' ? 'var(--mb-text)' : 'var(--mb-panel)'} strokeWidth={m.id === '__client' ? 2 : 1.5}>
-            <title>{`${displayName(data, m.id)}: ${m.hex}`}</title>
+          <circle key={m.id + m.hex} cx={x} cy={y} r={m.minor ? 3.5 : m.main ? (m.id === '__client' ? 8 : 6.5) : 4} fill={m.minor ? 'var(--mb-panel)' : m.hex} stroke={m.minor ? m.hex : m.id === '__client' ? 'var(--mb-text)' : 'var(--mb-panel)'} strokeWidth={m.id === '__client' ? 2 : 1.5}>
+            <title>{`${displayName(data, m.id)}: ${m.hex}${m.seen !== undefined ? `, ${Math.max(0.1, Math.round(m.seen * 1000) / 10)}% of the first screen` : ''}${m.minor ? ' (minor accent)' : ''}`}</title>
           </circle>
         ))}
         {labels.map((l) => {
@@ -152,7 +217,7 @@ function HueWheel({ data, ids, brandOf }: { data: MarketData; ids: string[]; bra
             </g>
           );
         })}
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={11} fill="var(--mb-muted)">{neutralOnly.length ? 'Black and white only' : ''}</text>
+        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={11} fill="var(--mb-muted)">{neutralOnly.length ? 'Mostly black and white' : ''}</text>
         {neutralOnly.slice(0, 4).map((id, i) => <text key={id} x={cx} y={cy + 12 + i * 15} textAnchor="middle" fontSize={12} fill="var(--mb-text)">{displayName(data, id)}</text>)}
       </svg>
       <div className="min-w-0 self-center">
@@ -164,7 +229,7 @@ function HueWheel({ data, ids, brandOf }: { data: MarketData; ids: string[]; bra
               <span className={`w-16 shrink-0 ${owners[i].length ? '' : 'text-muted'}`}>{hue.name}</span>
               <span className="min-w-0 truncate">
                 {owners[i].map((id) => displayName(data, id)).join(', ')}
-                {!!seconds[i].length && <span className="text-muted">{owners[i].length ? ', ' : ''}{seconds[i].map((id) => `${displayName(data, id)} (2nd)`).join(', ')}</span>}
+                {!!seconds[i].length && <span className="text-muted">{owners[i].length ? ', ' : ''}{seconds[i].map((id) => `${displayName(data, id)} (${marks.some((m) => m.id === id && m.main && m.minor && segmentOf(m.h) === i) ? 'minor accent' : '2nd'})`).join(', ')}</span>}
                 {!owners[i].length && !seconds[i].length && <span className="text-muted">Free</span>}
               </span>
             </div>
@@ -175,7 +240,7 @@ function HueWheel({ data, ids, brandOf }: { data: MarketData; ids: string[]; bra
   );
 }
 
-function BrandCard({ data, id, b, working, busy }: { data: MarketData; id: string; b?: Branding; working: boolean; busy: boolean }) {
+function BrandCard({ data, id, b, shares, working, busy }: { data: MarketData; id: string; b?: Branding; shares?: Shares; working: boolean; busy: boolean }) {
   const c = companyById(data, id);
   const [copied, setCopied] = useState('');
   const copy = (hex: string) => { navigator.clipboard.writeText(hex).catch(() => {}); setCopied(hex); setTimeout(() => setCopied(''), 1200); };
@@ -197,12 +262,16 @@ function BrandCard({ data, id, b, working, busy }: { data: MarketData; id: strin
         {b && (
           <>
             <div className="flex h-9 overflow-hidden rounded-md border border-line">
-              {[...accents, ...neutrals].map((p) => (
-                <button key={p.hex} onClick={() => copy(p.hex)} title={`${p.hex}, copy`} className="group relative min-w-[28px] flex-1" style={{ background: p.hex, flexGrow: p.role === 'accent' ? 2 : 1 }}>
+              {[...accents, ...neutrals].sort((a, c2) => (shares ? (shares[c2.hex] || 0) - (shares[a.hex] || 0) : 0)).map((p) => (
+                <button key={p.hex} onClick={() => copy(p.hex)} title={`${p.hex}${shares ? `, ${Math.max(0.1, Math.round((shares[p.hex] || 0) * 1000) / 10)}% of the first screen` : ''}, copy`} className="group relative min-w-[16px] flex-1" style={{ background: p.hex, flexGrow: shares ? Math.max(0.02, shares[p.hex] || 0) * 100 : p.role === 'accent' ? 2 : 1 }}>
                   <span className={`absolute inset-x-0 bottom-0.5 text-center text-[9px] opacity-0 group-hover:opacity-100 ${isLight(p.hex) ? 'text-black/70' : 'text-white/80'}`}>{copied === p.hex ? '✓' : p.hex.slice(1)}</span>
                 </button>
               ))}
             </div>
+            {shares && !!accents.length && (() => {
+              const seen = accents.reduce((t, p) => t + (shares[p.hex] || 0), 0);
+              return <div className="-mt-1 text-[11px] text-muted">{seen < MINOR ? `Mostly neutral: accent colours fill ${Math.max(0.1, Math.round(seen * 1000) / 10)}% of the first screen` : `Accent colours fill ${Math.round(seen * 100)}% of the first screen`}</div>;
+            })()}
             <div className="grid grid-cols-[1fr_120px] gap-3">
               <div className="min-w-0 space-y-1">
                 {b.fonts.length ? b.fonts.map((f) => (

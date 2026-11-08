@@ -118,6 +118,25 @@ app.get('/og', async (c) => {
   return res;
 });
 
+// Homepage screenshot through our origin, so the browser can measure which colours really fill the first screen
+app.get('/shot', async (c) => {
+  let url: URL;
+  try { url = new URL(c.req.query('u') || ''); if (!/^https?:$/.test(url.protocol)) throw new Error(); } catch { return c.body(null, 400); }
+  const cache = (globalThis as any).caches?.default as Cache | undefined;
+  const key = new Request(`https://shot.metabrand-os/${encodeURIComponent(url.toString())}`);
+  const hit = await cache?.match(key).catch(() => undefined);
+  if (hit) return hit;
+  const r = await fetch(`https://s.wordpress.com/mshots/v1/${encodeURIComponent(url.toString())}?w=1280&h=800`, { redirect: 'follow' }).catch(() => null);
+  if (!r || !r.ok) return c.body(null, 502);
+  const type = r.headers.get('content-type') || 'image/jpeg';
+  const body = await r.arrayBuffer();
+  // the service answers with a small placeholder while it renders: do not keep that
+  const ready = /jpe?g|png|webp/.test(type) && body.byteLength > 15000;
+  const res = new Response(body, { headers: { 'content-type': type, 'cache-control': ready ? 'private, max-age=604800' : 'no-store', 'x-shot-ready': ready ? '1' : '0' } });
+  if (ready && cache) { const put = cache.put(key, res.clone()).catch(() => {}); try { c.executionCtx.waitUntil(put); } catch { await put; } }
+  return res;
+});
+
 app.get('/me', async (c) => {
   const user = c.get('user');
   const orgIds = Object.keys(user.orgRoles);

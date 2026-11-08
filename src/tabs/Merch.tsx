@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import type { WsInfo } from '../pages/Workspace';
 import type { GuideSection, Kit } from './BrandKit';
+import Lightbox from '../components/Lightbox';
 
 export const MERCH_ID = 'merch';
 export const merchOf = (kit?: Kit | null): GuideSection | undefined => kit?.guide?.sections?.find((s) => s.id === MERCH_ID);
@@ -15,17 +16,6 @@ export default function Merch({ info }: { info: WsInfo }) {
   const s = useMemo(() => merchOf(kit), [kit]);
   const n = s?.slides.length || 0;
 
-  useEffect(() => {
-    if (open === null) return;
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(null);
-      if (e.key === 'ArrowRight') setOpen((i) => ((i ?? 0) + 1) % n);
-      if (e.key === 'ArrowLeft') setOpen((i) => ((i ?? 0) - 1 + n) % n);
-    };
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [open, n]);
-
   if (kit === undefined) return <div className="text-muted">Loading…</div>;
   if (!s || !n) {
     return (
@@ -35,7 +25,6 @@ export default function Merch({ info }: { info: WsInfo }) {
       </div>
     );
   }
-  const cur = open !== null ? s.slides[open] : null;
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-4">
@@ -55,15 +44,7 @@ export default function Merch({ info }: { info: WsInfo }) {
         ))}
       </div>
 
-      {cur && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={() => setOpen(null)}>
-          <img src={cur.img} alt="" className="max-h-[90vh] max-w-[90vw] rounded object-contain" onClick={(e) => e.stopPropagation()} />
-          <button title="Close" onClick={() => setOpen(null)} className="absolute right-5 top-4 text-[26px] leading-none text-white/70 hover:text-white">×</button>
-          <button title="Previous" onClick={(e) => { e.stopPropagation(); setOpen(((open ?? 0) - 1 + n) % n); }} className="absolute left-4 top-1/2 -translate-y-1/2 px-3 py-6 text-[34px] text-white/60 hover:text-white">‹</button>
-          <button title="Next" onClick={(e) => { e.stopPropagation(); setOpen(((open ?? 0) + 1) % n); }} className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-6 text-[34px] text-white/60 hover:text-white">›</button>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[12px] text-white/60">{(open ?? 0) + 1} / {n}</div>
-        </div>
-      )}
+      <Lightbox items={s.slides.map((sl, k) => ({ src: sl.img!, title: `${kit?.brand} merch`, bg: sl.bg }))} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </div>
   );
 }

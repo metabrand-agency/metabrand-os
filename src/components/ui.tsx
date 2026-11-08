@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { Icon } from './icons';
 
 /** Metabrand mark (orbit star), drawn from the site logo. */
 export function Mark({ className = 'h-3.5 w-3.5' }: { className?: string }) {
@@ -110,8 +111,8 @@ export function ThemeSwitch() {
     <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-md border border-line p-0.5">
       {opts.map(([v, label]) => (
         <button key={v} role="radio" aria-checked={t === v} title={label} onClick={() => pick(v)}
-          className={`flex h-6 items-center gap-1 rounded px-2 text-[11px] ${t === v ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'}`}>
-          {label.split(' ')[0]}
+          className={`flex h-6 items-center justify-center gap-1 rounded px-2 text-[11px] ${t === v ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'}`}>
+          {v === 'auto' ? 'Auto' : <Icon name={v} className="h-3.5 w-3.5" />}
         </button>
       ))}
     </div>

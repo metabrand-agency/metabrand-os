@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { MERCH_ID } from './Merch';
+import Lightbox, { type LightItem } from '../components/Lightbox';
 import type { WsInfo } from '../pages/Workspace';
-import { Guide as GuideT, GuideSection, Kit, dataUri, iconSvg, isLight, logoSvg, useGoogleFonts } from './BrandKit';
+import { Guide as GuideT, GuideSection, GuideSlide, Kit, dataUri, iconSvg, isLight, logoSvg, useGoogleFonts } from './BrandKit';
 
 // the film's own near-black background disappears into a slightly lighter page background
 const FADE: React.CSSProperties = { mixBlendMode: 'lighten' };
@@ -70,6 +71,16 @@ function Home({ info, kit, guide }: { info: WsInfo; kit: Kit; guide: GuideT }) {
         </div>
       </section>
 
+      {guide.film && (
+        <section className="border-b border-line bg-black">
+          <video src={guide.film.src} poster={guide.film.poster} autoPlay muted loop playsInline controls className="mx-auto block max-h-[calc(100vh-48px)] w-full object-contain" />
+          <div className="flex flex-wrap items-baseline justify-between gap-3 px-10 py-5 text-[13px] text-white/60">
+            <span><span className="text-white">{guide.film.title || 'Brand film'}</span>{guide.film.caption && <span className="ml-3">{guide.film.caption}</span>}</span>
+            {guide.film.link && <a href={guide.film.link} target="_blank" rel="noreferrer" className="hover:text-white">The case study ↗</a>}
+          </div>
+        </section>
+      )}
+
       {guide.intro && (
         <section className="grid gap-6 border-b border-line px-10 py-16 @container md:grid-cols-[200px_1fr]">
           <div className="text-[12px] uppercase tracking-[.1em] text-muted">Introduction</div>
@@ -117,8 +128,13 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
   const nav = useNavigate();
   const i = guide.sections.indexOf(s);
   const prev = guide.sections[i - 1], next = guide.sections[i + 1];
+  // the viewer pages through every picture of the guide, section by section
+  const all = useMemo(() => guide.sections.flatMap((x) => x.slides.filter((sl) => sl.img).map((sl) => ({ sl, item: { src: sl.img!, title: sl.title, label: x.title, bg: sl.bg } as LightItem }))), [guide]);
+  const [open, setOpen] = useState<number | null>(null);
+  const show = (sl: GuideSlide) => { const k = all.findIndex((a) => a.sl === sl); if (k >= 0) setOpen(k); };
   return (
     <div>
+      <Lightbox items={all.map((a) => a.item)} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
       <div className="sticky top-12 z-[5] flex items-center gap-1 overflow-x-auto border-b border-line bg-ink/90 px-10 py-2 backdrop-blur">
         <Link to={`/${info.slug}/guide`} className="mr-2 shrink-0 rounded-md px-2 py-1 text-[12px] text-muted hover:text-text">← Guide</Link>
         {guide.sections.map((x) => (
@@ -155,19 +171,12 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
         {s.grid ? (
           <div className="grid gap-4 md:grid-cols-2">
             {s.slides.map((sl) => (
-              <a key={sl.img} href={sl.img} target="_blank" rel="noreferrer" className="block aspect-[1600/1133] overflow-hidden rounded-md border border-line" style={{ background: sl.bg }}>
+              <button key={sl.img} onClick={() => show(sl)} className="block aspect-[1600/1133] overflow-hidden rounded-md border border-line" style={{ background: sl.bg }}>
                 <img src={sl.img} alt={sl.title || s.title} loading="lazy" className={`h-full w-full ${sl.fit === 'contain' ? 'object-contain' : 'object-cover'}`} />
-              </a>
+              </button>
             ))}
           </div>
-        ) : s.slides.map((sl) => (
-          <figure key={sl.img}>
-            <a href={sl.img} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border border-line">
-              <img src={sl.img} alt={sl.title || s.title} loading="lazy" className="w-full" />
-            </a>
-            <Caption title={sl.title} text={sl.text} kit={kit} />
-          </figure>
-        ))}
+        ) : s.slides.map((sl, k) => <Slide key={sl.img || k} sl={sl} kit={kit} onOpen={() => show(sl)} />)}
       </div>
 
       <div className="grid grid-cols-2 border-t border-line">
@@ -176,6 +185,58 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
       </div>
       <Footer info={info} kit={kit} />
     </div>
+  );
+}
+
+/** Guideline text: paragraphs, line breaks, and "### " lines as small headings. */
+function Body({ text, className = '' }: { text: string; className?: string }) {
+  return (
+    <div className={`space-y-3 text-[14px] leading-relaxed text-muted ${className}`}>
+      {text.split(/\n{2,}/).map((p, i) => {
+        const lines = p.split('\n');
+        const head = lines[0].startsWith('### ') ? lines.shift()!.slice(4) : '';
+        return (
+          <div key={i}>
+            {head && <div className="mb-1 font-medium text-text">{head}</div>}
+            {lines.map((l, j) => <span key={j}>{l}{j < lines.length - 1 && <br />}</span>)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One guideline page: the visual from Figma, its notes as live text beside it. */
+function Slide({ sl, kit, onOpen }: { sl: GuideSlide; kit: Kit; onOpen: () => void }) {
+  if (sl.statement) {
+    return (
+      <figure className="rounded-md border border-line bg-panel px-10 py-12">
+        <h2 className="max-w-[1100px] text-[clamp(36px,5vw,72px)] leading-[1] tracking-[-0.02em]" style={{ fontFamily: display(kit) }}>{sl.title}</h2>
+        {sl.text && <Body text={sl.text} className="mt-8 max-w-[760px] text-[17px]" />}
+      </figure>
+    );
+  }
+  const pic = sl.img && (
+    <button onClick={onOpen} title="Open full screen" className="group block w-full cursor-zoom-in overflow-hidden rounded-md border border-line">
+      <img src={sl.img} alt={sl.title || ''} loading="lazy" className="w-full transition duration-500 group-hover:scale-[1.01]" />
+    </button>
+  );
+  if (!sl.text) {
+    return (
+      <figure>
+        {pic}
+        {sl.title && <figcaption className="mt-3 text-[15px] tracking-[-0.01em]" style={{ fontFamily: display(kit) }}>{sl.title}</figcaption>}
+      </figure>
+    );
+  }
+  return (
+    <figure className="grid gap-6 lg:grid-cols-[260px_1fr] lg:gap-10">
+      <figcaption className="lg:sticky lg:top-28 lg:self-start">
+        <div className="text-[20px] leading-tight tracking-[-0.01em]" style={{ fontFamily: display(kit) }}>{sl.title}</div>
+        <Body text={sl.text} className="mt-3" />
+      </figcaption>
+      {pic}
+    </figure>
   );
 }
 
