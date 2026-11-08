@@ -26,10 +26,10 @@ const TOOLS = [
   },
   {
     name: 'navigate',
-    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. focus: for market, a company id or an overlap type (direct, angle, substitute, may_enter) to filter; for memory, a search phrase.',
+    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: market = competitor list and dossiers; lenses = perceptual matrices and findings. focus: for market, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id or company id; for memory, a search phrase.',
     input_schema: {
       type: 'object',
-      properties: { tab: { type: 'string', enum: ['overview', 'memory', 'assets', 'market', 'settings'] }, focus: { type: 'string' } },
+      properties: { tab: { type: 'string', enum: ['overview', 'memory', 'assets', 'market', 'lenses', 'settings'] }, focus: { type: 'string' } },
       required: ['tab'],
     },
   },
@@ -67,7 +67,8 @@ async function runTool(env: Env, ws: { id: string; name: string }, access: Acces
     let companies = data.companies || [];
     if (input.overlap) companies = companies.filter((c: any) => c.overlap === input.overlap);
     if (input.tier) companies = companies.filter((c: any) => c.tier === input.tier);
-    return JSON.stringify({ client: data.client, axes: data.axes, companies, findings: data.findings });
+    const lenses = (data.lenses || []).map((l: any) => ({ id: l.id, title: l.title, why: l.why, axes: l.axes, positions: l.positions }));
+    return JSON.stringify({ client: data.client, axes: data.axes, companies, findings: data.findings, lenses });
   }
   if (name === 'get_overview') {
     const w = await db.prepare('SELECT name, client_url, category_description FROM workspaces WHERE id = ?').bind(ws.id).first();

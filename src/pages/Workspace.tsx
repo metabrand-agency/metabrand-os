@@ -7,6 +7,7 @@ import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
 import Market from '../tabs/Market';
+import Lenses from '../tabs/Lenses';
 import Settings from '../tabs/Settings';
 
 export type WsInfo = {
@@ -18,7 +19,7 @@ type Tab = { id: string; label: string; icon: string; soon?: boolean };
 const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'assets', label: 'Assets', icon: '◫' }] },
-  { title: 'Intelligence', tabs: [{ id: 'market', label: 'Market map', icon: '◈' }, { id: 'lenses', label: 'Lenses', icon: '◐', soon: true }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
+  { title: 'Intelligence', tabs: [{ id: 'market', label: 'Market', icon: '◈' }, { id: 'lenses', label: 'Lenses', icon: '◎' }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
   { title: 'Brand OS', tabs: [{ id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
@@ -93,6 +94,7 @@ export default function Workspace() {
         <div className="px-8 py-8">
           {tab === 'overview' && <Overview info={info} reload={reload} />}
           {tab === 'market' && <Market info={info} focus={focus} />}
+          {tab === 'lenses' && <Lenses info={info} focus={focus} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}

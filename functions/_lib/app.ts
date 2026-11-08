@@ -3,6 +3,7 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { SCHEMA } from './schema';
 import { Env, SessionUser, Access, makeSession, readSession, loadUser, accessFor, uid, newCode, hashCode } from './auth';
 import { chat } from './chat';
+import { aiLenses } from './lenses';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -306,11 +307,12 @@ app.put('/w/:slug/research/:kind', async (c) => {
   const deny = agencyOnly(c);
   if (deny) return deny;
   const b = await c.req.json<any>();
+  const now = Date.now();
   await c.env.DB.prepare(
     `INSERT INTO research (workspace_id, kind, data_json, status, updated_at) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(workspace_id, kind) DO UPDATE SET data_json = excluded.data_json, status = excluded.status, updated_at = excluded.updated_at`
-  ).bind(c.get('ws').id, c.req.param('kind'), JSON.stringify(b.data), b.status || 'draft', Date.now()).run();
-  return c.json({ ok: true });
+  ).bind(c.get('ws').id, c.req.param('kind'), JSON.stringify(b.data), b.status || 'published', now).run();
+  return c.json({ ok: true, updated_at: now });
 });
 
 // members (client access). Each client gets a personal sign-in code, shown once.
@@ -375,6 +377,24 @@ app.get('/w/:slug/usage', async (c) => {
 });
 
 // chat
+// lenses: AI suggests brand matrices, or places companies on custom axes (agency only; result is saved by the client)
+app.post('/w/:slug/lenses/ai', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const b = await c.req.json<any>();
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(c.get('ws').id).first<{ data_json: string }>();
+  if (!row) return c.json({ error: 'No market data yet' }, 400);
+  const data = JSON.parse(row.data_json);
+  try {
+    const lenses = b.axes
+      ? await aiLenses(c.env, c.get('ws').id, data, { kind: 'score', title: String(b.title || 'Custom matrix'), axes: b.axes })
+      : await aiLenses(c.env, c.get('ws').id, data, { kind: 'suggest', existing: (b.existing || []).map(String) });
+    return c.json({ lenses });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 502);
+  }
+});
+
 app.post('/w/:slug/chat', async (c) => {
   const b = await c.req.json<{ messages: any[] }>();
   return c.json(await chat(c.env, c.get('ws'), c.get('access'), b.messages || []));

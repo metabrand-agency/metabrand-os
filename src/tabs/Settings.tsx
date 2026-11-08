@@ -13,7 +13,8 @@ const CLIENT_TABS = [
   ['overview', 'Overview'],
   ['memory', 'Memory (shared items only)'],
   ['assets', 'Assets (shared items only)'],
-  ['market', 'Market map (when published)'],
+  ['market', 'Market'],
+  ['lenses', 'Lenses'],
 ] as const;
 
 export default function Settings({ info, reload }: { info: WsInfo; reload: () => void }) {
