@@ -42,7 +42,7 @@ export default function Overview({ info, reload }: { info: WsInfo; reload: () =>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Companies mapped" value={comps} />
+        <Stat label="Competitors" value={comps} />
         <Stat label="Sources" value={sources} />
         <Stat label="Memory documents" value={docs.length} />
         <Stat label="Assets" value={assets.length} />

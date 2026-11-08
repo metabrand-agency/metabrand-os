@@ -1,13 +1,17 @@
 // Shared pieces for the Market (companies) and Lenses (matrices) tabs.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import { Btn, Card, Label } from '../components/ui';
+import { Btn, Card, Favicon, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 
 export type Company = {
   id: string; name: string; short?: string; url?: string; tier: number; overlap: string; segment?: string; category_label?: string;
   hero?: string; sub?: string; claims?: string[]; proof?: string[]; funding?: string | null; hq?: string; founded?: number;
   open_source?: boolean | null; x: number; y: number; sources?: string[]; founders?: string;
+  employees?: string; last_round?: string; linkedin?: string; founder?: string; founder_linkedin?: string;
+  ahrefs?: { dr?: number; traffic?: number; refdomains?: number; brand_query?: string; brand_us?: number; brand_global?: number; as_of?: string; note?: string };
+  data_sources?: string[];
+  selected?: boolean;
 };
 export type Finding = { lens?: string; title: string; what: string; so_what: string; now_what: string; confidence?: string };
 export type Axes = { x: { left: string; right: string }; y: { bottom: string; top: string }; note?: string };
@@ -36,6 +40,14 @@ export function lensesOf(d: MarketData): Lens[] {
     positions: Object.fromEntries([['__client', { x: d.client.x, y: d.client.y }], ...d.companies.map((c) => [c.id, { x: c.x, y: c.y }])]),
   }];
 }
+
+/** Competitors in focus: explicit flags, or the first five by priority when nobody has chosen yet. */
+export function selectedIds(d: MarketData): Set<string> {
+  if (d.companies.some((c) => typeof c.selected === 'boolean')) return new Set(d.companies.filter((c) => c.selected).map((c) => c.id));
+  return new Set([...d.companies].sort((a, b) => (a.tier || 9) - (b.tier || 9)).slice(0, 5).map((c) => c.id));
+}
+
+export const fmtNum = (n?: number) => (n == null ? '—' : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
 
 /** Loads market research; checks for newer data on focus and every minute. */
 export function useResearch(slug: string) {
@@ -79,21 +91,28 @@ export function Swatch({ k }: { k: string }) {
 export function Dossier({ c, isClient, onClose, extra }: { c: Company; isClient: boolean; onClose?: () => void; extra?: React.ReactNode }) {
   const rows: [string, React.ReactNode][] = ([
     ['Calls itself', c.category_label],
-    ['Funding', c.funding],
-    ['HQ', c.hq],
     ['Founded', c.founded],
-    ['Founders', c.founders],
+    ['Employees', c.employees],
+    ['Last round', c.last_round || c.funding],
+    ['Location', c.hq],
+    ['Founder', c.founder_linkedin ? <a href={c.founder_linkedin} target="_blank" className="underline decoration-line underline-offset-2 hover:decoration-text">{c.founder || c.founders || 'LinkedIn'}</a> : c.founder || c.founders],
+    ['LinkedIn', c.linkedin ? <a href={c.linkedin} target="_blank" className="underline decoration-line underline-offset-2 hover:decoration-text">Company page ↗</a> : null],
+    ['Ahrefs DR', c.ahrefs?.dr],
+    ['Search traffic', c.ahrefs?.traffic != null ? `${fmtNum(c.ahrefs.traffic)}/mo` : null],
+    ['Brand searches', c.ahrefs?.brand_global != null ? `${fmtNum(c.ahrefs.brand_global)}/mo · “${c.ahrefs.brand_query}”` : null],
+    ['Linking sites', c.ahrefs?.refdomains != null ? fmtNum(c.ahrefs.refdomains) : null],
+    ['Data', c.data_sources?.join(', ')],
     ['Open source', c.open_source == null ? null : c.open_source ? 'Yes' : 'No'],
   ] as [string, React.ReactNode][]).filter(([, v]) => v != null && v !== '');
   return (
     <Card className="h-fit p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 text-[11px] text-muted">
-          {isClient ? <><span className="brand-dot h-2.5 w-2.5 rounded-full" />Client</> : <><Swatch k={c.overlap} />{OVERLAP[c.overlap]?.label} · tier {c.tier}</>}
+          {isClient ? <><span className="brand-dot h-2.5 w-2.5 rounded-full" />Client</> : <><Swatch k={c.overlap} />{OVERLAP[c.overlap]?.label}</>}
         </div>
         {onClose && <button onClick={onClose} className="text-muted hover:text-text" aria-label="Close">✕</button>}
       </div>
-      <div className="mt-2 text-lg font-semibold tracking-tight">{c.name}</div>
+      <div className="mt-2 flex items-center gap-2 text-lg font-semibold tracking-tight"><Favicon url={c.url} name={c.name} size={20} />{c.name}</div>
       {c.url && <a href={c.url} target="_blank" className="text-[12px] text-muted hover:text-text">{domain(c.url)} ↗</a>}
       {c.hero && <div className="mt-4 text-[17px] leading-snug">“{c.hero}”</div>}
       {c.sub && <div className="mt-1 text-[13px] text-muted">{c.sub}</div>}

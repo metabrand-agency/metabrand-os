@@ -12,9 +12,9 @@ const ROLE_NOTE: Record<string, string> = {
 const CLIENT_TABS = [
   ['overview', 'Overview'],
   ['memory', 'Memory (shared items only)'],
-  ['assets', 'Assets (shared items only)'],
-  ['market', 'Market'],
+  ['competitors', 'Competitors'],
   ['lenses', 'Lenses'],
+  ['assets', 'Assets (shared items only)'],
 ] as const;
 
 export default function Settings({ info, reload }: { info: WsInfo; reload: () => void }) {

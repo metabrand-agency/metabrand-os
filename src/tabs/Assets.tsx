@@ -21,7 +21,7 @@ export default function Assets({ info }: { info: WsInfo }) {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
-        <p className="mt-1 text-[13px] text-muted">Figma files and frames, repositories, videos, sites. One library per project.</p>
+        <p className="mt-1 text-[13px] text-muted">What the brand ships with: logos, Figma libraries and templates, code, videos, sites. Briefs, calls and references go to Memory.</p>
       </div>
 
       {info.access.isAgency && (

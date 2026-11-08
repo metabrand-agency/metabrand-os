@@ -4,6 +4,8 @@ import { SCHEMA } from './schema';
 import { Env, SessionUser, Access, makeSession, readSession, loadUser, accessFor, uid, newCode, hashCode } from './auth';
 import { chat } from './chat';
 import { aiLenses } from './lenses';
+import { researchCompany } from './companies';
+import { applyDemoPatch } from './demo';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -30,7 +32,7 @@ app.post('/setup', async (c) => {
   const orgId = 'org_metabrand';
   const userId = uid('u_');
   const wsId = uid('w_');
-  const m: any = superplaneMarket;
+  const m: any = applyDemoPatch(superplaneMarket) || superplaneMarket;
   await c.env.DB.batch([
     c.env.DB.prepare('INSERT INTO orgs (id, name, slug, created_at) VALUES (?, ?, ?, ?)').bind(orgId, 'Metabrand', 'metabrand', now),
     c.env.DB.prepare('INSERT INTO users (id, email, name, created_at) VALUES (?, ?, ?, ?)').bind(userId, email.toLowerCase().trim(), null, now),
@@ -158,7 +160,9 @@ app.get('/w/:slug/info', (c) => {
   const ws = c.get('ws');
   const access = c.get('access');
   const base = { id: ws.id, slug: ws.slug, name: ws.name, client_url: ws.client_url, category_description: ws.category_description, access };
-  return c.json(access.isAgency ? { ...base, stage: ws.stage, settings: JSON.parse(ws.settings_json || '{}') } : base);
+  const settings = JSON.parse(ws.settings_json || '{}');
+  // clients only get what shapes their view (hidden sections), never stage or other internals
+  return c.json(access.isAgency ? { ...base, stage: ws.stage, settings } : { ...base, settings: { hidden_tabs: settings.hidden_tabs || [] } });
 });
 
 app.patch('/w/:slug/info', async (c) => {
@@ -299,9 +303,18 @@ app.delete('/w/:slug/assets/:id', async (c) => {
 
 // research
 app.get('/w/:slug/research/:kind', async (c) => {
-  const row = await c.env.DB.prepare('SELECT data_json, status, updated_at FROM research WHERE workspace_id = ? AND kind = ?').bind(c.get('ws').id, c.req.param('kind')).first<any>();
+  const ws = c.get('ws');
+  const row = await c.env.DB.prepare('SELECT data_json, status, updated_at FROM research WHERE workspace_id = ? AND kind = ?').bind(ws.id, c.req.param('kind')).first<any>();
   if (!row || (!c.get('access').isAgency && row.status !== 'published')) return c.json(null);
-  return c.json({ data: JSON.parse(row.data_json), status: row.status, updated_at: row.updated_at });
+  let data = JSON.parse(row.data_json);
+  const settings = JSON.parse(ws.settings_json || '{}');
+  const patched = settings.demo && c.req.param('kind') === 'market_map' ? applyDemoPatch(data) : null;
+  if (patched) {
+    data = patched;
+    row.updated_at = Date.now();
+    await c.env.DB.prepare('UPDATE research SET data_json = ?, updated_at = ? WHERE workspace_id = ? AND kind = ?').bind(JSON.stringify(data), row.updated_at, ws.id, 'market_map').run();
+  }
+  return c.json({ data, status: row.status, updated_at: row.updated_at });
 });
 app.put('/w/:slug/research/:kind', async (c) => {
   const deny = agencyOnly(c);
@@ -377,6 +390,19 @@ app.get('/w/:slug/usage', async (c) => {
 });
 
 // chat
+// competitors: research a company by name or website (agency only; the client merges and saves the result)
+app.post('/w/:slug/competitors/research', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const b = await c.req.json<{ query?: string; name?: string; url?: string }>();
+  if (!b.query && !b.name && !b.url) return c.json({ error: 'Enter a name or a website' }, 400);
+  try {
+    return c.json({ company: await researchCompany(c.env, c.get('ws').id, b, c.get('ws').name) });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 502);
+  }
+});
+
 // lenses: AI suggests brand matrices, or places companies on custom axes (agency only; result is saved by the client)
 app.post('/w/:slug/lenses/ai', async (c) => {
   const deny = agencyOnly(c);

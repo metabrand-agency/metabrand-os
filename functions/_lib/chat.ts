@@ -16,7 +16,7 @@ const TOOLS = [
   },
   {
     name: 'get_market_map',
-    description: 'Get the competitor market map: companies with segment, overlap type (direct, angle, substitute, may_enter), tier, positioning claims, proof, funding, map coordinates and sources; plus strategic findings.',
+    description: 'Get the competitors: companies with segment, overlap type (direct, angle, substitute, may_enter), whether they are in focus (selected), positioning claims, proof, founded, employees, last round, location, LinkedIn, Ahrefs DR / organic traffic / branded search, sources; plus lenses (matrices) and strategic findings.',
     input_schema: { type: 'object', properties: { overlap: { type: 'string' }, tier: { type: 'number' } } },
   },
   {
@@ -26,10 +26,10 @@ const TOOLS = [
   },
   {
     name: 'navigate',
-    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: market = competitor list and dossiers; lenses = perceptual matrices and findings. focus: for market, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id or company id; for memory, a search phrase.',
+    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: competitors = competitor table with company facts (founded, team, last round, location, LinkedIn, Ahrefs metrics); lenses = perceptual matrices and findings; assets = brand assets (Brand OS). focus: for competitors, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id or company id; for memory, a search phrase.',
     input_schema: {
       type: 'object',
-      properties: { tab: { type: 'string', enum: ['overview', 'memory', 'assets', 'market', 'lenses', 'settings'] }, focus: { type: 'string' } },
+      properties: { tab: { type: 'string', enum: ['overview', 'memory', 'competitors', 'lenses', 'assets', 'settings'] }, focus: { type: 'string' } },
       required: ['tab'],
     },
   },

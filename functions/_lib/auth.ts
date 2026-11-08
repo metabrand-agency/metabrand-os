@@ -1,6 +1,7 @@
 export type Env = {
   DB: D1Database;
   ANTHROPIC_API_KEY?: string;
+  APOLLO_API_KEY?: string;
   SESSION_SECRET: string;
   ACCESS_CODE: string;
   MODEL?: string;

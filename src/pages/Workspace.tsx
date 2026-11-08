@@ -6,7 +6,7 @@ import Chat from '../components/Chat';
 import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
-import Market from '../tabs/Market';
+import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
 import Settings from '../tabs/Settings';
 
@@ -18,9 +18,9 @@ export type WsInfo = {
 type Tab = { id: string; label: string; icon: string; soon?: boolean };
 const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
-  { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'assets', label: 'Assets', icon: '◫' }] },
-  { title: 'Intelligence', tabs: [{ id: 'market', label: 'Market', icon: '◈' }, { id: 'lenses', label: 'Lenses', icon: '◎' }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
-  { title: 'Brand OS', tabs: [{ id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
+  { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
+  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎' }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
 
@@ -28,7 +28,8 @@ export default function Workspace() {
   const { slug = '' } = useParams();
   const loc = useLocation();
   const nav = useNavigate();
-  const tab = loc.pathname.split('/')[2] || 'overview';
+  const raw = loc.pathname.split('/')[2] || 'overview';
+  const tab = raw === 'market' ? 'competitors' : raw; // old links
   const focus = new URLSearchParams(loc.search).get('focus') || undefined;
   const [info, setInfo] = useState<WsInfo | null>(null);
   const [err, setErr] = useState('');
@@ -41,9 +42,9 @@ export default function Workspace() {
 
   if (err) return <div className="p-10 text-muted">{err}</div>;
   if (!info) return <div className="p-10 text-muted">Loading…</div>;
-  const hidden: string[] = (!info.access.isAgency && info.settings?.hidden_tabs) || [];
+  const hidden: string[] = ((!info.access.isAgency && info.settings?.hidden_tabs) || []).map((t: string) => (t === 'market' ? 'competitors' : t));
 
-  const go = (t: string, f?: string) => nav(`/${slug}/${t}${f ? `?focus=${encodeURIComponent(f)}` : ''}`);
+  const go = (t: string, f?: string) => nav(`/${slug}/${t === 'market' ? 'competitors' : t}${f ? `?focus=${encodeURIComponent(f)}` : ''}`);
   const reload = () => setRev((r) => r + 1);
 
   return (
@@ -93,7 +94,7 @@ export default function Workspace() {
         </div>
         <div className="px-8 py-8">
           {tab === 'overview' && <Overview info={info} reload={reload} />}
-          {tab === 'market' && <Market info={info} focus={focus} />}
+          {tab === 'competitors' && <Competitors info={info} focus={focus} />}
           {tab === 'lenses' && <Lenses info={info} focus={focus} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}

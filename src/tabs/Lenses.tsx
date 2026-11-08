@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { Btn, Card, Input, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
-import { Company, Dossier, EmptyResearch, Lens, MarketData, OVERLAP, RefreshButton, Swatch, lensesOf, shortName, useResearch } from './marketShared';
+import { Company, Dossier, EmptyResearch, Lens, MarketData, OVERLAP, RefreshButton, Swatch, lensesOf, selectedIds, shortName, useResearch } from './marketShared';
 
 const LENS_LABEL: Record<string, string> = { promise_clusters: 'Promise clusters', perceptual_map: 'Perceptual map', proof: 'Proof audit' };
 
@@ -11,7 +11,7 @@ const LENS_LABEL: Record<string, string> = { promise_clusters: 'Promise clusters
 const W = 1000, H = 660, PL = 56, PR = 56, PT = 48, PB = 48;
 const px = (x: number) => PL + (x / 100) * (W - PL - PR);
 const py = (y: number) => PT + ((100 - y) / 100) * (H - PT - PB);
-const R: Record<number, number> = { 1: 11, 2: 8.5, 3: 6.5 };
+const R_ON = 10, R_OFF = 6;
 const clamp = (v: number, a = 0, b = 100) => Math.max(a, Math.min(b, v));
 
 type Pt = { id: string; x: number; y: number; r: number; text: string; fs: number };
@@ -56,7 +56,9 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
   const [hover, setHover] = useState<string | null>(null);
   const [hl, setHl] = useState<string[] | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
-  const [tierMax, setTierMax] = useState(3);
+  const [scope, setScope] = useState<'focus' | 'all'>('focus');
+  const [placing, setPlacing] = useState(false);
+  const [err, setErr] = useState('');
   const [drag, setDrag] = useState<{ id: string; moved: boolean } | null>(null);
   const [adding, setAdding] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -64,6 +66,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
   const data = row?.data;
   const lenses = useMemo(() => (data ? lensesOf(data) : []), [data]);
   const lens = lenses.find((l) => l.id === lensId) || lenses[0];
+  const focusIds = useMemo(() => (data ? selectedIds(data) : new Set<string>()), [data]);
 
   useEffect(() => {
     if (!data || !focus) return;
@@ -80,10 +83,10 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
     const cl = lens.positions.__client;
     return [
       ...(cl ? [{ id: '__client', x: px(cl.x), y: py(cl.y), r: 14, text: data.client.name, fs: 18 }] : []),
-      ...[...data.companies].sort((a, b) => a.tier - b.tier).filter((c) => lens.positions[c.id])
-        .map((c) => ({ id: c.id, x: px(lens.positions[c.id].x), y: py(lens.positions[c.id].y), r: R[c.tier] || 6, text: shortName(c), fs: 16 })),
+      ...[...data.companies].sort((a, b) => Number(focusIds.has(b.id)) - Number(focusIds.has(a.id))).filter((c) => lens.positions[c.id] && (scope === 'all' || focusIds.has(c.id)))
+        .map((c) => ({ id: c.id, x: px(lens.positions[c.id].x), y: py(lens.positions[c.id].y), r: focusIds.has(c.id) ? R_ON : R_OFF, text: shortName(c), fs: 16 })),
     ];
-  }, [data, lens]);
+  }, [data, lens, scope, focusIds]);
   const labels = useMemo(() => placeLabels(pts), [pts]);
 
   if (row === undefined) return <div className="text-muted">Loading…</div>;
@@ -93,8 +96,19 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
   const setLocalLens = (l: Lens) => setRow({ ...row!, data: { ...data, lenses: lenses.map((x) => (x.id === l.id ? l : x)) } as MarketData });
 
   const N = data.companies.length;
-  const visible = (c: Company) => (!filter || c.overlap === filter) && c.tier <= tierMax && (!hl || hl.includes(c.id));
-  const counts = Object.fromEntries(Object.keys(OVERLAP).map((k) => [k, data.companies.filter((c) => c.overlap === k).length]));
+  const inScope = (c: Company) => scope === 'all' || focusIds.has(c.id);
+  const visible = (c: Company) => (!filter || c.overlap === filter) && (!hl || hl.includes(c.id));
+  const unplaced = data.companies.filter((c) => inScope(c) && !lens.positions[c.id]);
+  async function placeMissing() {
+    setErr(''); setPlacing(true);
+    try {
+      const r = await api<{ lenses: Lens[] }>(`/w/${info.slug}/lenses/ai`, { body: { title: lens.title, axes: { x: lens.axes.x, y: lens.axes.y } } });
+      const got = r.lenses?.[0]?.positions || {};
+      const add = Object.fromEntries(unplaced.filter((c) => got[c.id]).map((c) => [c.id, got[c.id]]));
+      saveLenses(lenses.map((l) => (l.id === lens.id ? { ...l, positions: { ...l.positions, ...add } } : l)));
+    } catch (e: any) { setErr(e.message); } finally { setPlacing(false); }
+  }
+  const counts = Object.fromEntries(Object.keys(OVERLAP).map((k) => [k, data.companies.filter((c) => c.overlap === k && inScope(c)).length]));
   const selected = sel ? data.companies.find((c) => c.id === sel) : null;
   const tipId = hover || sel;
   const tipCo = tipId ? (tipId === '__client' ? data.client : data.companies.find((c) => c.id === tipId)) : null;
@@ -149,7 +163,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Lenses</h1>
-          <div className="mt-1 text-[13px] text-muted">{N} companies · {lenses.length} {lenses.length === 1 ? 'matrix' : 'matrices'}</div>
+          <div className="mt-1 text-[13px] text-muted">{focusIds.size} competitors in focus of {N} · {lenses.length} {lenses.length === 1 ? 'matrix' : 'matrices'}</div>
         </div>
         <RefreshButton hasNew={hasNew} onClick={reload} />
       </div>
@@ -173,7 +187,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
 
       {/* legend = filter */}
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => setFilter(null)} className={`rounded-full border px-3 py-1 text-[12px] ${!filter ? 'border-text' : 'border-line text-muted hover:text-text'}`}>All {N}</button>
+        <button onClick={() => setFilter(null)} className={`rounded-full border px-3 py-1 text-[12px] ${!filter ? 'border-text' : 'border-line text-muted hover:text-text'}`}>All types</button>
         {Object.entries(OVERLAP).map(([k, o]) => (
           <button key={k} title={o.note} onClick={() => setFilter(filter === k ? null : k)} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] ${filter === k ? 'border-text' : 'border-line text-muted hover:text-text'}`}>
             <Swatch k={k} /> {o.label} <span className="num">{counts[k]}</span>
@@ -181,8 +195,8 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
         ))}
         <span className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-[12px] text-muted"><span className="brand-dot h-2.5 w-2.5 rounded-full" /> Client</span>
         <div className="ml-auto flex items-center gap-1 text-[12px]">
-          {([[1, 'Key'], [2, 'Key + 2nd'], [3, 'All tiers']] as [number, string][]).map(([v, l]) => (
-            <button key={v} onClick={() => setTierMax(v)} className={`rounded-md px-2 py-1 ${tierMax === v ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'}`}>{l}</button>
+          {([['focus', `In focus ${focusIds.size}`], ['all', `All ${N}`]] as ['focus' | 'all', string][]).map(([v, l]) => (
+            <button key={v} onClick={() => setScope(v)} className={`rounded-md px-2 py-1 ${scope === v ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'}`}>{l}</button>
           ))}
         </div>
       </div>
@@ -213,19 +227,20 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
               <text x={px(50)} y={H - 16} textAnchor="middle">↓ {lens.axes.y.bottom}</text>
             </g>
 
-            {data.companies.filter((c) => lens.positions[c.id]).map((c) => {
+            {data.companies.filter((c) => lens.positions[c.id] && inScope(c)).sort((a, b) => Number(focusIds.has(a.id)) - Number(focusIds.has(b.id))).map((c) => {
               const o = OVERLAP[c.overlap] || OVERLAP.direct;
               const p = lens.positions[c.id];
               const on = visible(c);
-              const r = R[c.tier] || 6;
+              const inFocus = focusIds.has(c.id);
+              const r = inFocus ? R_ON : R_OFF;
               const isSel = sel === c.id, isHover = hover === c.id;
-              const showLabel = on && (c.tier <= 2 || isSel || isHover || !!hl);
+              const showLabel = on && (inFocus || isSel || isHover || !!hl);
               const lp = labels[c.id];
               const hollow = c.overlap === 'may_enter';
               return (
                 <g
                   key={c.id}
-                  style={{ opacity: on ? 1 : 0.13, transition: 'opacity .2s', cursor: agency ? (drag ? 'grabbing' : 'grab') : 'pointer' }}
+                  style={{ opacity: on ? (inFocus ? 1 : 0.55) : 0.13, transition: 'opacity .2s', cursor: agency ? (drag ? 'grabbing' : 'grab') : 'pointer' }}
                   onPointerEnter={() => setHover(c.id)}
                   onPointerLeave={() => setHover(null)}
                   onPointerDown={(e) => { (e.target as Element).setPointerCapture?.(e.pointerId); setDrag({ id: c.id, moved: false }); }}
@@ -273,14 +288,18 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
               {tipCo.hero && <div className="mt-2 text-text">“{tipCo.hero}”</div>}
               {tipPos.note && <div className="mt-2 text-muted">{tipPos.note}</div>}
               <div className="mt-2 flex justify-between text-muted">
-                <span>{tipId === '__client' ? 'Client' : `${OVERLAP[tipCo.overlap]?.label} · tier ${tipCo.tier}`}</span>
+                <span>{tipId === '__client' ? 'Client' : `${OVERLAP[tipCo.overlap]?.label}${focusIds.has(tipCo.id) ? ' · in focus' : ''}`}</span>
                 <span className="num">x {tipPos.x} · y {tipPos.y}</span>
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between gap-4 border-t border-line px-4 py-2 text-[11px] text-muted">
-            <span>{lens.source === 'ai' ? 'AI estimate from public messaging.' : 'Custom axes, companies placed by AI.'}{agency && ' Drag a point to adjust; the AI estimate is kept.'}</span>
+            <span>
+              {lens.source === 'ai' ? 'AI estimate from public messaging.' : 'Custom axes, companies placed by AI.'}{agency && ' Drag a point to adjust; the AI estimate is kept.'}
+              {agency && unplaced.length > 0 && <> · <button disabled={placing} onClick={placeMissing} className="underline hover:text-text">{placing ? 'Placing…' : `Place ${unplaced.length} new with AI`}</button></>}
+              {err && <span className="text-[var(--color-direct)]"> {err}</span>}
+            </span>
             {agency && lenses.length > 1 && (
               <button className="shrink-0 hover:text-text" onClick={() => { if (confirm(`Delete lens “${lens.title}”?`)) { saveLenses(lenses.filter((l) => l.id !== lens.id)); setLensId(null); } }}>Delete lens</button>
             )}

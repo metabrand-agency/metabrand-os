@@ -1,0 +1,148 @@
+// Research one company for the competitor table: reads the homepage (if we have a URL) and uses
+// Claude with web search for facts (founded, team size, last round, location, LinkedIn, founder).
+import type { Env } from './auth';
+
+const FIELDS = {
+  name: { type: 'string' },
+  url: { type: 'string', description: 'Official website, https://…' },
+  segment: { type: 'string', description: '2-5 words, what kind of product' },
+  category_label: { type: 'string', description: 'How they name their own category on the site' },
+  hero: { type: 'string', description: 'Homepage headline, verbatim' },
+  sub: { type: 'string', description: 'Homepage sub-headline, verbatim' },
+  claims: { type: 'array', items: { type: 'string' }, description: 'Up to 6 short positioning claims from the site' },
+  proof: { type: 'array', items: { type: 'string' }, description: 'Up to 4 proof points: metrics, customer logos, awards' },
+  founded: { type: 'number' },
+  employees: { type: 'string', description: 'e.g. "51-200" or "~120"' },
+  last_round: { type: 'string', description: 'e.g. "$40M Series B (Accel), Mar 2026"' },
+  hq: { type: 'string', description: 'City, country' },
+  linkedin: { type: 'string', description: 'Company LinkedIn URL' },
+  founder: { type: 'string', description: 'Founder / CEO name' },
+  founder_linkedin: { type: 'string', description: 'Founder LinkedIn URL' },
+  open_source: { type: 'boolean' },
+  sources: { type: 'array', items: { type: 'string' }, description: 'URLs used' },
+};
+const SAVE = { name: 'save_company', description: 'Save what you found. Leave unknown fields out.', input_schema: { type: 'object', properties: FIELDS, required: ['name'] } };
+
+const strip = (html: string) =>
+  html.replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+const meta = (html: string, key: string) =>
+  html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${key}["'][^>]*content=["']([^"']*)["']`, 'i'))?.[1] ||
+  html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:name|property)=["']${key}["']`, 'i'))?.[1];
+
+export function normalizeUrl(q: string): string | null {
+  const s = q.trim();
+  if (!/^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(s)) return null;
+  return s.startsWith('http') ? s : `https://${s}`;
+}
+
+async function readHomepage(url: string) {
+  try {
+    const r = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; MetabrandOS/1.0)', accept: 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const html = (await r.text()).slice(0, 400_000);
+    return {
+      final_url: r.url,
+      title: html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim(),
+      description: meta(html, 'description') || meta(html, 'og:description'),
+      site_name: meta(html, 'og:site_name'),
+      h1: strip(html.match(/<h1[\s\S]*?<\/h1>/i)?.[0] || ''),
+      text: strip(html.match(/<body[\s\S]*<\/body>/i)?.[0] || html).slice(0, 8000),
+    };
+  } catch {
+    return null;
+  }
+}
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Apollo organization enrichment (1 Apollo credit per matched company). */
+async function apollo(env: Env, url: string) {
+  if (!env.APOLLO_API_KEY) return null;
+  let domain = '';
+  try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
+  try {
+    const r = await fetch(`https://api.apollo.io/api/v1/organizations/enrich?domain=${encodeURIComponent(domain)}`, {
+      headers: { 'x-api-key': env.APOLLO_API_KEY, accept: 'application/json', 'cache-control': 'no-cache' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return null;
+    const o: any = ((await r.json()) as any)?.organization;
+    if (!o?.name) return null;
+    const ev = [...(o.funding_events || [])].sort((a: any, b: any) => String(b.date).localeCompare(String(a.date)))[0];
+    let last: string | undefined;
+    if (ev) {
+      const d = String(ev.date || '').slice(0, 7).split('-');
+      const when = d.length === 2 ? `, ${MON[Number(d[1]) - 1]} ${d[0]}` : '';
+      const inv = String(ev.investors || '').split(',').map((x: string) => x.trim()).filter(Boolean).slice(0, 2).join(', ');
+      const type = /^Venture/.test(ev.type) ? 'Venture round' : ev.type;
+      last = type === 'Merger / Acquisition' ? `Acquired${inv ? ` by ${inv}` : ''}${when}` : `${ev.amount ? `$${ev.amount} ` : ''}${type}${inv ? ` (${inv})` : ''}${when}`;
+    }
+    return {
+      name: o.name,
+      founded: o.founded_year || undefined,
+      employees: o.estimated_num_employees ? String(o.estimated_num_employees) : undefined,
+      hq: [o.city, o.country].filter(Boolean).join(', ') || undefined,
+      linkedin: o.linkedin_url ? String(o.linkedin_url).replace(/^http:/, 'https:') : undefined,
+      last_round: last,
+      data_sources: ['Apollo'],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function researchCompany(env: Env, wsId: string, input: { query?: string; name?: string; url?: string }, clientName: string) {
+  const url = input.url || (input.query ? normalizeUrl(input.query) : null);
+  const page = url ? await readHomepage(url) : null;
+  const ap = url ? await apollo(env, page?.final_url || url) : null;
+  const fallback: any = {
+    name: input.name || ap?.name || page?.site_name || page?.title?.split(/[|–—-]/)[0]?.trim() || input.query || 'Unknown',
+    url: page?.final_url || url || undefined,
+    hero: page?.h1 || undefined,
+    sub: page?.description || undefined,
+    sources: url ? [url] : [],
+    ...Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name')),
+  };
+  if (!env.ANTHROPIC_API_KEY) return fallback;
+
+  const prompt = `Research this company as a competitor of ${clientName} for a branding agency's competitor table.
+Company: ${input.name || input.query || url}${url ? ` (${url})` : ''}
+${page ? `Homepage text (verbatim, truncated):\nTITLE: ${page.title}\nDESCRIPTION: ${page.description}\nH1: ${page.h1}\nTEXT: ${page.text}` : 'No homepage text: find the official website first.'}
+
+Take hero, sub, claims and proof only from the homepage text when given.${ap ? ' Company facts (founded, team, round, HQ, company LinkedIn) are already known from Apollo; focus web search on the founder or CEO and their LinkedIn URL.' : ''} Use web search for facts: year founded, employee count, most recent funding round (amount, stage, lead investor, month and year), HQ city and country, company LinkedIn URL, founder or CEO name and their LinkedIn URL.
+Never guess. Leave a field out if you cannot confirm it. Then call save_company.`;
+
+  const system = 'You are a precise research assistant. Facts must come from sources you saw. Write in English.';
+  let tools: any[] = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }, SAVE];
+  const messages: any[] = [{ role: 'user', content: prompt }];
+  let tokens = 0;
+  for (let i = 0; i < 4; i++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: env.MODEL || 'claude-sonnet-5-5', max_tokens: 3000, system, tools, messages }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      // web search may be disabled for the API org: retry once without it
+      if (tools.length > 1 && /web_search/i.test(err)) { tools = [SAVE]; continue; }
+      throw new Error(`AI error ${res.status}: ${err.slice(0, 200)}`);
+    }
+    const out: any = await res.json();
+    tokens += (out.usage?.input_tokens || 0) + (out.usage?.output_tokens || 0);
+    const save = (out.content || []).find((b: any) => b.type === 'tool_use' && b.name === 'save_company');
+    if (save) {
+      await env.DB.prepare('INSERT INTO usage (id, workspace_id, provider, units, created_at) VALUES (?, ?, ?, ?, ?)').bind(crypto.randomUUID(), wsId, 'anthropic', tokens, Date.now()).run();
+      const c = save.input || {};
+      const ai = Object.fromEntries(Object.entries(c).filter(([, v]) => v !== '' && v != null));
+      const apFacts = Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name'));
+      return {
+        ...fallback, ...ai, ...apFacts, // company facts: Apollo first, then AI web research
+        sources: [...new Set([...(fallback.sources || []), ...(c.sources || [])])],
+        data_sources: [...new Set([...(ap ? ['Apollo'] : []), 'AI web research'])],
+      };
+    }
+    messages.push({ role: 'assistant', content: out.content });
+    if (out.stop_reason !== 'pause_turn') messages.push({ role: 'user', content: 'Now call save_company with what you found.' });
+  }
+  return fallback;
+}
