@@ -49,7 +49,7 @@ export default function Chat({ slug, name, onAction, onClose }: { slug: string; 
       <div className="flex h-12 items-center justify-between border-b border-line px-4">
         <div className="text-[13px] font-medium">{msgs.length ? 'Conversation' : 'New conversation'}</div>
         <div className="flex items-center gap-1">
-          <button title="New conversation" onClick={() => setMsgs([])} className="rounded px-2 py-1 text-[15px] text-muted hover:bg-panel-2 hover:text-text">+</button>
+          {msgs.length > 0 && <button title="Clear the conversation" onClick={() => setMsgs([])} className="rounded px-2 py-1 text-[12px] text-muted hover:bg-panel-2 hover:text-text">Clear</button>}
           <button title="Close" onClick={onClose} className="rounded px-2 py-1 text-[13px] text-muted hover:bg-panel-2 hover:text-text">✕</button>
         </div>
       </div>

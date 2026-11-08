@@ -1,6 +1,7 @@
 // Reads project memory (brief, calls, emails) and compares it with the competitor list:
 // which competitors the client names, and how our researched list holds up against the brief.
 import type { Env } from './auth';
+import { askForTool } from './ai';
 
 const TOOL = {
   name: 'save_review',
@@ -59,26 +60,12 @@ export async function reviewAgainstMemory(env: Env, wsId: string, clientName: st
   }).join('\n\n');
   const list = (data.companies || []).map((c: any) => ({ id: c.id, name: c.name, url: c.url, overlap: c.overlap, segment: c.segment, hero: c.hero }));
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: env.MODEL || 'claude-sonnet-5-5',
-      max_tokens: 6000,
-      system: 'You are a brand strategist. Be literal: a company counts as named only if it appears in the documents. Ground every reason in what the client wrote. English.',
-      tools: [TOOL],
-      tool_choice: { type: 'tool', name: 'save_review' },
-      messages: [{
-        role: 'user',
-        content: `Client: ${clientName}.\n\n1) List every company the client names as a competitor, alternative, or reference they watch. Match to the current list by id when it is the same company.\n2) Review the rest of the current list against what the brief says about the client's market, buyer and product.\n\nCurrent competitor list (JSON):\n${JSON.stringify(list)}\n\nProject documents:\n${text}`,
-      }],
-    }),
+  const r: any = await askForTool(env, wsId, {
+    system: 'You are a brand strategist. Be literal: a company counts as named only if it appears in the documents. Ground every reason in what the client wrote. English.',
+    prompt: `Client: ${clientName}.\n\n1) List every company the client names as a competitor, alternative, or reference they watch. Match to the current list by id when it is the same company.\n2) Review the rest of the current list against what the brief says about the client's market, buyer and product.\n\nCurrent competitor list (JSON):\n${JSON.stringify(list)}\n\nProject documents:\n${text}`,
+    tool: TOOL,
+    max_tokens: 6000,
   });
-  if (!res.ok) throw new Error(`AI error ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const out: any = await res.json();
-  await env.DB.prepare('INSERT INTO usage (id, workspace_id, provider, units, created_at) VALUES (?, ?, ?, ?, ?)')
-    .bind(crypto.randomUUID(), wsId, 'anthropic', (out.usage?.input_tokens || 0) + (out.usage?.output_tokens || 0), Date.now()).run();
-  const r = (out.content || []).find((b: any) => b.type === 'tool_use')?.input || {};
   const ids = new Set(list.map((c: any) => c.id));
   return {
     named: (r.named || []).map((n: any) => ({ ...n, existing_id: ids.has(n.existing_id) ? n.existing_id : undefined })),

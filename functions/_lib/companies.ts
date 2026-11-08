@@ -1,6 +1,7 @@
 // Research one company for the competitor table: reads the homepage (if we have a URL) and uses
 // Claude with web search for facts (founded, team size, last round, location, LinkedIn, founder).
 import type { Env } from './auth';
+import { askForTool } from './ai';
 
 const FIELDS = {
   name: { type: 'string' },
@@ -119,39 +120,19 @@ Take hero, sub, claims and proof only from the homepage text when given.${ap ? '
 Never guess. Leave a field out if you cannot confirm it. Then call save_company.`;
 
   const system = 'You are a precise research assistant. Facts must come from sources you saw. Write in English.';
-  let tools: any[] = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }, SAVE];
-  const messages: any[] = [{ role: 'user', content: prompt }];
-  let tokens = 0;
-  for (let i = 0; i < 4; i++) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: env.MODEL || 'claude-sonnet-5-5', max_tokens: 3000, system, tools, messages }),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      // web search may be disabled for the API org: retry once without it
-      if (tools.length > 1 && /web_search/i.test(err)) { tools = [SAVE]; continue; }
-      throw new Error(`AI error ${res.status}: ${err.slice(0, 200)}`);
-    }
-    const out: any = await res.json();
-    tokens += (out.usage?.input_tokens || 0) + (out.usage?.output_tokens || 0);
-    const save = (out.content || []).find((b: any) => b.type === 'tool_use' && b.name === 'save_company');
-    if (save) {
-      await env.DB.prepare('INSERT INTO usage (id, workspace_id, provider, units, created_at) VALUES (?, ?, ?, ?, ?)').bind(crypto.randomUUID(), wsId, 'anthropic', tokens, Date.now()).run();
-      const c = save.input || {};
-      const { x_url, github_url, youtube_url, ...rest } = c;
-      const ai: any = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== '' && v != null));
-      ai.socials = { ...(x_url ? { x: x_url } : {}), ...(github_url ? { github: github_url } : {}), ...(youtube_url ? { youtube: youtube_url } : {}), ...(ap?.socials || {}) };
-      const apFacts = Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name' && k !== 'socials'));
-      return {
-        ...fallback, ...ai, ...apFacts, // company facts: Apollo first, then AI web research
-        sources: [...new Set([...(fallback.sources || []), ...(c.sources || [])])],
-        data_sources: [...new Set([...(ap ? ['Apollo'] : []), 'AI web research'])],
-      };
-    }
-    messages.push({ role: 'assistant', content: out.content });
-    if (out.stop_reason !== 'pause_turn') messages.push({ role: 'user', content: 'Now call save_company with what you found.' });
+  let c: any = {};
+  try {
+    c = await askForTool(env, wsId, { system, prompt, tool: SAVE, max_tokens: 3000, extraTools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }] });
+  } catch {
+    return fallback;
   }
-  return fallback;
+  const { x_url, github_url, youtube_url, ...rest } = c;
+  const ai: any = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== '' && v != null));
+  ai.socials = { ...(x_url ? { x: x_url } : {}), ...(github_url ? { github: github_url } : {}), ...(youtube_url ? { youtube: youtube_url } : {}), ...(ap?.socials || {}) };
+  const apFacts = Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name' && k !== 'socials'));
+  return {
+    ...fallback, ...ai, ...apFacts, // company facts: Apollo first, then AI web research
+    sources: [...new Set([...(fallback.sources || []), ...(c.sources || [])])],
+    data_sources: [...new Set([...(ap ? ['Apollo'] : []), 'AI web research'])],
+  };
 }

@@ -1,6 +1,7 @@
 // Lenses = perceptual matrices over the market. AI proposes brand-relevant axes and places companies
 // from their public messaging (hero, sub, claims, proof). Output is forced through a tool for clean JSON.
 import type { Env } from './auth';
+import { askForTool } from './ai';
 
 export type Lens = {
   id: string;
@@ -47,7 +48,6 @@ export async function aiLenses(
   env: Env, wsId: string, data: any,
   mode: { kind: 'suggest'; existing: string[] } | { kind: 'score'; title: string; axes: Lens['axes'] }
 ): Promise<Lens[]> {
-  if (!env.ANTHROPIC_API_KEY) throw new Error('AI is not configured: add ANTHROPIC_API_KEY');
   const client = data.client?.name || 'the client';
   const task = mode.kind === 'suggest'
     ? `Propose 3 perceptual matrices (two axes each) that help make BRANDING decisions for ${client}: brand perception, personality, tone of voice, promise and proof. Not business model or product architecture.
@@ -55,23 +55,8 @@ Classic branding axes for reference: Reliable ↔ Visionary, Technical ↔ Human
 Avoid repeating these existing matrices: ${mode.existing.join('; ') || 'none'}.`
     : `Place every company on this matrix: "${mode.title}". X axis: 0 = ${mode.axes.x.left}, 100 = ${mode.axes.x.right}. Y axis: 0 = ${mode.axes.y.bottom}, 100 = ${mode.axes.y.top}. Return exactly one lens with these axis labels.`;
   const system = `You are a senior brand strategist at a branding agency. Score companies only from the public messaging given (hero line, sub-line, claims, proof). Do not invent facts. Use the full 0-100 range so differences are visible. Include every company id and the client id "__client". Write in English.`;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: env.MODEL || 'claude-sonnet-5-5',
-      max_tokens: 8000,
-      system,
-      tools: [TOOL],
-      tool_choice: { type: 'tool', name: 'save_lenses' },
-      messages: [{ role: 'user', content: `${task}\n\nCompanies (JSON):\n${brief(data)}` }],
-    }),
-  });
-  if (!res.ok) throw new Error(`AI error ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const out: any = await res.json();
-  await env.DB.prepare('INSERT INTO usage (id, workspace_id, provider, units, created_at) VALUES (?, ?, ?, ?, ?)')
-    .bind(crypto.randomUUID(), wsId, 'anthropic', (out.usage?.input_tokens || 0) + (out.usage?.output_tokens || 0), Date.now()).run();
-  const raw = (out.content || []).find((b: any) => b.type === 'tool_use')?.input?.lenses || [];
+  const result: any = await askForTool(env, wsId, { system, prompt: `${task}\n\nCompanies (JSON):\n${brief(data)}`, tool: TOOL, max_tokens: 8000 });
+  const raw = result.lenses || [];
   const ids = new Set(['__client', ...(data.companies || []).map((c: any) => c.id)]);
   const now = Date.now();
   return raw.map((l: any, i: number): Lens => ({
