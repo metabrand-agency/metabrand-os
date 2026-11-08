@@ -26,7 +26,7 @@ const isLight = (hex: string) => { const [r, g, b] = rgbOf(hex); return 0.299 * 
 const segmentOf = (h: number) => Math.round(h / 30) % 12;
 
 /** The client's palette and fonts come from its brand kit when there is one (exact), not from scraping. */
-function kitBranding(kit: Kit | null, scraped?: Branding): Branding | undefined {
+export function kitBranding(kit: Kit | null, scraped?: Branding): Branding | undefined {
   if (!kit?.colors?.length) return scraped;
   const items = kit.colors.filter((g) => !/interface|ui|status|system/i.test(g.group)).flatMap((g) => g.items);
   const range = (hex: string) => { const v = rgbOf(hex); return Math.max(...v) - Math.min(...v); };
@@ -43,7 +43,7 @@ function kitBranding(kit: Kit | null, scraped?: Branding): Branding | undefined 
   };
 }
 
-function useFonts(families: string[]) {
+export function useFonts(families: string[]) {
   const key = [...new Set(families)].sort().join('|');
   useEffect(() => {
     for (const f of key.split('|').filter(Boolean)) {

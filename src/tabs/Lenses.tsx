@@ -5,6 +5,7 @@ import { Btn, Card, Input, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import SeoLens from './SeoLens';
 import BrandingLens from './BrandingLens';
+import MethodsLens from './MethodsLens';
 import { Company, Dossier, EmptyResearch, Lens, MarketData, OVERLAP, RefreshButton, Swatch, lensesOf, selectedIds, shortName, useResearch, useClientColor } from './marketShared';
 
 const LENS_LABEL: Record<string, string> = { promise_clusters: 'Promise clusters', perceptual_map: 'Perceptual map', proof: 'Proof audit' };
@@ -50,7 +51,7 @@ function placeLabels(pts: Pt[]): Record<string, Place> {
   return out;
 }
 
-export default function Lenses({ info, focus, view = 'maps' }: { info: WsInfo; focus?: string; view?: 'maps' | 'seo' | 'branding' }) {
+export default function Lenses({ info, focus, view = 'maps' }: { info: WsInfo; focus?: string; view?: 'maps' | 'seo' | 'branding' | 'methods' }) {
   const agency = info.access.isAgency;
   const { row, setRow, reload, hasNew, save, accept } = useResearch(info.slug);
   const accent = useClientColor(info.slug);
@@ -94,6 +95,10 @@ export default function Lenses({ info, focus, view = 'maps' }: { info: WsInfo; f
 
   if (row === undefined) return <div className="text-muted">Loading…</div>;
   if (!data || !lens) return <EmptyResearch info={info} title="Lenses" onLoaded={reload} />;
+
+  if (view === 'methods') {
+    return <div className="@container"><MethodsLens info={info} data={data} accept={accept} extra={<RefreshButton hasNew={hasNew} onClick={reload} />} /></div>;
+  }
 
   if (view === 'branding') {
     return <div className="@container"><BrandingLens info={info} data={data} accept={accept} extra={<RefreshButton hasNew={hasNew} onClick={reload} />} /></div>;

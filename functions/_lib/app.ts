@@ -11,6 +11,7 @@ import { loadSeo } from './seo';
 import { refreshOne, focusIds, ogImage } from './radar';
 import { SUPERPLANE_KIT, patchKit } from './kits/superplane';
 import { brandingFor } from './branding';
+import { METHODS, runMethod } from './methods';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -498,6 +499,25 @@ app.post('/w/:slug/branding/refresh', async (c) => {
   }
   const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
   if (!b) return c.json({ error: `Couldn't read ${company.url}` }, 502);
+  return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
+});
+
+// Methodology lenses: one framework per call (BAV, Dunford, Blue Ocean, JTBD...), scored by AI for the client + focus
+app.post('/w/:slug/methods/run', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const ws = c.get('ws');
+  const { key } = await c.req.json<{ key: string }>();
+  if (!METHODS[key]) return c.json({ error: 'Unknown method' }, 400);
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
+  if (!row) return c.json({ error: 'No competitors yet' }, 400);
+  const data = JSON.parse(row.data_json);
+  let result: any;
+  try { result = await runMethod(c.env, ws.id, data, key, ['__client', ...focusIds(data)]); } catch (e: any) { return c.json({ error: e.message }, 502); }
+  const now = Date.now();
+  await c.env.DB.prepare(`UPDATE research SET data_json = json_set(json_set(data_json, '$.methods', json(coalesce(json_extract(data_json, '$.methods'), '{}'))), ?, json(?)), updated_at = ? WHERE workspace_id = ? AND kind = 'market_map'`)
+    .bind(`$.methods.${key}`, JSON.stringify(result), now, ws.id).run();
+  const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
   return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
 });
 
