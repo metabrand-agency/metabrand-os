@@ -1,0 +1,713 @@
+{
+  "workspace": "superplane",
+  "client": {
+    "name": "SuperPlane",
+    "url": "https://superplane.com",
+    "category_label": "AI software factory",
+    "hero": "Engineering tasks in half the time",
+    "sub": "SuperPlane lets AI agents fully automate routine development work.",
+    "claims": [
+      "verified, review-ready PRs",
+      "deterministic workflow rules / guardrails",
+      "verifies work, sends failing work back",
+      "escalates to humans with context",
+      "works with your models, source control, CI",
+      "open source (Apache 2.0), cloud or on-prem",
+      "works while team is offline"
+    ],
+    "proof": [
+      "30% of backlog handled autonomously",
+      "90%+ PRs ready for approval",
+      "70% fewer engineer touchpoints",
+      "4x faster issue-to-PR",
+      "8.8k GitHub stars",
+      "Confluent, Palo Alto Networks, Nutanix, Delivery Hero, TradingView, Nebius"
+    ],
+    "funding": "$2.6M pre-seed (Credo Ventures), Jun 2026",
+    "hq": "San Francisco / Serbia team",
+    "founders": "Darko Fabijan, Marko Anastasov (ex-Semaphore CI)",
+    "sources": [
+      "https://superplane.com",
+      "https://tech.eu/2026/06/24/superplane-secures-26m-to-turn-production-operations-into-an-ai-native-workflow-layer/",
+      "https://www.everydev.ai/tools/superplane",
+      "https://sdtimes.com/?p=61632"
+    ],
+    "x": 18,
+    "y": 84
+  },
+  "axes": {
+    "x": {
+      "left": "Bring your own agent (orchestration layer)",
+      "right": "Own proprietary agent"
+    },
+    "y": {
+      "bottom": "Individual developer session",
+      "top": "Team-wide governed system"
+    },
+    "note": "Scores are AI estimates from website copy; to be validated by strategist."
+  },
+  "companies": [
+    {
+      "id": "factory",
+      "name": "Factory",
+      "url": "https://factory.com",
+      "tier": 1,
+      "overlap": "direct",
+      "segment": "Autonomous coding agents",
+      "category_label": "Agent-Native Software Development",
+      "hero": "AI Coding Agents for the Enterprise",
+      "sub": "Model agnostic. Deployed anywhere.",
+      "claims": [
+        "control over where systems run and which models",
+        "governed self-improvement",
+        "tracks adoption vs business outcomes",
+        "Droids automate coding, testing, deployment",
+        "model routing"
+      ],
+      "proof": [
+        "RBC, T-Mobile, Blackstone, Adyen, HP, DoorDash"
+      ],
+      "funding": "$420M total; $200M at $5B valuation, Sep 2026",
+      "hq": "San Francisco",
+      "founded": 2023,
+      "open_source": false,
+      "x": 82,
+      "y": 78,
+      "sources": [
+        "https://factory.com/",
+        "https://sacra.com/research/factory",
+        "https://multiples.vc/private-comps/factory"
+      ]
+    },
+    {
+      "id": "devin",
+      "name": "Devin (Cognition)",
+      "url": "https://devin.ai",
+      "tier": 1,
+      "overlap": "direct",
+      "segment": "Autonomous coding agents",
+      "category_label": "Autonomous software engineer",
+      "hero": "Meet Devin, your team's autonomous software engineer",
+      "sub": "Runs in the cloud or on your machine, tests in its own browser, won't stop until the PR is ready to merge",
+      "claims": [
+        "tests end to end on own VMs",
+        "up to 60% lower model cost",
+        "keeps working when laptop is closed",
+        "joins Slack/Teams threads",
+        "handles bugs, failed CI, alerts"
+      ],
+      "proof": [
+        "Citi, NVIDIA, Cloudflare, Mercedes, Wayfair",
+        "SOC 2, ISO 27001, FedRAMP"
+      ],
+      "funding": null,
+      "hq": null,
+      "founded": null,
+      "open_source": false,
+      "x": 88,
+      "y": 62,
+      "sources": [
+        "https://devin.ai/"
+      ],
+      "short": "Devin"
+    },
+    {
+      "id": "openhands",
+      "name": "OpenHands",
+      "url": "https://www.openhands.dev",
+      "tier": 1,
+      "overlap": "direct",
+      "segment": "Open-source agent platform",
+      "category_label": "Open Source AI Coding Agent Platform",
+      "hero": "The open platform for agentic software development",
+      "sub": null,
+      "claims": [
+        "end-to-end engineering work",
+        "works with Claude Code, Codex, Gemini CLI and open models",
+        "triggers from GitHub, Slack, Jira, Linear, schedules",
+        "local, cloud or VPC, audit logging",
+        "large and legacy codebases"
+      ],
+      "proof": [
+        "92.9K GitHub stars",
+        "593 contributors",
+        "MIT core"
+      ],
+      "funding": null,
+      "hq": null,
+      "founded": null,
+      "open_source": true,
+      "x": 45,
+      "y": 55,
+      "sources": [
+        "https://www.openhands.dev/"
+      ]
+    },
+    {
+      "id": "warp",
+      "name": "Warp Factories",
+      "url": "https://www.warp.dev",
+      "tier": 1,
+      "overlap": "direct",
+      "segment": "Software factory platform",
+      "category_label": "software factory",
+      "hero": "Open infrastructure for cloud software factories",
+      "sub": "Factories as code, any model or harness, with evals, benchmarks, and self-improvement built in.",
+      "claims": [
+        "factories as code (factory.yaml)",
+        "any model or harness",
+        "every run scored, observer agents improve config",
+        "screenshots/video to verify work",
+        "your cloud or VPC"
+      ],
+      "proof": [
+        "800k+ devs",
+        "cost per PR $80 → $30",
+        "SOC 2",
+        "Docker, Ramp, DoorDash, Peloton"
+      ],
+      "funding": null,
+      "hq": null,
+      "founded": null,
+      "open_source": true,
+      "x": 22,
+      "y": 80,
+      "sources": [
+        "https://www.warp.dev/",
+        "https://www.warp.dev/articles/best-software-factory-platforms-2026"
+      ],
+      "short": "Warp Factories"
+    },
+    {
+      "id": "tembo",
+      "name": "Tembo",
+      "url": "https://www.tembo.io",
+      "tier": 1,
+      "overlap": "direct",
+      "segment": "Agent orchestration (BYOA)",
+      "category_label": "Cloud Agents",
+      "hero": "Run any coding agent in the cloud.",
+      "sub": "Give every change its own computer. Follow agent work, review the result, and see what gets merged.",
+      "claims": [
+        "isolated VMs per change",
+        "Claude Code, Codex, OpenCode, Cursor, Pi",
+        "assign via Slack, Linear, GitHub, Jira",
+        "humans approve before merge",
+        "cloud or self-hosted"
+      ],
+      "proof": [
+        "Tilt: 1,200 agent PRs, 81% merge rate",
+        "SOC 2, ISO 27001, ISO 42001, HIPAA"
+      ],
+      "funding": "~$20M incl. $14M Series A (GreatPoint Ventures)",
+      "hq": "Cincinnati, OH",
+      "founded": 2022,
+      "open_source": false,
+      "x": 15,
+      "y": 70,
+      "sources": [
+        "https://www.tembo.io/",
+        "https://www.everydev.ai/tools/tembo",
+        "https://www.vcbacked.co/company/tembo"
+      ]
+    },
+    {
+      "id": "augment",
+      "name": "Augment Code (Cosmos)",
+      "url": "https://www.augmentcode.com",
+      "tier": 1,
+      "overlap": "direct",
+      "segment": "Agent orchestration platform",
+      "category_label": "Agent Orchestration Platform",
+      "hero": "Run your software factory",
+      "sub": "Cosmos is the platform for building an always-on software delivery system that moves work from spec to verification.",
+      "claims": [
+        "first-pass review on every PR in minutes",
+        "agents handle the repetitive middle of the SDLC",
+        "consequential actions approved by a person",
+        "improve an Expert once, every run improves",
+        "shared memory across engineers"
+      ],
+      "proof": [
+        "66% faster time to merge",
+        "2–3x throughput",
+        "Adobe, MongoDB, Snyk, Webflow"
+      ],
+      "funding": "$252M total",
+      "hq": "Palo Alto",
+      "founded": 2022,
+      "open_source": false,
+      "x": 60,
+      "y": 85,
+      "sources": [
+        "https://www.augmentcode.com/",
+        "https://app.dealroom.co/news/feed/ai-startup-augment-code-valued-at-1-4b-after-200m-funding-for-autonomous-coding-agent"
+      ],
+      "short": "Augment Cosmos"
+    },
+    {
+      "id": "port",
+      "name": "Port",
+      "url": "https://www.port.io",
+      "tier": 1,
+      "overlap": "angle",
+      "segment": "Agentic SDLC / internal developer platform",
+      "category_label": "Agentic SDLC platform",
+      "hero": "Build your own AI Software Factory",
+      "sub": "The platform to build, govern and operate the Agentic SDLC.",
+      "claims": [
+        "live Context Lake of your environment",
+        "orchestrates agentic workflows with governance",
+        "auto-discovers agents, MCPs, skills",
+        "measures ROI of AI in engineering"
+      ],
+      "proof": [
+        "GitHub, BT, StubHub, dLocal",
+        "SOC 2 Type 2, ISO 27001"
+      ],
+      "funding": "$100M round, Dec 2025",
+      "hq": null,
+      "founded": null,
+      "open_source": false,
+      "x": 12,
+      "y": 92,
+      "sources": [
+        "https://www.port.io/",
+        "https://siliconangle.com/?p=724794"
+      ]
+    },
+    {
+      "id": "harness",
+      "name": "Harness",
+      "url": "https://www.harness.io",
+      "tier": 1,
+      "overlap": "angle",
+      "segment": "CI/CD → Autonomous SDLC",
+      "category_label": "The Autonomous SDLC Platform",
+      "hero": "Your software factory from idea to production",
+      "sub": "Ships AI code as fast as it's written, catches risk before it ships, and governs every pipeline.",
+      "claims": [
+        "ships AI-written code fast",
+        "catches risk before production",
+        "governs every pipeline",
+        "autonomy levels 1–3 per workflow",
+        "policy-as-code, audit trail, human approvals"
+      ],
+      "proof": [
+        "5.7M deployments/month",
+        "Citi: days → 7 minutes",
+        "SOC 2, FedRAMP, DORA"
+      ],
+      "funding": null,
+      "hq": null,
+      "founded": null,
+      "open_source": false,
+      "x": 55,
+      "y": 95,
+      "sources": [
+        "https://www.harness.io/"
+      ]
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot coding agent / Agent HQ",
+      "url": "https://github.com",
+      "tier": 2,
+      "overlap": "substitute",
+      "segment": "Platform-native agents",
+      "category_label": "Coding agent inside GitHub",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "assign an issue, get a draft PR",
+        "multi-vendor agents inside GitHub"
+      ],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 62,
+      "y": 48,
+      "sources": [
+        "https://hashnode.com/blog/ai-software-factory-tools",
+        "https://mojoauth.com/blog/top-9-ai-se-agent-platforms"
+      ],
+      "short": "Copilot agent"
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor background agents",
+      "url": "https://cursor.com",
+      "tier": 2,
+      "overlap": "substitute",
+      "segment": "IDE + cloud agents",
+      "category_label": "AI development platform",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "background agents on cloud VMs",
+        "video playback of agent work"
+      ],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 78,
+      "y": 25,
+      "sources": [
+        "https://amux.io/guides/background-agents-compared/"
+      ],
+      "short": "Cursor agents"
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code (headless)",
+      "url": "https://claude.com",
+      "tier": 2,
+      "overlap": "substitute",
+      "segment": "Terminal agent",
+      "category_label": "AI coding tool",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "headless, parallel sessions",
+        "configurable into own workflows"
+      ],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 70,
+      "y": 15,
+      "sources": [
+        "https://mastra.ai/articles/best-software-factory"
+      ],
+      "short": "Claude Code"
+    },
+    {
+      "id": "jules",
+      "name": "Google Jules",
+      "url": "https://jules.google",
+      "tier": 2,
+      "overlap": "substitute",
+      "segment": "Platform-native agents",
+      "category_label": "Asynchronous coding agent",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "task in, cloud VM, plan, PR out"
+      ],
+      "proof": [
+        "GA at I/O 2026"
+      ],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 74,
+      "y": 35,
+      "sources": [
+        "https://hashnode.com/blog/ai-software-factory-tools"
+      ],
+      "short": "Jules"
+    },
+    {
+      "id": "mastra",
+      "name": "Mastra Factory",
+      "url": "https://mastra.ai",
+      "tier": 2,
+      "overlap": "direct",
+      "segment": "Software factory platform",
+      "category_label": "software factory",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "open-source TypeScript software factory",
+        "configurable workflows and model providers"
+      ],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": true,
+      "x": 25,
+      "y": 60,
+      "sources": [
+        "https://mastra.ai/articles/best-software-factory"
+      ],
+      "short": "Mastra"
+    },
+    {
+      "id": "buildful",
+      "name": "Buildful",
+      "url": "https://buildful.ai",
+      "tier": 2,
+      "overlap": "direct",
+      "segment": "Software factory platform",
+      "category_label": "software factory",
+      "hero": "Describe a change, get a tested pull request",
+      "sub": null,
+      "claims": [
+        "every UI change tested in a real browser",
+        "session recording attached to PR"
+      ],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 68,
+      "y": 55,
+      "sources": [
+        "https://hashnode.com/blog/ai-software-factory"
+      ]
+    },
+    {
+      "id": "codegen",
+      "name": "Codegen (ClickUp)",
+      "url": "https://codegen.com",
+      "tier": 3,
+      "overlap": "substitute",
+      "segment": "Agent in work-management tool",
+      "category_label": "AI coding agent in ClickUp",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "delegate coding tasks from ClickUp"
+      ],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 72,
+      "y": 45,
+      "sources": [
+        "https://mastra.ai/articles/best-software-factory"
+      ],
+      "short": "Codegen"
+    },
+    {
+      "id": "resolve",
+      "name": "Resolve AI",
+      "url": "https://resolve.ai",
+      "tier": 2,
+      "overlap": "may_enter",
+      "segment": "AI SRE",
+      "category_label": "AI SRE platform",
+      "hero": "Machines on-call for humans",
+      "sub": null,
+      "claims": [
+        "up to 80% less downtime",
+        "triages every alert",
+        "team of SRE agents"
+      ],
+      "proof": [
+        "5x faster MTTR",
+        "Coinbase, Salesforce, Snowflake"
+      ],
+      "funding": "$125M Series A at $1B (Lightspeed), Feb 2026",
+      "hq": null,
+      "open_source": false,
+      "x": 80,
+      "y": 75,
+      "sources": [
+        "https://resolve.ai/",
+        "https://techcrunch.com/2026/02/04/ai-sre-resolve-ai-confirms-125m-raise-unicorn-valuation/"
+      ]
+    },
+    {
+      "id": "incidentio",
+      "name": "incident.io",
+      "url": "https://incident.io",
+      "tier": 3,
+      "overlap": "may_enter",
+      "segment": "AI SRE / incident management",
+      "category_label": "Incident management platform",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "AI agents that investigate and resolve incidents"
+      ],
+      "proof": [
+        "250k+ incidents handled",
+        "Netflix, Linear, Ramp, Etsy"
+      ],
+      "funding": "$62M Series B at $400M (Insight), Apr 2025",
+      "hq": "London / San Francisco",
+      "founded": 2021,
+      "open_source": false,
+      "x": 75,
+      "y": 72,
+      "sources": [
+        "https://www.maginative.com/article/incident-io-raises-62m-to-build-ai-agents-that-keep-systems-running/"
+      ]
+    },
+    {
+      "id": "neubird",
+      "name": "NeuBird",
+      "url": "https://neubird.ai",
+      "tier": 3,
+      "overlap": "may_enter",
+      "segment": "AI SRE",
+      "category_label": "Agentic ops",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "autonomous production operations agents"
+      ],
+      "proof": [],
+      "funding": "$19.3M (Xora), Apr 2026",
+      "hq": null,
+      "open_source": false,
+      "x": 82,
+      "y": 68,
+      "sources": [
+        "https://siliconangle.com/?p=737567"
+      ]
+    },
+    {
+      "id": "ciroos",
+      "name": "Ciroos",
+      "url": "https://ciroos.ai",
+      "tier": 3,
+      "overlap": "may_enter",
+      "segment": "AI SRE",
+      "category_label": "AI SRE teammate",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "agentic teammate for SRE and DevOps"
+      ],
+      "proof": [],
+      "funding": "$21M",
+      "hq": null,
+      "founded": 2025,
+      "open_source": false,
+      "x": 78,
+      "y": 66,
+      "sources": [
+        "https://www.constellationr.com/video/insights-constellationtv/introducing-ciroos-ai-startup-launching-sre-teammate-transform"
+      ]
+    },
+    {
+      "id": "humanitec",
+      "name": "Humanitec",
+      "url": "https://humanitec.com",
+      "tier": 3,
+      "overlap": "angle",
+      "segment": "Platform engineering",
+      "category_label": "Platform orchestrator",
+      "hero": null,
+      "sub": null,
+      "claims": [],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 30,
+      "y": 88,
+      "sources": [
+        "https://www.everydev.ai/developers/superplane-inc"
+      ]
+    },
+    {
+      "id": "spacelift",
+      "name": "Spacelift",
+      "url": "https://spacelift.io",
+      "tier": 3,
+      "overlap": "angle",
+      "segment": "Infrastructure automation",
+      "category_label": "IaC orchestration",
+      "hero": null,
+      "sub": null,
+      "claims": [],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": false,
+      "x": 35,
+      "y": 82,
+      "sources": [
+        "https://www.everydev.ai/developers/superplane-inc"
+      ]
+    },
+    {
+      "id": "temporal",
+      "name": "Temporal",
+      "url": "https://temporal.io",
+      "tier": 3,
+      "overlap": "angle",
+      "segment": "Durable workflow engine",
+      "category_label": "Durable execution",
+      "hero": null,
+      "sub": null,
+      "claims": [],
+      "proof": [],
+      "funding": null,
+      "hq": null,
+      "open_source": true,
+      "x": 20,
+      "y": 50,
+      "sources": [
+        "https://www.everydev.ai/developers/superplane-inc"
+      ]
+    },
+    {
+      "id": "inhouse",
+      "name": "In-house scripts + CI",
+      "url": null,
+      "tier": 2,
+      "overlap": "substitute",
+      "segment": "Status quo",
+      "category_label": "DIY",
+      "hero": null,
+      "sub": null,
+      "claims": [
+        "assemble sandboxes, agents, CI checks yourself"
+      ],
+      "proof": [
+        "Ramp, Uber, Vercel run their own factories"
+      ],
+      "funding": null,
+      "hq": null,
+      "open_source": null,
+      "x": 10,
+      "y": 30,
+      "sources": [
+        "https://hashnode.com/blog/ai-software-factory-tools",
+        "https://blog.buildbetter.ai/ai-software-factories-ramp-uber-openai-vercel/"
+      ],
+      "short": "In-house + CI"
+    }
+  ],
+  "findings": [
+    {
+      "lens": "promise_clusters",
+      "title": "\"Software factory\" is no longer a differentiator",
+      "what": "8 players now use the factory label in their hero or category: SuperPlane, Warp, Augment, Port, Harness, Factory (by name), Mastra, Buildful — including large funded platforms.",
+      "so_what": "The category label alone puts SuperPlane next to $1B+ companies with bigger budgets for the same words.",
+      "now_what": "Lead with the owned mechanism (routine work, one-shot, verified loop) and keep 'software factory' as the category, not the promise.",
+      "confidence": "high"
+    },
+    {
+      "lens": "perceptual_map",
+      "title": "Crowded corner: BYO-agent + team governance",
+      "what": "SuperPlane, Tembo, Warp and Port cluster in the top-left (orchestrate your own agents, team-wide governance).",
+      "so_what": "Differentiation inside the cluster depends on proof and focus, not on the architecture claim.",
+      "now_what": "Own 'routine work' as the job, and open source + measured outcomes (30% backlog, 90% ready PRs) as proof.",
+      "confidence": "medium"
+    },
+    {
+      "lens": "proof",
+      "title": "SuperPlane's proof is unusually specific",
+      "what": "Most competitors show logos and certifications; SuperPlane shows five outcome metrics plus 8.8k stars.",
+      "so_what": "Specific, evidenced claims are a rare asset in this category.",
+      "now_what": "Make the numbers a signature element of the identity.",
+      "confidence": "medium"
+    }
+  ],
+  "research_log_stats": {
+    "searches": 9,
+    "pages_fetched": 11,
+    "companies_found": 23,
+    "claims_extracted": 96,
+    "sources": 31
+  }
+}
