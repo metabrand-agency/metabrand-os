@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api } from '../api';
-import { Logo, ThemeSwitch } from '../components/ui';
+import { Favicon, Logo, ThemeSwitch } from '../components/ui';
 import Chat from '../components/Chat';
 import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
@@ -67,8 +67,9 @@ export default function Workspace() {
     <div className="flex h-full">
       <aside className="flex w-[232px] shrink-0 flex-col border-r border-line bg-panel">
         <div className="flex h-12 items-center border-b border-line px-5"><Link to="/"><Logo /></Link></div>
-        <Link to="/" className="mx-2 my-3 flex items-center justify-between rounded-md border border-line px-3 py-2 hover:bg-panel-2">
-          <div className="min-w-0">
+        <Link to="/" className="mx-2 my-3 flex items-center gap-2.5 rounded-md border border-line px-3 py-2 hover:bg-panel-2">
+          <Favicon url={info.client_url} name={info.name} size={26} />
+          <div className="min-w-0 flex-1">
             <div className="truncate text-[13px] font-medium">{info.name}</div>
             {info.access.isAgency && info.stage && <div className="text-[11px] text-muted">{info.stage}</div>}
           </div>
