@@ -93,7 +93,7 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
               <Select value={form.visibility} options={['internal', 'client']} onChange={(v) => setForm({ ...form, visibility: v })} />
               <Input className="flex-1" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
-            <textarea rows={5} placeholder="Paste text: transcript, email thread, brief… or attach a file below" value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} className="w-full rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] outline-none placeholder:text-muted" />
+            <textarea rows={5} placeholder="Paste text: transcript, email thread, brief… or attach a file below" value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} className="w-full rounded-md border border-line bg-panel px-3 py-2 text-[13px] outline-none placeholder:text-muted focus:border-muted" />
             <div className="flex items-center gap-3">
               <label className="cursor-pointer rounded-md border border-dashed border-line px-3 py-1.5 text-[12px] text-muted hover:text-text">
                 {file ? file.name : 'Attach .txt / .md / .pdf'}

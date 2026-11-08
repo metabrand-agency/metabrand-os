@@ -26,8 +26,8 @@ export default function DemoLogin() {
         <Logo />
         <h1 className="mt-8 text-xl font-semibold tracking-tight">Sign in to your workspace</h1>
         <div className="mt-6 space-y-3">
-          <div className="rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px]">{typed}<span className="animate-pulse">|</span></div>
-          <div className="rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] text-muted">••••••••••</div>
+          <div className="rounded-md border border-line bg-panel px-3 py-2 text-[13px]">{typed}<span className="animate-pulse">|</span></div>
+          <div className="rounded-md border border-line bg-panel px-3 py-2 text-[13px] text-muted">••••••••••</div>
         </div>
         <button
           onClick={() => { setBusy(true); setTimeout(() => nav(`/${slug}`), 900); }}

@@ -517,7 +517,7 @@ function JsonEditor({ data, onSave }: { data: MarketData; onSave: (d: MarketData
       <button onClick={() => { setOpen(!open); setTxt(JSON.stringify(data, null, 2)); setErr(''); }} className="text-muted hover:text-text">{open ? '▾' : '▸'} Data (JSON) · agency only</button>
       {open && (
         <div className="mt-2 space-y-2">
-          <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={14} className="mono w-full rounded-lg border border-line bg-panel-2 p-3 outline-none" />
+          <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={14} className="mono w-full rounded-lg border border-line bg-panel p-3 outline-none" />
           {err && <div className="text-[var(--color-direct)]">{err}</div>}
           <Btn kind="primary" onClick={() => { try { const d = JSON.parse(txt); if (!Array.isArray(d.companies)) throw new Error('Needs a "companies" array'); onSave(d); setOpen(false); } catch (e: any) { setErr(e.message); } }}>Save data</Btn>
         </div>
@@ -537,7 +537,7 @@ function Empty({ info, onLoaded }: { info: WsInfo; onLoaded: (r: any) => void })
         {info.access.isAgency && (
           <div className="mt-4 space-y-2">
             <div className="text-[13px] text-muted">Paste research JSON (client, axes, companies, findings), produced by a research run.</div>
-            <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={8} placeholder='{"client": {...}, "axes": {...}, "companies": [...], "findings": [...]}' className="mono w-full rounded-lg border border-line bg-panel-2 p-3 text-[12px] outline-none" />
+            <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={8} placeholder='{"client": {...}, "axes": {...}, "companies": [...], "findings": [...]}' className="mono w-full rounded-lg border border-line bg-panel p-3 text-[12px] outline-none" />
             {err && <div className="text-[12px] text-[var(--color-direct)]">{err}</div>}
             <Btn kind="primary" onClick={async () => {
               try {

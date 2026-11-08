@@ -29,11 +29,20 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 export function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: readonly string[] }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded-md border border-line bg-panel px-2 py-2 text-[13px] outline-none">
-      {options.map((o) => (
-        <option key={o} value={o}>{o.replace('_', ' ')}</option>
-      ))}
-    </select>
+    <span className="relative inline-flex">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none rounded-md border border-line bg-panel py-2 pl-3 pr-9 text-[13px] outline-none hover:border-muted focus:border-muted"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>{o.replace('_', ' ')}</option>
+        ))}
+      </select>
+      <svg aria-hidden viewBox="0 0 16 16" className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted">
+        <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
   );
 }
 
