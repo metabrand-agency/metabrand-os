@@ -6,6 +6,7 @@ import Chat from '../components/Chat';
 import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
+import Guide from '../tabs/Guide';
 import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
 import Visibility from '../tabs/Visibility';
@@ -22,7 +23,7 @@ const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
   { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: '◉' }, { id: 'monitor', label: 'PR Monitor', icon: '∿' }] },
-  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏' }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
 
@@ -127,7 +128,8 @@ export default function Workspace() {
           <div className="text-[13px] text-muted">{info.name} <span className="px-1">/</span> <span className="text-text">{TABS.find((t) => t.id === tab)?.label}</span>{tab === 'lenses' && <><span className="px-1">/</span><span className="text-text">{sub === 'seo' ? 'SEO content gap' : sub === 'branding' ? 'Competitor branding' : sub === 'methods' ? 'Methodologies' : 'Market maps'}</span></>}</div>
           {!chatOpen && <button onClick={() => setChatOpen(true)} className="brand-dot rounded-full px-3 py-1 text-[12px] font-medium text-brand-ink hover:brightness-95">✦ Ask AI</button>}
         </div>
-        <div className="px-8 py-8">
+        {tab === 'guide' && <Guide info={info} section={sub || focus || undefined} />}
+        <div className={tab === 'guide' ? 'hidden' : 'px-8 py-8'}>
           {tab === 'overview' && <Overview info={info} reload={reload} />}
           {tab === 'competitors' && <Competitors info={info} focus={focus} />}
           {tab === 'lenses' && <Lenses info={info} focus={focus} view={sub === 'seo' || ['seo', 'content gap', 'keywords'].includes((focus || '').toLowerCase()) ? 'seo' : sub === 'branding' || ['branding', 'colours', 'colors', 'fonts'].includes((focus || '').toLowerCase()) ? 'branding' : sub === 'methods' || ['methods', 'methodologies'].includes((focus || '').toLowerCase()) ? 'methods' : 'maps'} />}

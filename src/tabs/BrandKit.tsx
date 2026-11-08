@@ -14,14 +14,17 @@ export type KitColor = { name: string; hex: string; rgb?: string; cmyk?: string;
 export type KitFont = { family: string; google?: boolean; weights?: number[]; use?: string; styles?: { name: string; tag?: string; weight: number; size: number; lh: number; ls: number; upper?: boolean; sample: string }[] };
 export type KitIcon = { id: string; name: string; w: number; h: number; svg: string; mono?: boolean };
 export type KitLink = { title: string; url: string; note?: string };
-export type Kit = { links?: KitLink[]; brand: string; source?: string; logos: KitLogo[]; colors: { group: string; items: KitColor[] }[]; fonts: KitFont[]; icons: KitIcon[]; icon_color?: string };
+export type GuideSlide = { img: string; title?: string; text?: string };
+export type GuideSection = { id: string; num: string; title: string; summary?: string; cover?: string; kit?: 'logos' | 'colours' | 'fonts' | 'icons'; video?: { src: string; title?: string; text?: string }; motion?: string[]; slides: GuideSlide[] };
+export type Guide = { title: string; version?: string; intro?: string; hero?: { video?: string; poster?: string; bg?: string; caption?: string }; sections: GuideSection[] };
+export type Kit = { guide?: Guide; links?: KitLink[]; brand: string; source?: string; logos: KitLogo[]; colors: { group: string; items: KitColor[] }[]; fonts: KitFont[]; icons: KitIcon[]; icon_color?: string };
 
 // ---------- drawing and files ----------
 const svgDoc = (inner: string, w: number, h: number, outW = w, outH = h) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${outW}" height="${outH}" viewBox="0 0 ${w} ${h}" fill="none">${inner}</svg>`;
 
 /** A logo variant as a standalone SVG: tight when transparent, on its designed frame when on a background. */
-function logoSvg(l: KitLogo, v: KitVariant, outW?: number) {
+export function logoSvg(l: KitLogo, v: KitVariant, outW?: number) {
   const inner = l.mono === false ? l.svg : l.svg.replaceAll('currentColor', v.color);
   if (!v.bg) { const W = outW || l.w; return { svg: svgDoc(inner, l.w, l.h, W, Math.round((W / l.w) * l.h)), w: l.w, h: l.h }; }
   const F = l.frame || { w: Math.round(l.w * 1.25), h: Math.round(l.h + l.w * 0.25) };
@@ -29,11 +32,11 @@ function logoSvg(l: KitLogo, v: KitVariant, outW?: number) {
   const body = `<rect width="${F.w}" height="${F.h}" fill="${v.bg}"/><g transform="translate(${((F.w - l.w) / 2).toFixed(2)} ${((F.h - l.h) / 2).toFixed(2)})">${inner}</g>`;
   return { svg: svgDoc(body, F.w, F.h, W, Math.round((W / F.w) * F.h)), w: F.w, h: F.h };
 }
-const iconSvg = (i: KitIcon, color: string, outW?: number) => {
+export const iconSvg = (i: KitIcon, color: string, outW?: number) => {
   const W = outW || i.w;
   return svgDoc(i.mono === false ? i.svg : i.svg.replaceAll('currentColor', color), i.w, i.h, W, Math.round((W / i.w) * i.h));
 };
-const dataUri = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+export const dataUri = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
 async function pngBlob(svg: string, w: number, h: number): Promise<Blob> {
   const img = new Image();
@@ -67,7 +70,7 @@ const u8 = async (b: Blob) => new Uint8Array(await b.arrayBuffer());
 
 // ---------- colours ----------
 const hexRgb = (hex: string) => { const n = parseInt(hex.replace('#', '').slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-const isLight = (hex: string) => { const [r, g, b] = hexRgb(hex); return 0.299 * r + 0.587 * g + 0.114 * b > 160; };
+export const isLight = (hex: string) => { const [r, g, b] = hexRgb(hex); return 0.299 * r + 0.587 * g + 0.114 * b > 160; };
 const cssVars = (k: Kit) => `:root {\n${k.colors.flatMap((g) => g.items.map((c) => `  --${slug(k.brand)}-${slug(c.name)}: ${c.hex};`)).join('\n')}\n}\n`;
 const tokens = (k: Kit) => JSON.stringify(Object.fromEntries(k.colors.map((g) => [slug(g.group), Object.fromEntries(g.items.map((c) => [slug(c.name), { value: c.hex, rgb: c.rgb, cmyk: c.cmyk, pantone: c.pantone }]))])), null, 2);
 
@@ -82,7 +85,7 @@ const embedCode = (fonts: KitFont[]) => {
 };
 const fontCss = (f: KitFont) =>
   (f.styles || []).map((s) => `${s.tag || `.${slug(s.name)}`} {\n  font-family: "${f.family}", ${/mono/i.test(f.family) ? 'monospace' : 'sans-serif'};\n  font-weight: ${s.weight};\n  font-size: ${s.size}px;\n  line-height: ${s.lh};\n  letter-spacing: ${s.ls}em;${s.upper ? '\n  text-transform: uppercase;' : ''}\n}`).join('\n\n');
-function useGoogleFonts(fonts: KitFont[]) {
+export function useGoogleFonts(fonts: KitFont[]) {
   const href = googleCss(fonts);
   useEffect(() => {
     if (!href || document.querySelector(`link[href="${href}"]`)) return;

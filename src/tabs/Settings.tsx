@@ -17,6 +17,7 @@ const CLIENT_TABS = [
   ['visibility', 'Brand Visibility'],
   ['monitor', 'PR Monitor'],
   ['assets', 'Assets (shared items only)'],
+  ['guide', 'Online guide'],
 ] as const;
 
 export default function Settings({ info, reload }: { info: WsInfo; reload: () => void }) {
