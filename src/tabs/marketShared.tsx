@@ -33,8 +33,11 @@ export type Ai = { citations: number | null; pages: number | null; by: Record<'a
 export type Activity = { ai?: Ai | null; links?: Links | null; v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
 export const ACTIVITY_V = 4; // matches the server; older entries are collected again
 export type Branding = { v?: number; palette: { hex: string; role: 'accent' | 'neutral'; share: number }[]; accent: string | null; fonts: { family: string; source: string }[]; image: string | null; theme_color?: string | null; checked_at: number };
+/** Agency corrections to a company's colours: hide what the site declares but doesn't show, add what it does. */
+export type BrandEdit = { hide?: string[]; add?: { hex: string; role: 'accent' | 'neutral' }[] };
 export type MarketData = {
   branding?: Record<string, Branding>;
+  branding_edits?: Record<string, BrandEdit>;
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
   seo?: Record<string, SeoCountry>;
   activity?: Record<string, Activity>;

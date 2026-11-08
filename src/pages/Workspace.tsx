@@ -74,7 +74,7 @@ export default function Workspace() {
             <div className="truncate text-[13px] font-semibold tracking-tight">{info.name}</div>
             {info.access.isAgency && info.stage && <div className="text-[11px] text-muted">{info.stage}</div>}
           </div>
-          {info.access.isAgency && <Icon name="switch" className="h-4 w-4 shrink-0 text-muted" />}
+          {info.access.isAgency && <Icon name="switch" stroke={1.6} className="h-2 w-2 shrink-0 text-muted" />}
         </Link>
         <div className="h-3 shrink-0" />
         <nav className="flex-1 space-y-5 overflow-y-auto px-2">

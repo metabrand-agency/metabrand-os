@@ -21,12 +21,12 @@ const P: Record<string, string[]> = {
   dark: ['M10.9453 2.77083C9.73752 3.01371 8.65105 3.66723 7.87049 4.62038C7.08992 5.57353 6.66341 6.76752 6.66341 7.9995C6.66341 9.23148 7.08992 10.4255 7.87049 11.3786C8.65105 12.3318 9.73752 12.9853 10.9453 13.2282M2 8C2 8.78793 2.15519 9.56815 2.45672 10.2961C2.75825 11.0241 3.20021 11.6855 3.75736 12.2426C4.31451 12.7998 4.97595 13.2418 5.7039 13.5433C6.43185 13.8448 7.21207 14 8 14C8.78793 14 9.56815 13.8448 10.2961 13.5433C11.0241 13.2418 11.6855 12.7998 12.2426 12.2426C12.7998 11.6855 13.2418 11.0241 13.5433 10.2961C13.8448 9.56815 14 8.78793 14 8C14 7.21207 13.8448 6.43185 13.5433 5.7039C13.2418 4.97595 12.7998 4.31451 12.2426 3.75736C11.6855 3.20021 11.0241 2.75825 10.2961 2.45672C9.56815 2.15519 8.78793 2 8 2C7.21207 2 6.43185 2.15519 5.7039 2.45672C4.97595 2.75825 4.31451 3.20021 3.75736 3.75736C3.20021 4.31451 2.75825 4.97595 2.45672 5.7039C2.15519 6.43185 2 7.21207 2 8Z'],
 };
 
-export function Icon({ name, className = 'h-4 w-4' }: { name: string; className?: string }) {
+export function Icon({ name, className = 'h-4 w-4', stroke = 1 }: { name: string; className?: string; stroke?: number }) {
   const paths = P[name];
   if (!paths) return null;
   return (
     <svg viewBox="0 0 16 16" fill="none" className={className} aria-hidden="true">
-      {paths.map((d, i) => <path key={i} d={d} stroke="currentColor" strokeLinecap="square" strokeLinejoin="round" />)}
+      {paths.map((d, i) => <path key={i} d={d} stroke="currentColor" strokeWidth={stroke} strokeLinecap="square" strokeLinejoin="round" />)}
     </svg>
   );
 }

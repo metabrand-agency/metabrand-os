@@ -5,7 +5,7 @@ import { api } from '../api';
 import { Btn, Card, Favicon } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import type { Kit } from './BrandKit';
-import { Branding, MarketData, Row, Shot, companyById, displayName, domain, focusOrder, useCompanyQueue, warmShots } from './marketShared';
+import { BrandEdit, Branding, MarketData, Row, Shot, companyById, displayName, domain, focusOrder, useCompanyQueue, warmShots } from './marketShared';
 
 const BRANDING_V = 1;
 const HUES = [
@@ -85,6 +85,17 @@ function useMeasured(ids: string[], urlOf: (id: string) => string | undefined, b
   return m;
 }
 
+/** The agency's corrections on top of what was read off the site: hidden colours out, added ones in. */
+export function withEdit(b: Branding | undefined, e?: BrandEdit): Branding | undefined {
+  if (!b || (!e?.hide?.length && !e?.add?.length)) return b;
+  const hide = new Set((e.hide || []).map((h) => h.toUpperCase()));
+  const palette = [
+    ...b.palette.filter((p) => !hide.has(p.hex.toUpperCase())),
+    ...(e.add || []).filter((a) => !b.palette.some((p) => p.hex.toUpperCase() === a.hex.toUpperCase())).map((a) => ({ hex: a.hex.toUpperCase(), role: a.role, share: 0 })),
+  ];
+  return { ...b, palette, accent: palette.find((p) => p.role === 'accent')?.hex || null };
+}
+
 /** The client's palette and fonts come from its brand kit when there is one (exact), not from scraping. */
 export function kitBranding(kit: Kit | null, scraped?: Branding): Branding | undefined {
   if (!kit?.colors?.length) return scraped;
@@ -126,7 +137,9 @@ export default function BrandingLens({ info, data, accept, extra }: { info: WsIn
     stale: (d, id) => { const b = d.branding?.[id]; return !!companyById(d, id)?.url && (!b || b.v !== BRANDING_V || Date.now() - b.checked_at > 30 * 864e5); },
   });
   const ids = focusOrder(data);
-  const brandOf = (id: string) => (id === '__client' ? kitBranding(kit, data.branding?.[id]) : data.branding?.[id]);
+  const rawOf = (id: string) => (id === '__client' ? kitBranding(kit, data.branding?.[id]) : data.branding?.[id]);
+  const brandOf = (id: string) => withEdit(rawOf(id), data.branding_edits?.[id]);
+  const saveEdit = (id: string, edit: BrandEdit | null) => api<Row>(`/w/${info.slug}/branding/edit`, { body: { id, edit } }).then(accept);
   useEffect(() => { warmShots(ids.map((id) => companyById(data, id)?.url)); }, [ids.join()]);
   useFonts(ids.flatMap((id) => brandOf(id)?.fonts.map((f) => f.family) || []));
   const measured = useMeasured(ids, (id) => companyById(data, id)?.url, brandOf);
@@ -148,7 +161,7 @@ export default function BrandingLens({ info, data, accept, extra }: { info: WsIn
       <HueWheel data={data} ids={ids} brandOf={brandOf} measured={measured} />
 
       <div className="grid gap-3 @3xl:grid-cols-2 @6xl:grid-cols-3">
-        {ids.map((id) => <BrandCard key={id} data={data} id={id} b={brandOf(id)} shares={measured[id]} working={progress.active.includes(id)} busy={busy} />)}
+        {ids.map((id) => <BrandCard key={id} data={data} id={id} b={brandOf(id)} raw={rawOf(id)} edit={data.branding_edits?.[id]} onEdit={agency ? (e) => saveEdit(id, e) : undefined} shares={measured[id]} working={progress.active.includes(id)} busy={busy} />)}
       </div>
     </div>
   );
@@ -156,12 +169,13 @@ export default function BrandingLens({ info, data, accept, extra }: { info: WsIn
 
 function HueWheel({ data, ids, brandOf, measured }: { data: MarketData; ids: string[]; brandOf: (id: string) => Branding | undefined; measured: Record<string, Shares> }) {
   // each company's accents (up to two) at their hue, the most visible first; an accent that barely shows on
-  // the first screen is drawn as a ring and does not claim the hue (the client's brand kit always does)
+  // the first screen is a detail, not the brand colour, and stays off the wheel (the client's brand kit always counts)
   const marks = useMemo(() => ids.flatMap((id) => {
     const sh = measured[id];
     const accents = (brandOf(id)?.palette || []).filter((p) => p.role === 'accent')
+      .filter((p) => id === '__client' || !sh || (sh[p.hex] || 0) >= MINOR)
       .sort((a, b) => (sh ? (sh[b.hex] || 0) - (sh[a.hex] || 0) : 0)).slice(0, 2);
-    return accents.map((p, i) => ({ id, hex: p.hex, h: hsl(p.hex).h, main: i === 0, minor: id !== '__client' && !!sh && (sh[p.hex] || 0) < MINOR, seen: sh?.[p.hex] }));
+    return accents.map((p, i) => ({ id, hex: p.hex, h: hsl(p.hex).h, main: i === 0, minor: false, seen: sh?.[p.hex] }));
   }), [ids, brandOf, measured]);
   const hasMain = (id: string) => marks.some((m) => m.id === id && m.main && !m.minor);
   const neutralOnly = ids.filter((id) => brandOf(id) && !hasMain(id));
@@ -240,9 +254,12 @@ function HueWheel({ data, ids, brandOf, measured }: { data: MarketData; ids: str
   );
 }
 
-function BrandCard({ data, id, b, shares, working, busy }: { data: MarketData; id: string; b?: Branding; shares?: Shares; working: boolean; busy: boolean }) {
+function BrandCard({ data, id, b, raw, edit, onEdit, shares, working, busy }: {
+  data: MarketData; id: string; b?: Branding; raw?: Branding; edit?: BrandEdit; onEdit?: (e: BrandEdit | null) => Promise<void>; shares?: Shares; working: boolean; busy: boolean;
+}) {
   const c = companyById(data, id);
   const [copied, setCopied] = useState('');
+  const [editing, setEditing] = useState(false);
   const copy = (hex: string) => { navigator.clipboard.writeText(hex).catch(() => {}); setCopied(hex); setTimeout(() => setCopied(''), 1200); };
   const accents = b?.palette.filter((p) => p.role === 'accent') || [];
   const neutrals = b?.palette.filter((p) => p.role === 'neutral') || [];
@@ -268,6 +285,9 @@ function BrandCard({ data, id, b, shares, working, busy }: { data: MarketData; i
                 </button>
               ))}
             </div>
+            {onEdit && (editing
+              ? <ColourEditor raw={raw} edit={edit} onEdit={onEdit} onDone={() => setEditing(false)} />
+              : <button onClick={() => setEditing(true)} className="-mt-1 block text-[11px] text-muted hover:text-text">{edit?.hide?.length || edit?.add?.length ? 'Colours corrected by hand · Edit' : 'Edit colours'}</button>)}
             {shares && !!accents.length && (() => {
               const seen = accents.reduce((t, p) => t + (shares[p.hex] || 0), 0);
               return <div className="-mt-1 text-[11px] text-muted">{seen < MINOR ? `Mostly neutral: accent colours fill ${Math.max(0.1, Math.round(seen * 1000) / 10)}% of the first screen` : `Accent colours fill ${Math.round(seen * 100)}% of the first screen`}</div>;
@@ -294,3 +314,42 @@ function BrandCard({ data, id, b, shares, working, busy }: { data: MarketData; i
   );
 }
 
+
+/** Agency fix for a palette the site's CSS gets wrong: switch off colours it declares but doesn't show,
+ *  add the ones people actually see. Saved apart from the scraped data, so Update branding keeps it. */
+function ColourEditor({ raw, edit, onEdit, onDone }: { raw?: Branding; edit?: BrandEdit; onEdit: (e: BrandEdit | null) => Promise<void>; onDone: () => void }) {
+  const [hex, setHex] = useState('#');
+  const [role, setRole] = useState<'accent' | 'neutral'>('neutral');
+  const [saving, setSaving] = useState(false);
+  const hide = new Set((edit?.hide || []).map((h) => h.toUpperCase()));
+  const add = edit?.add || [];
+  const put = async (e: BrandEdit) => { setSaving(true); try { await onEdit(e.hide?.length || e.add?.length ? e : null); } finally { setSaving(false); } };
+  const toggle = (h: string) => put({ hide: hide.has(h) ? [...hide].filter((x) => x !== h) : [...hide, h], add });
+  const ok = /^#[0-9a-f]{6}$/i.test(hex.trim());
+  const addOne = () => { if (!ok) return; put({ hide: [...hide], add: [...add.filter((a) => a.hex.toUpperCase() !== hex.trim().toUpperCase()), { hex: hex.trim().toUpperCase(), role }] }); setHex('#'); };
+  const chip = (h: string, off: boolean, label: string, onClick: () => void, title: string) => (
+    <button key={h + label} onClick={onClick} disabled={saving} title={title} className={`flex items-center gap-1.5 rounded border border-line px-1.5 py-1 text-[11px] ${off ? 'opacity-45 line-through' : ''}`}>
+      <span className="h-3 w-3 rounded-sm border border-line" style={{ background: h }} />{h.slice(1)}<span className="text-muted">{label}</span>
+    </button>
+  );
+  return (
+    <div className="space-y-2 rounded-md border border-line bg-panel-2 p-2.5">
+      <div className="text-[11px] text-muted">Click a colour to switch it off if the site doesn't really use it.</div>
+      <div className="flex flex-wrap gap-1.5">
+        {(raw?.palette || []).map((p) => chip(p.hex.toUpperCase(), hide.has(p.hex.toUpperCase()), p.role === 'accent' ? 'accent' : '', () => toggle(p.hex.toUpperCase()), hide.has(p.hex.toUpperCase()) ? 'Switched off, click to bring back' : 'Switch off'))}
+        {add.map((a) => chip(a.hex, false, `${a.role === 'accent' ? 'accent' : ''} ×`, () => put({ hide: [...hide], add: add.filter((x) => x !== a) }), 'Added by hand, click to remove'))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="h-6 w-6 shrink-0 rounded border border-line" style={{ background: ok ? hex : 'transparent' }} />
+        <input value={hex} onChange={(e) => setHex(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addOne()} placeholder="#E5E6EA" className="mono w-24 rounded border border-line bg-panel px-2 py-1 text-[12px] outline-none focus:border-muted" />
+        <select value={role} onChange={(e) => setRole(e.target.value as 'accent' | 'neutral')} className="rounded border border-line bg-panel px-1.5 py-1 text-[12px] outline-none">
+          <option value="neutral">Neutral</option><option value="accent">Accent</option>
+        </select>
+        <button onClick={addOne} disabled={!ok || saving} className="rounded border border-line px-2 py-1 text-[12px] hover:bg-panel disabled:opacity-40">Add</button>
+        <span className="flex-1" />
+        {(hide.size > 0 || add.length > 0) && <button onClick={() => put({})} disabled={saving} className="text-[11px] text-muted hover:text-text">Reset</button>}
+        <button onClick={onDone} className="text-[11px] text-muted hover:text-text">Done</button>
+      </div>
+    </div>
+  );
+}

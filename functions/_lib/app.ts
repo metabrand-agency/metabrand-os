@@ -127,15 +127,25 @@ app.get('/shot', async (c) => {
   const key = new Request(`https://shot.metabrand-os/${encodeURIComponent(url.toString())}`);
   const hit = await cache?.match(key).catch(() => undefined);
   if (hit) return hit;
-  const r = await fetch(`https://s.wordpress.com/mshots/v1/${encodeURIComponent(url.toString())}?w=1280&h=800`, { redirect: 'follow' }).catch(() => null);
-  if (!r || !r.ok) return c.body(null, 502);
-  const type = r.headers.get('content-type') || 'image/jpeg';
-  const body = await r.arrayBuffer();
-  // the service answers with a small placeholder while it renders: do not keep that
-  const ready = /jpe?g|png|webp/.test(type) && body.byteLength > 15000;
-  const res = new Response(body, { headers: { 'content-type': type, 'cache-control': ready ? 'private, max-age=604800' : 'no-store', 'x-shot-ready': ready ? '1' : '0' } });
-  if (ready && cache) { const put = cache.put(key, res.clone()).catch(() => {}); try { c.executionCtx.waitUntil(put); } catch { await put; } }
-  return res;
+  // WordPress mShots first; when it refuses this server or is still rendering, thum.io (both free, no key)
+  const sources = [
+    `https://s.wordpress.com/mshots/v1/${encodeURIComponent(url.toString())}?w=1280&h=800`,
+    `https://image.thum.io/get/width/1280/crop/800/noanimate/${url.toString()}`,
+  ];
+  let last: Response | null = null;
+  for (const src of sources) {
+    const r = await fetch(src, { redirect: 'follow', signal: AbortSignal.timeout(25000) }).catch(() => null);
+    if (!r || !r.ok) continue;
+    const type = r.headers.get('content-type') || 'image/jpeg';
+    const body = await r.arrayBuffer();
+    // a service answers with a small placeholder while it renders: do not keep that
+    const ready = /jpe?g|png|webp/.test(type) && body.byteLength > 15000;
+    const res = new Response(body, { headers: { 'content-type': type, 'cache-control': ready ? 'private, max-age=604800' : 'no-store', 'x-shot-ready': ready ? '1' : '0' } });
+    if (!ready) { last = res; continue; }
+    if (cache) { const put = cache.put(key, res.clone()).catch(() => {}); try { c.executionCtx.waitUntil(put); } catch { await put; } }
+    return res;
+  }
+  return last || c.body(null, 502);
 });
 
 app.get('/me', async (c) => {
@@ -539,6 +549,29 @@ app.post('/w/:slug/branding/refresh', async (c) => {
   const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
   if (!b) return c.json({ error: `Couldn't read ${company.url}` }, 502);
   return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
+});
+
+// Competitor branding: the agency's corrections to a company's colours, kept apart so a refresh doesn't undo them
+app.post('/w/:slug/branding/edit', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const ws = c.get('ws');
+  const b = await c.req.json<{ id: string; edit?: { hide?: string[]; add?: { hex: string; role: string }[] } | null }>();
+  const id = String(b.id || '').replace(/"/g, '');
+  if (!id) return c.json({ error: 'No company' }, 400);
+  const hex = (h: any) => (/^#[0-9a-f]{6}$/i.test(String(h)) ? String(h).toUpperCase() : null);
+  const hide = [...new Set((b.edit?.hide || []).map(hex).filter(Boolean))] as string[];
+  const add = (b.edit?.add || []).map((x) => ({ hex: hex(x.hex), role: x.role === 'accent' ? 'accent' : 'neutral' })).filter((x) => x.hex).slice(0, 12);
+  const now = Date.now();
+  const path = `$.branding_edits."${id}"`;
+  const sql = hide.length || add.length
+    ? `UPDATE research SET data_json = json_set(json_set(data_json, '$.branding_edits', json(coalesce(json_extract(data_json, '$.branding_edits'), '{}'))), ?, json(?)), updated_at = ? WHERE workspace_id = ? AND kind = 'market_map'`
+    : `UPDATE research SET data_json = json_remove(data_json, ?), updated_at = ? WHERE workspace_id = ? AND kind = 'market_map'`;
+  const binds = hide.length || add.length ? [path, JSON.stringify({ hide, add }), now, ws.id] : [path, now, ws.id];
+  await c.env.DB.prepare(sql).bind(...binds).run();
+  const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
+  if (!fresh) return c.json({ error: 'No competitors yet' }, 400);
+  return c.json({ data: JSON.parse(fresh.data_json), status: fresh.status, updated_at: now });
 });
 
 // PR Monitor: article ideas from the competitors' press coverage and the client's own (agency), saved with the research

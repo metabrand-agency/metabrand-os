@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, DOC_KINDS, fmtDate } from '../api';
 import { Btn, Card, Input, Label, Select, Badge } from '../components/ui';
+import Markdown from '../components/Markdown';
 import type { WsInfo } from '../pages/Workspace';
 
 function fileToBase64(f: File): Promise<string> {
@@ -113,7 +114,7 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
           <button key={d.id} onClick={() => api(`/w/${s}/documents/${d.id}`).then(setOpen)} className="grid w-full grid-cols-[1fr_auto] gap-4 border-b border-line px-5 py-3.5 text-left last:border-0 hover:bg-panel">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[14px] font-medium">{d.title} <Badge>{d.kind.replace('_', ' ')}</Badge>{d.visibility === 'client' && <Badge color="var(--mb-brand)">shared</Badge>}</div>
-              <div className="mt-1 truncate text-[12px] text-muted">{d.preview}</div>
+              <div className="mt-1 truncate text-[12px] text-muted">{String(d.preview || '').replace(/[*#_`>|]+/g, '').replace(/\s+/g, ' ').trim()}</div>
             </div>
             <div className="num text-right text-[12px] text-muted">{fmtDate(d.created_at)}<br />{Math.round(d.chars / 1000)}k chars</div>
           </button>
@@ -131,7 +132,7 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
                 <Btn onClick={() => setOpen(null)}>Close</Btn>
               </div>
             </div>
-            <pre className="mt-6 whitespace-pre-wrap font-sans text-[13px] leading-relaxed text-muted">{open.text_content}</pre>
+            <div className="mt-6"><Markdown text={open.text_content || ''} doc /></div>
           </div>
         </div>
       )}

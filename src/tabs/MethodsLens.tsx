@@ -1,7 +1,7 @@
 // Methodologies: the client and the competitors in focus through the frameworks big brand agencies use.
 // Each method is one AI assessment from public positioning (or, for distinctive assets, computed from data).
-// No conclusions on screen: the maps and tables are the output. Same view for any project.
-import { useEffect, useMemo, useState } from 'react';
+// The maps and tables are the output; jobs and entry points also say what they mean for the client. Same view for any project.
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { Btn, Card, Favicon } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
@@ -197,44 +197,104 @@ function CompanyName({ data, id }: { data: MarketData; id: string }) {
 }
 const columns = (data: MarketData, r: any) => (r.ids || []).filter((id: string) => companyById(data, id));
 
-/** Rows (factors, jobs, entry points, dimensions) × companies, as a heatmap; the strategy canvas adds lines. */
+/** What a job (or entry point) row means for the client: open to claim, the client's own, shared,
+ *  a competitor's, or table stakes. Worked out from the scores, so it's the same for any project. */
+type Verdict = 'open' | 'yours' | 'shared' | 'theirs' | 'stakes';
+const VERDICT: Record<Verdict, { title: string; hint: string }> = {
+  open: { title: 'Open to claim', hint: 'nobody leads with these' },
+  yours: { title: 'Yours', hint: 'only the client leads with these' },
+  shared: { title: 'Shared', hint: 'the client and one competitor lead' },
+  theirs: { title: 'Competitors own', hint: 'they lead, the client doesn\'t' },
+  stakes: { title: 'Table stakes', hint: 'most competitors lead with these' },
+};
+const V_ORDER: Verdict[] = ['open', 'yours', 'shared', 'theirs', 'stakes'];
+function verdicts(cols: string[], val: (id: string, i: number) => number, items: string[], hi: number) {
+  const rivals = cols.filter((id) => id !== '__client');
+  return items.map((item, i) => {
+    const core = cols.filter((id) => val(id, i) === hi);
+    const comp = core.filter((id) => id !== '__client');
+    const mine = core.includes('__client');
+    const v: Verdict = !core.length ? 'open'
+      : comp.length >= Math.max(2, Math.ceil(rivals.length / 2)) ? 'stakes'
+      : mine && !comp.length ? 'yours'
+      : mine ? 'shared'
+      : 'theirs';
+    return { item, i, v, comp, mine };
+  });
+}
+const names = (data: MarketData, ids: string[]) => ids.map((id) => short(data, id)).join(', ');
+
+/** Rows (factors, jobs, entry points, dimensions) × companies, as a heatmap; the strategy canvas adds lines.
+ *  For jobs and entry points the rows are grouped by what they mean for the client, with a summary on top. */
 function Grid({ data, r, accent, canvas, owns }: { data: MarketData; r: any; accent: string; canvas?: boolean; owns?: boolean }) {
   const cols: string[] = columns(data, r);
   const [lo, hi] = r.scale || [0, 2];
   const val = (id: string, i: number) => r.values?.[id]?.scores?.[i] ?? lo;
   const strength = (v: number) => (v - lo) / (hi - lo || 1);
   const word = (v: number) => (hi === 2 ? (v === 2 ? 'Core' : v === 1 ? 'Mentioned' : '') : String(v));
+  const items: string[] = r.items || [];
+  const rows = owns
+    ? verdicts(cols, val, items, hi).sort((a, b) => V_ORDER.indexOf(a.v) - V_ORDER.indexOf(b.v))
+    : items.map((item, i) => ({ item, i, v: null as Verdict | null, comp: [] as string[], mine: false }));
+  const client = short(data, '__client');
+  const why = (x: (typeof rows)[number]) =>
+    x.v === 'open' ? 'Nobody makes this a core message'
+      : x.v === 'yours' ? `Only ${client} leads with this`
+      : x.v === 'shared' ? `${client} and ${names(data, x.comp)} lead with this`
+      : x.v === 'theirs' ? `${names(data, x.comp)} ${x.comp.length > 1 ? 'lead' : 'leads'} with this, ${client} doesn't`
+      : x.v === 'stakes' ? `${x.comp.length} of ${cols.length - 1} competitors lead with this${x.mine ? `, ${client} too` : ''}`
+      : '';
   return (
     <div className="space-y-5">
       {canvas && <StrategyCanvas data={data} r={r} cols={cols} accent={accent} />}
+      {owns && (
+        <div className="grid gap-2 @3xl:grid-cols-3 @6xl:grid-cols-5">
+          {V_ORDER.map((k) => {
+            const list = rows.filter((x) => x.v === k);
+            return (
+              <div key={k} className={`rounded-md border p-3 ${list.length && (k === 'open' || k === 'yours') ? 'border-text' : 'border-line'}`}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[12px] font-medium">{VERDICT[k].title}</span>
+                  <span className="num text-[18px] leading-none">{list.length}</span>
+                </div>
+                <div className="mt-0.5 text-[11px] text-muted">{VERDICT[k].hint.replace('the client', client)}</div>
+                {!!list.length && <ul className="mt-2 space-y-1 text-[12px] leading-snug">{list.map((x) => <li key={x.item}>{x.item}</li>)}</ul>}
+              </div>
+            );
+          })}
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full border-separate border-spacing-1 text-[12px]">
           <thead>
             <tr>
-              <th className="sticky left-0 z-[1] min-w-[220px] bg-panel" />
+              <th className="sticky left-0 z-[1] min-w-[240px] bg-panel pb-1 text-left text-[11px] font-normal text-muted">{owns ? 'Dark: a core message. Light: mentioned.' : ''}</th>
               {cols.map((id) => <th key={id} className="min-w-[92px] px-1 pb-1 text-left font-normal" title={r.values?.[id]?.note}><CompanyName data={data} id={id} /></th>)}
             </tr>
           </thead>
           <tbody>
-            {(r.items || []).map((item: string, i: number) => {
-              const unowned = owns && !cols.some((id) => val(id, i) === hi);
+            {rows.map((x, n) => {
+              const head = owns && x.v && (n === 0 || rows[n - 1].v !== x.v);
               return (
-                <tr key={item}>
-                  <td className="sticky left-0 z-[1] bg-panel py-1 pr-3 align-middle">
-                    <div className="leading-snug">{item}</div>
-                    {unowned && <div className="text-[11px] text-muted">Nobody owns this</div>}
-                  </td>
-                  {cols.map((id) => {
-                    const v = val(id, i), s = strength(v);
-                    const fill = id === '__client' ? accent : 'var(--mb-text)';
-                    return (
-                      <td key={id} className="relative h-9 overflow-hidden rounded-[4px] border border-line text-center" title={`${short(data, id)}: ${word(v) || 'not addressed'}`}>
-                        <span className="absolute inset-0" style={{ background: fill, opacity: s * (id === '__client' ? 0.85 : 0.55) }} />
-                        <span className={`relative text-[11px] ${s > 0.6 ? (id === '__client' ? 'text-black' : 'text-[var(--mb-panel)]') : 'text-muted'}`}>{word(v)}</span>
-                      </td>
-                    );
-                  })}
-                </tr>
+                <Fragment key={x.item}>
+                  {head && <tr><td colSpan={cols.length + 1} className="px-0 pb-0.5 pt-3 text-[11px] font-medium uppercase tracking-[.08em] text-muted">{VERDICT[x.v!].title}</td></tr>}
+                  <tr>
+                    <td className="sticky left-0 z-[1] bg-panel py-1 pr-3 align-middle">
+                      <div className="leading-snug">{x.item}</div>
+                      {owns && <div className="text-[11px] text-muted">{why(x)}</div>}
+                    </td>
+                    {cols.map((id) => {
+                      const v = val(id, x.i), s = strength(v);
+                      const fill = id === '__client' ? accent : 'var(--mb-text)';
+                      return (
+                        <td key={id} className="relative h-9 overflow-hidden rounded-[4px] border border-line text-center" title={`${short(data, id)}: ${word(v) || 'not addressed'}`}>
+                          <span className="absolute inset-0" style={{ background: fill, opacity: s * (id === '__client' ? 0.85 : 0.55) }} />
+                          <span className={`relative text-[11px] ${s > 0.6 ? (id === '__client' ? 'text-black' : 'text-[var(--mb-panel)]') : 'text-muted'}`}>{word(v)}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </Fragment>
               );
             })}
           </tbody>

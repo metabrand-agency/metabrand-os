@@ -1,7 +1,11 @@
 // Data enrichments for the SuperPlane demo project, collected outside the app (Ahrefs, company data).
 // Applied once per version to workspaces with settings.demo = true; never overwrites edited fields except metrics.
-export const DEMO_PATCH: { version: number; client: Record<string, any>; companies: Record<string, Record<string, any>>; seo?: Record<string, any> } = {
-  "version": 5,
+export const DEMO_PATCH: { version: number; client: Record<string, any>; companies: Record<string, Record<string, any>>; seo?: Record<string, any>; branding_edits?: Record<string, any> } = {
+  "version": 6,
+  // Factory declares orange in its CSS but its first screen is near-white, cool greys and black
+  "branding_edits": {
+    "factory": { "hide": ["#EF6F2E", "#D15010", "#6FAB78", "#E54048", "#1F1D1C"], "add": [{ "hex": "#E5E6EA", "role": "neutral" }, { "hex": "#C3C3C7", "role": "neutral" }, { "hex": "#828286", "role": "neutral" }] }
+  },
   "client": {
     "founded": 2025,
     "employees": "13",
@@ -1273,5 +1277,7 @@ export function applyDemoPatch(data: any): any | null {
     client: fill(data.client, DEMO_PATCH.client),
     seo: { ...(data.seo || {}), ...(DEMO_PATCH.seo || {}) },
     companies: (data.companies || []).map((c: any) => (DEMO_PATCH.companies[c.id] ? fill(c, DEMO_PATCH.companies[c.id]) : c)),
+    // the agency's own colour corrections win over the demo ones
+    branding_edits: { ...(DEMO_PATCH.branding_edits || {}), ...(data.branding_edits || {}) },
   };
 }
