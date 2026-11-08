@@ -52,7 +52,13 @@ function Home({ info, kit, guide }: { info: WsInfo; kit: Kit; guide: GuideT }) {
   const mark = kit.logos?.find((l) => l.id === 'logo') || kit.logos?.[0];
   return (
     <div>
-      {/* film */}
+      {/* the brand film first, then the cover */}
+      {guide.film && (
+        <section className="bg-black">
+          <video src={guide.film.src} poster={guide.film.poster} autoPlay muted loop playsInline controls className="mx-auto block max-h-[calc(100vh-48px)] w-full object-contain" />
+        </section>
+      )}
+
       <section className="relative flex min-h-[560px] flex-col overflow-hidden text-white" style={{ background: bg, height: 'calc(100vh - 48px)', maxHeight: 820 }}>
         <div className="flex items-center justify-between px-10 pt-8 text-[13px] text-white/70">
           {mark ? <img src={dataUri(logoSvg(mark, { color: '#FFFFFF', file: '' }, 400).svg)} alt={kit.brand} className="h-6" /> : <span>{kit.brand}</span>}
@@ -70,16 +76,6 @@ function Home({ info, kit, guide }: { info: WsInfo; kit: Kit; guide: GuideT }) {
           {guide.hero?.caption && <p className="max-w-[360px] text-[13px] leading-relaxed text-white/60">{guide.hero.caption}</p>}
         </div>
       </section>
-
-      {guide.film && (
-        <section className="border-b border-line bg-black">
-          <video src={guide.film.src} poster={guide.film.poster} autoPlay muted loop playsInline controls className="mx-auto block max-h-[calc(100vh-48px)] w-full object-contain" />
-          <div className="flex flex-wrap items-baseline justify-between gap-3 px-10 py-5 text-[13px] text-white/60">
-            <span><span className="text-white">{guide.film.title || 'Brand film'}</span>{guide.film.caption && <span className="ml-3">{guide.film.caption}</span>}</span>
-            {guide.film.link && <a href={guide.film.link} target="_blank" rel="noreferrer" className="hover:text-white">The case study ↗</a>}
-          </div>
-        </section>
-      )}
 
       {guide.intro && (
         <section className="grid gap-6 border-b border-line px-10 py-16 @container md:grid-cols-[200px_1fr]">
@@ -237,7 +233,7 @@ function Slide({ sl, kit, onOpen }: { sl: GuideSlide; kit: Kit; onOpen: () => vo
   return (
     <figure className={CARD}>
       {sl.img && (
-        <button onClick={onOpen} title="Open full screen" className="group block w-full cursor-zoom-in bg-panel-2">
+        <button onClick={onOpen} title="Open full screen" className="group block w-full cursor-zoom-in bg-panel-2" style={sl.bg ? { background: sl.bg } : undefined}>
           <img src={sl.img} alt={sl.title || ''} loading="lazy" className="mx-auto block max-h-[calc(100vh-250px)] w-auto max-w-full object-contain transition duration-500 group-hover:scale-[1.01]" />
         </button>
       )}
