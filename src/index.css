@@ -15,7 +15,7 @@
   --mb-accent: #000000;      /* primary buttons: inverted */
   --mb-brand: #fff94b;       /* Metabrand yellow */
   --mb-brand-ink: #000000;
-  --mb-brand-edge: rgba(0, 0, 0, .35); /* outline so yellow reads on white */
+  --mb-brand-fill: #f6ef3d; /* buttons and dots on white: a touch deeper than the brand yellow, no outline */
   --mb-direct: #eb6834;
   --mb-angle: #2a78d6;
   --mb-substitute: #1baf7a;
@@ -33,7 +33,7 @@
     --mb-accent: #ffffff;
     --mb-brand: #fff94b;
     --mb-brand-ink: #000000;
-    --mb-brand-edge: transparent;
+    --mb-brand-fill: #fff94b;
     --mb-direct: #d95926;
     --mb-angle: #3987e5;
     --mb-substitute: #199e70;
@@ -50,7 +50,7 @@
     --mb-accent: #ffffff;
     --mb-brand: #fff94b;
     --mb-brand-ink: #000000;
-    --mb-brand-edge: transparent;
+    --mb-brand-fill: #fff94b;
     --mb-direct: #d95926;
     --mb-angle: #3987e5;
     --mb-substitute: #199e70;
@@ -86,7 +86,7 @@ body {
 }
 .num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .mono { font-family: var(--font-mono); }
-.brand-dot { background: var(--mb-brand); box-shadow: inset 0 0 0 1px var(--mb-brand-edge); }
+.brand-dot { background: var(--mb-brand-fill); }
 .grid-bg { background-image: radial-gradient(var(--mb-line) 1px, transparent 1px); background-size: 16px 16px; }
 mark { background: var(--mb-brand); color: var(--mb-brand-ink); padding: 0 2px; border-radius: 2px; }
 ::selection { background: var(--mb-brand); color: var(--mb-brand-ink); }

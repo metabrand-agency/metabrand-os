@@ -88,7 +88,7 @@ export function Stat({ label, value }: { label: string; value: ReactNode }) {
 export function Badge({ children, color }: { children: ReactNode; color?: string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] text-muted">
-      {color && <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: 'inset 0 0 0 1px var(--mb-brand-edge)' }} />}
+      {color && <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />}
       {children}
     </span>
   );

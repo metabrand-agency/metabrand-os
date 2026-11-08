@@ -150,7 +150,15 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
             <Caption title="Motion" text="3D illustrations in motion." kit={kit} />
           </figure>
         )}
-        {s.slides.map((sl) => (
+        {s.grid ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {s.slides.map((sl) => (
+              <a key={sl.img} href={sl.img} target="_blank" rel="noreferrer" className="block aspect-[1600/1133] overflow-hidden rounded-md border border-line" style={{ background: sl.bg }}>
+                <img src={sl.img} alt={sl.title || s.title} loading="lazy" className={`h-full w-full ${sl.fit === 'contain' ? 'object-contain' : 'object-cover'}`} />
+              </a>
+            ))}
+          </div>
+        ) : s.slides.map((sl) => (
           <figure key={sl.img}>
             <a href={sl.img} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border border-line">
               <img src={sl.img} alt={sl.title || s.title} loading="lazy" className="w-full" />

@@ -7,10 +7,10 @@ import { api } from '../api';
 import { Btn, Card, Input, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import { useGoogleFonts, type Kit } from './BrandKit';
-import { FORMATS, VARIANTS, embeddedFonts, numberIn, render, rolesOf, toPng, type Copy } from './banners';
+import { FORMATS, PATTERNS, VARIANTS, embeddedFonts, numberIn, render, rolesOf, toPng, type Copy } from './banners';
 
 type Idea = { headline: string; number?: string; label?: string; angle?: string };
-type Saved = { copy: Copy; fmt: string; topic: string };
+type Saved = { copy: Copy; fmt: string; topic: string; pat?: Record<string, string> };
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'banner';
 function save(blob: Blob, name: string) {
@@ -64,6 +64,7 @@ export default function Generate({ info }: { info: WsInfo }) {
   const [err, setErr] = useState('');
   const [seed, setSeed] = useState(1);
   const [own, setOwn] = useState<Record<string, number>>({});
+  const [pat, setPat] = useState<Record<string, string>>(saved?.pat || {});
   const [busy, setBusy] = useState('');
   const [fontTick, setFontTick] = useState(0);
   const file = useRef<HTMLInputElement>(null);
@@ -91,7 +92,7 @@ export default function Generate({ info }: { info: WsInfo }) {
     return () => document.fonts.removeEventListener('loadingdone', done);
   }, [kit]);
 
-  useEffect(() => { store.set(key, { copy: { ...copy, image: undefined }, fmt: fmtId, topic }); }, [key, copy, fmtId, topic]);
+  useEffect(() => { store.set(key, { copy: { ...copy, image: undefined }, fmt: fmtId, topic, pat }); }, [key, copy, fmtId, topic, pat]);
 
   const fmt = FORMATS.find((f) => f.id === fmtId) || FORMATS[0];
   const R = useMemo(() => (kit ? rolesOf(kit) : null), [kit]);
@@ -102,9 +103,9 @@ export default function Generate({ info }: { info: WsInfo }) {
     void fontTick;
     return VARIANTS.map((v) => {
       const missing = (v.needs === 'number' && !fig) || (v.needs === 'image' && !c.image);
-      return { v, missing, svg: missing ? '' : render(v.id, fmt, R, c, seed + (own[v.id] || 0)) };
+      return { v, missing, svg: missing ? '' : render(v.id, fmt, R, c, seed + (own[v.id] || 0), '', { pattern: pat[v.id] }) };
     });
-  }, [R, fmt, c, seed, own, fig, fontTick]);
+  }, [R, fmt, c, seed, own, pat, fig, fontTick]);
 
   const suggest = async () => {
     setThinking(true); setErr('');
@@ -116,7 +117,7 @@ export default function Generate({ info }: { info: WsInfo }) {
   };
 
   const fileBase = (id: string) => `${slugify(kit?.brand || info.name)}-${id}-${fmt.w}x${fmt.h}`;
-  const fullSvg = async (id: string) => render(id, fmt, R!, copy, seed + (own[id] || 0), await embeddedFonts(kit?.fonts || []).catch(() => ''));
+  const fullSvg = async (id: string) => render(id, fmt, R!, copy, seed + (own[id] || 0), await embeddedFonts(kit?.fonts || []).catch(() => ''), { pattern: pat[id] });
   const download = async (id: string, kind: 'png' | 'svg') => {
     setBusy(`${id}:${kind}`);
     try {
@@ -145,7 +146,8 @@ export default function Generate({ info }: { info: WsInfo }) {
   };
 
   if (kit === undefined || !R) return <div className="text-muted">Loading…</div>;
-  const cols = fmt.w / fmt.h > 1.4 ? 'md:grid-cols-2' : fmt.h / fmt.w > 1.4 ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-2 2xl:grid-cols-3';
+  // columns follow the space the grid actually has (the chat panel can take part of it)
+  const cols = fmt.w / fmt.h > 1.4 ? '@2xl:grid-cols-2 @7xl:grid-cols-3' : fmt.h / fmt.w > 1.4 ? '@md:grid-cols-2 @3xl:grid-cols-3 @5xl:grid-cols-4' : '@xl:grid-cols-2 @5xl:grid-cols-3';
 
   return (
     <div className="grid gap-6 lg:grid-cols-[330px_minmax(0,1fr)]">
@@ -206,7 +208,7 @@ export default function Generate({ info }: { info: WsInfo }) {
         </Card>
       </aside>
 
-      <section className="min-w-0">
+      <section className="@container min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="text-[13px] text-muted">{cards.filter((x) => !x.missing).length} variants · {fmt.label}, {fmt.note}</div>
           <div className="flex gap-2">
@@ -225,6 +227,14 @@ export default function Generate({ info }: { info: WsInfo }) {
                 </button>
               ) : (
                 <div className="[&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+              )}
+              {v.art && (
+                <div className="flex flex-wrap gap-1 border-b border-line px-3 py-2">
+                  {[{ id: '', name: 'Auto' }, ...PATTERNS].map((p) => (
+                    <button key={p.id} onClick={() => setPat((x) => ({ ...x, [v.id]: p.id }))}
+                      className={`rounded px-1.5 py-0.5 text-[11px] ${(pat[v.id] || '') === p.id ? 'bg-panel-2 font-medium text-text' : 'text-muted hover:text-text'}`}>{p.name}</button>
+                  ))}
+                </div>
               )}
               <div className="flex items-center justify-between gap-2 px-3 py-2">
                 <div className="min-w-0"><div className="truncate text-[13px] font-medium">{v.name}</div><div className="truncate text-[11px] text-muted">{v.hint}</div></div>

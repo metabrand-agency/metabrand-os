@@ -14,12 +14,13 @@ export const FORMATS: Format[] = [
 ];
 
 export type Copy = { headline: string; number?: string; label?: string; image?: string };
-export type Variant = { id: string; name: string; hint: string; needs?: 'number' | 'image' };
+export type Variant = { id: string; name: string; hint: string; needs?: 'number' | 'image'; art?: boolean };
 export const VARIANTS: Variant[] = [
   { id: 'statement', name: 'Statement', hint: 'Headline with a pixel cluster and frame' },
   { id: 'number', name: 'Big number', hint: 'A figure in the middle', needs: 'number' },
   { id: 'steps', name: 'Type wall', hint: 'Giant words, an arrow on one of them' },
-  { id: 'flow', name: 'Generative', hint: 'Flow field of arrows with a product card' },
+  { id: 'flow', name: 'Generative card', hint: 'Field of arrows with a product card', art: true },
+  { id: 'field', name: 'Generative poster', hint: 'Field of arrows around the headline', art: true },
   { id: 'icon', name: 'App icon', hint: 'The sign as an app icon' },
   { id: 'motion', name: 'Motion', hint: 'Pixel grid with motion blur' },
   { id: 'label', name: 'Announcement', hint: 'Kicker, headline and logo' },
@@ -159,25 +160,123 @@ function cluster(r: () => number, x: number, y: number, cell: number, dx: 1 | -1
   }).join('');
 }
 
-/** Flow field of arrows swirling around a centre, the generative-art look. */
-function flowField(r: () => number, W: number, H: number, u: number, color: string, cx: number, cy: number) {
-  const gap = 74 * u;
-  let lines = '', heads = '';
-  for (let y = -gap; y < H + gap; y += gap) {
-    for (let x = -gap; x < W + gap; x += gap) {
-      const px = x + (r() - 0.5) * gap * 0.9, py = y + (r() - 0.5) * gap * 0.9;
-      const dx = px - cx, dy = py - cy, d = Math.hypot(dx, dy);
-      if (d < 150 * u || r() < 0.12) continue;
-      const a = Math.atan2(dy, dx) + Math.PI / 2 + 0.28 + (r() - 0.5) * 0.22;
-      const len = (54 + Math.min(1, d / (700 * u)) * 58) * u;
-      const ex = px + Math.cos(a) * len, ey = py + Math.sin(a) * len;
-      const hs = 17 * u, back = a + Math.PI;
-      const hx = ex - Math.cos(a) * hs * 0.2, hy = ey - Math.sin(a) * hs * 0.2;
-      lines += `M${n(px)} ${n(py)}L${n(hx)} ${n(hy)}`;
-      heads += `M${n(ex)} ${n(ey)}L${n(ex + Math.cos(back + 0.38) * hs)} ${n(ey + Math.sin(back + 0.38) * hs)}L${n(ex + Math.cos(back - 0.38) * hs)} ${n(ey + Math.sin(back - 0.38) * hs)}Z`;
-    }
+// ---------- generative art: fields of arrows ----------
+// Modelled on the SuperPlane generative-art set: one vortex, twin vortex ("eye"), crescent swirl, warp
+// (stars rushing out), school (a loose swarm) and globe (flow over a sphere seen from above).
+export const PATTERNS = [
+  { id: 'vortex', name: 'Vortex' },
+  { id: 'eye', name: 'Twin' },
+  { id: 'crescent', name: 'Crescent' },
+  { id: 'warp', name: 'Warp' },
+  { id: 'school', name: 'School' },
+  { id: 'globe', name: 'Globe' },
+];
+type Arrow = { x: number; y: number; a: number; len: number; w: number };
+type Art = { arrows: Arrow[]; under?: string };
+const ccw = (dx: number, dy: number) => Math.atan2(-dx, dy); // counter-clockwise tangent on screen
+
+function art(pattern: string, r: () => number, W: number, H: number, u: number, bg: string, ink: string): Art {
+  const m = Math.min(W, H), A: Arrow[] = [];
+  const grid = (gap: number, fn: (x: number, y: number) => void) => {
+    for (let y = -gap; y < H + gap; y += gap) for (let x = -gap; x < W + gap; x += gap) fn(x + (r() - 0.5) * gap * 0.9, y + (r() - 0.5) * gap * 0.9);
+  };
+  if (pattern === 'eye') {
+    const tall = H > W * 1.2;
+    const cs = tall ? [[W * 0.5, H * 0.36], [W * 0.5, H * 0.64]] : [[W * 0.32, H * 0.5], [W * 0.68, H * 0.5]];
+    grid(46 * u, (x, y) => {
+      let vx = 0, vy = 0, near = 1e9;
+      for (const [cx, cy] of cs) {
+        const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1, k = 1 / (d + 0.12 * m);
+        vx += (dy / d) * k; vy += (-dx / d) * k; near = Math.min(near, d);
+      }
+      const noise = near < 0.12 * m ? 1.6 : 0.18;
+      A.push({ x, y, a: Math.atan2(vy, vx) + Math.PI + (r() - 0.5) * noise, len: (36 + r() * 12) * u, w: 2.4 * u });
+    });
+    return { arrows: A };
   }
-  return `<path d="${lines}" stroke="${color}" stroke-width="${n(3.4 * u)}" stroke-linecap="round" fill="none" opacity="0.9"/><path d="${heads}" fill="${color}" opacity="0.9"/>`;
+  if (pattern === 'crescent') {
+    const cx = W * (0.55 + r() * 0.2), cy = H * (0.4 + r() * 0.2), R1 = Math.max(W, H) * 0.62;
+    const turn = r() * Math.PI * 2, off = R1 * 0.6;
+    const hx = cx + Math.cos(turn) * off, hy = cy + Math.sin(turn) * off, R2 = R1 * 0.66;
+    grid(27 * u, (x, y) => {
+      const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+      if (d > R1 || Math.hypot(x - hx, y - hy) < R2 || d < 30 * u) return;
+      if (r() > 0.3 + 0.7 * Math.min(1, d / (R1 * 0.7))) return;
+      A.push({ x, y, a: ccw(dx, dy) - 0.12 + (r() - 0.5) * (d < R1 * 0.2 ? 0.9 : 0.16), len: (32 + r() * 8) * u, w: 2.2 * u });
+    });
+    return { arrows: A };
+  }
+  if (pattern === 'warp') {
+    const cx = W * (0.4 + r() * 0.2), cy = H * (0.4 + r() * 0.2), Rm = Math.hypot(W, H) * 0.62;
+    for (let i = 0; i < 950; i++) {
+      const t = r() * Math.PI * 2, f = Math.pow(r(), 0.55), d = f * Rm;
+      const x = cx + Math.cos(t) * d, y = cy + Math.sin(t) * d;
+      if (x < -40 * u || y < -40 * u || x > W + 40 * u || y > H + 40 * u) continue;
+      A.push({ x, y, a: t + (r() - 0.5) * 0.05, len: (4 + 170 * f ** 2.2 * (0.4 + r() * 0.9)) * u, w: (1 + 6.5 * f ** 2.6) * u });
+    }
+    return { arrows: A };
+  }
+  if (pattern === 'school') {
+    const cx = W * (0.38 + r() * 0.24), cy = H * (0.42 + r() * 0.18), s = m * 0.2, base = r() * Math.PI * 2;
+    for (let i = 0; i < 300; i++) {
+      const t = r() * Math.PI * 2, d = s * Math.sqrt(-2 * Math.log(1 - r() * 0.98)) * 0.75;
+      A.push({ x: cx + Math.cos(t) * d, y: cy + Math.sin(t) * d, a: base + (r() - 0.5) * 2.6, len: (30 + r() * 14) * u, w: 2.2 * u });
+    }
+    return { arrows: A };
+  }
+  if (pattern === 'globe') {
+    const R = Math.max(W * 0.62, H * 0.45), cx = W * 0.5, cy = H * 0.98 + R * 0.08, tilt = 0.55;
+    const ct = Math.cos(tilt), st = Math.sin(tilt);
+    const proj = (p: number[]) => { const y2 = p[1] * ct - p[2] * st, z2 = p[1] * st + p[2] * ct; return [cx + R * p[0], cy - R * y2, z2]; };
+    const dir = r() < 0.5 ? -1 : 1;
+    for (let i = 0; i < 2600; i++) {
+      const lat = Math.asin(2 * r() - 1), lon = r() * Math.PI * 2;
+      const p = [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
+      const [X, Y, Z] = proj(p);
+      if (Z < 0.05 || X < -20 * u || X > W + 20 * u || Y < -20 * u || Y > H + 20 * u) continue;
+      const band = dir * (0.55 + 0.45 * Math.sin(lat * 5 + 1));
+      const e = [Math.cos(lon), 0, -Math.sin(lon)], step = 0.085 * band;
+      const q = [p[0] + e[0] * step, p[1], p[2] + e[2] * step];
+      const [X2, Y2] = proj(q);
+      const len = Math.hypot(X2 - X, Y2 - Y);
+      if (len < 8 * u || r() > 0.25 + 0.75 * (1 - Z)) continue; // thinner in the middle, dense near the rim like the brand frames
+      A.push({ x: X, y: Y, a: Math.atan2(Y2 - Y, X2 - X), len, w: 2.4 * u });
+    }
+    const shade = lum(bg) < 0.2 ? ink : '#000000';
+    return { arrows: A, under: `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}" fill="${shade}" opacity="0.06"/><circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}" fill="none" stroke="${ink}" stroke-opacity="0.18" stroke-width="${n(1.5 * u)}"/>` };
+  }
+  // vortex
+  const cx = W * (0.5 + r() * 0.2), cy = H * (0.36 + r() * 0.2);
+  grid(74 * u, (x, y) => {
+    const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
+    if (d < 150 * u || r() < 0.12) return;
+    A.push({ x, y, a: Math.atan2(dy, dx) + Math.PI / 2 + 0.28 + (r() - 0.5) * 0.22, len: (54 + Math.min(1, d / (700 * u)) * 58) * u, w: 3.4 * u });
+  });
+  return { arrows: A };
+}
+
+/** Arrows as a few paths (grouped by stroke width), skipping a soft-edged zone around the text. */
+function drawArt(a: Art, color: string, u: number, r: () => number, avoid: Box[] = []) {
+  const edge = 70 * u;
+  const outside = (x: number, y: number) => {
+    let d = Infinity;
+    for (const b of avoid) d = Math.min(d, Math.max(b.x - x, x - b.x - b.w, b.y - y, y - b.y - b.h));
+    return d;
+  };
+  const groups = new Map<number, { l: string; h: string }>();
+  for (const A of a.arrows) {
+    const ex = A.x + Math.cos(A.a) * A.len, ey = A.y + Math.sin(A.a) * A.len;
+    if (avoid.length) { const d = Math.min(outside(A.x, A.y), outside(ex, ey)); if (d < 0 || (d < edge && r() > d / edge)) continue; }
+    const hs = Math.min(A.len * 0.5, Math.max(9 * u, A.w * 4.6)), back = A.a + Math.PI;
+    const k = Math.round((A.w / u) * 2) / 2;
+    const g = groups.get(k) || { l: '', h: '' };
+    g.l += `M${n(A.x)} ${n(A.y)}L${n(ex - Math.cos(A.a) * hs * 0.5)} ${n(ey - Math.sin(A.a) * hs * 0.5)}`;
+    g.h += `M${n(ex)} ${n(ey)}L${n(ex + Math.cos(back + 0.36) * hs)} ${n(ey + Math.sin(back + 0.36) * hs)}L${n(ex + Math.cos(back - 0.36) * hs)} ${n(ey + Math.sin(back - 0.36) * hs)}Z`;
+    groups.set(k, g);
+  }
+  let out = a.under || '';
+  for (const [k, g] of groups) out += `<path d="${g.l}" stroke="${color}" stroke-width="${n(k * u)}" stroke-linecap="round" fill="none" opacity="0.92"/><path d="${g.h}" fill="${color}" opacity="0.92"/>`;
+  return out;
 }
 
 const frame = (W: number, H: number, u: number, color: string) => {
@@ -188,11 +287,11 @@ const onBg = (bg: string, R: Roles) => (contrast(bg, R.dark) >= contrast(bg, R.l
 
 // ---------- copy helpers ----------
 export const numberIn = (s: string) => s.match(/[$€£]?\d[\d.,]*\s?(?:%|[kKmMbB]\b|x\b|\+)?/)?.[0]?.trim() || '';
-function stepsOf(s: string) {
+function stepsOf(s: string, perLine = 10) {
   const raw = s.split(/\s*(?:→|->|\n|\/|,|;|\s-\s|\s–\s)\s*/).map((p) => p.trim()).filter(Boolean);
   const chunk = (t: string) => {
     const words = t.split(/\s+/).filter(Boolean);
-    const max = Math.max(10, ...words.map((w) => w.length));
+    const max = Math.max(perLine, ...words.map((w) => w.length));
     const out: string[] = [];
     for (const w of words) { const last = out[out.length - 1]; if (last && `${last} ${w}`.length <= max) out[out.length - 1] = `${last} ${w}`; else out.push(w); }
     return out;
@@ -208,7 +307,8 @@ function stepsOf(s: string) {
 }
 
 // ---------- layouts ----------
-type L = { W: number; H: number; u: number; pad: number; r: () => number; R: Roles; c: Copy; uid: string; wide: boolean; tall: boolean };
+export type Options = { pattern?: string };
+type L = { W: number; H: number; u: number; pad: number; r: () => number; R: Roles; c: Copy; uid: string; wide: boolean; tall: boolean; o: Options };
 
 function statement({ W, H, u, pad, r, R, c, wide, tall }: L) {
   const bg = pick(r, [...R.mids, R.accent, ...R.mids]);
@@ -253,15 +353,21 @@ function number({ W, H, u, pad, r, R, c, wide, tall }: L) {
 }
 
 function steps({ W, H, u, r, R, c, wide }: L) {
-  const st = stepsOf(c.headline), items = st.items;
+  const st = stepsOf(c.headline, Math.round(Math.max(10, (10 * W) / H))), items = st.items;
   const bg = pick(r, [...R.mids, R.deep]);
   const ink = bg === R.deep ? R.light : (lum(bg) < 0.5 ? (R.lights[0] || R.light) : R.dark);
   const arrowC = bg === R.deep ? R.accent : (R.deep !== R.dark ? R.deep : R.dark);
   const active = Math.min(items.length - 1, st.active + (st.list && r() < 0.3 ? 1 : 0));
   const left = W * (wide ? 0.22 : 0.16);
   const widest = Math.max(...items.map((s) => measure(s, 100, R.head)));
-  const size = Math.max(40 * u, Math.min(H / 4.3, ((W - left - 40 * u) / widest) * 100, 300 * u));
-  const top = (i: number) => H / 2 - size * 0.43 + (i - active) * size * 0.98;
+  const byWidth = ((W - left - 40 * u) / widest) * 100;
+  // the whole stack fits inside the frame; only very long lists bleed off the edges, centred on the arrow
+  const block = (k: number) => ((items.length - 1) * 0.98 + 0.95) * k;
+  const fits = Math.min(byWidth, (H * 0.86) / block(1), 300 * u);
+  const bleed = fits < 70 * u;
+  const size = bleed ? Math.max(40 * u, Math.min(H / 4.3, byWidth, 300 * u)) : fits;
+  const first = (H - block(size)) / 2 - size * 0.06;
+  const top = (i: number) => (bleed ? H / 2 - size * 0.43 + (i - active) * size * 0.98 : first + i * size * 0.98);
   let out = `<rect width="${W}" height="${H}" fill="${bg}"/>`;
   items.forEach((s, i) => { out += text([s], left, top(i), size, 1, ink, R.head); });
   const aw = measure('→', size, R.head);
@@ -269,7 +375,8 @@ function steps({ W, H, u, r, R, c, wide }: L) {
   return out;
 }
 
-function flow({ W, H, u, pad, r, R, c, uid, wide }: L) {
+function flow({ W, H, u, pad, r, R, c, uid, wide, o }: L) {
+  const pattern = o.pattern || pick(r, PATTERNS.map((p) => p.id));
   const bg = pick(r, [...R.mids, R.deep, R.mids[0]]);
   const arrows = R.lights[0] || R.light;
   const cardW = Math.min(wide ? W * 0.46 : W * 0.72, 800 * u);
@@ -283,7 +390,7 @@ function flow({ W, H, u, pad, r, R, c, uid, wide }: L) {
   const white = '#FFFFFF';
   let out = `<defs><filter id="sh-${uid}" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="${n(14 * u)}" stdDeviation="${n(22 * u)}" flood-color="#000" flood-opacity="0.18"/></filter></defs>`;
   out += `<rect width="${W}" height="${H}" fill="${bg}"/>`;
-  out += flowField(r, W, H, u, arrows, W * (wide ? 0.66 : 0.6), H * 0.42);
+  out += drawArt(art(pattern, r, W, H, u, bg, arrows), arrows, u, r);
   // a second card peeking from behind, like a stack of runs
   out += `<rect x="${n(x + 40 * u)}" y="${n(y - 70 * u)}" width="${n(cardW * 0.8)}" height="${n(cardH)}" rx="${n(16 * u)}" fill="${white}" opacity="0.55"/>`;
   out += `<g filter="url(#sh-${uid})"><rect x="${n(x)}" y="${n(y)}" width="${n(cardW)}" height="${n(cardH)}" rx="${n(18 * u)}" fill="${white}"/></g>`;
@@ -301,6 +408,26 @@ function flow({ W, H, u, pad, r, R, c, uid, wide }: L) {
     out += text([c.label], x + ip + 18 * u, py + 8 * u + (pill - 16 * u - 24 * u) / 2 + 1 * u, 24 * u, 1, R.mids[R.mids.length - 1], f, 'start', true);
   }
   void pad;
+  return out;
+}
+
+function field({ W, H, u, pad, r, R, c, wide, tall, o }: L) {
+  const pattern = o.pattern || pick(r, PATTERNS.map((p) => p.id));
+  const bg = pick(r, [R.dark, R.dark, R.accent, R.deep]);
+  const ink = bg === R.accent ? R.dark : (R.lights[0] || R.light);
+  const kick = c.label ? 56 * u : 0;
+  const tf = fit(c.headline, { w: W * (wide ? 0.6 : 0.82), h: H * (tall ? 0.26 : 0.34) }, R.head, { max: 118 * u, min: 36 * u, lh: 1.04 });
+  const markH = 36 * u, mark = R.mark || R.sign;
+  const mw = logoW(mark, markH, R.brand, R);
+  // headline top-left for fields that gather low (globe), otherwise bottom-left
+  const low = pattern === 'globe';
+  const top = low ? pad + kick : H - pad - tf.h;
+  const avoid: Box[] = [{ x: pad - 10 * u, y: top - kick - 10 * u, w: tf.w + 20 * u, h: tf.h + kick + 20 * u }, { x: low ? W - pad - mw - 10 * u : pad - 10 * u, y: low ? H - pad - markH - 10 * u : pad - 10 * u, w: mw + 20 * u, h: markH + 20 * u }];
+  let out = `<rect width="${W}" height="${H}" fill="${bg}"/>`;
+  out += drawArt(art(pattern, r, W, H, u, bg, ink), ink, u, r, avoid);
+  if (kick) out += text([c.label!], pad, top - kick, 26 * u, 1, ink, R.mono ? { ...R.mono, ls: 0.06 } : { ...R.head, ls: 0.06 }, 'start', true);
+  out += text(tf.lines, pad, top, tf.size, 1.04, ink, R.head);
+  out += logo(mark, ink, low ? W - pad - mw : pad, low ? H - pad - markH : pad, markH, R.brand, R);
   return out;
 }
 
@@ -405,17 +532,17 @@ function photo({ W, H, u, pad, R, c, uid }: L) {
   return out;
 }
 
-const LAYOUTS: Record<string, (l: L) => string> = { statement, number, steps, flow, icon, motion, label, photo };
+const LAYOUTS: Record<string, (l: L) => string> = { statement, number, steps, flow, field, icon, motion, label, photo };
 
 /** One banner as an SVG document. `fontCss` (embedded @font-face) is added for files and PNGs. */
-export function render(variant: string, fmt: Format, R: Roles, c: Copy, seed: number, fontCss = '') {
+export function render(variant: string, fmt: Format, R: Roles, c: Copy, seed: number, fontCss = '', o: Options = {}) {
   const { w: W, h: H } = fmt;
   const u = Math.min(W, H) / 1080;
   const wide = W / H > 1.4, tall = H / W > 1.4;
   const pad = (wide ? 64 : 76) * u;
-  const uid = `${variant}-${fmt.id}-${seed}`.replace(/[^a-z0-9-]/gi, '');
+  const uid = `${variant}-${fmt.id}-${seed}-${o.pattern || ''}`.replace(/[^a-z0-9-]/gi, '');
   const r = rng(hash(`${variant}:${seed}`));
-  const body = LAYOUTS[variant]({ W, H, u, pad, r, R, c: { ...c, headline: c.headline.trim() || 'Your headline here' }, uid, wide, tall });
+  const body = LAYOUTS[variant]({ W, H, u, pad, r, R, c: { ...c, headline: c.headline.trim() || 'Your headline here' }, uid, wide, tall, o });
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${fontCss ? `<style>${fontCss}</style>` : ''}${body}</svg>`;
 }
 
