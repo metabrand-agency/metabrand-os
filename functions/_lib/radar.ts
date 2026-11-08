@@ -80,7 +80,7 @@ const POSTY = /\/(blog|news|articles?|posts?|insights|resources\/blog|changelog|
 const NOT_POST = /\/(category|categories|tag|tags|topic|topics|author|authors|page)(\/|$)/i;
 const titleFromSlug = (u: string) => decodeURIComponent(u.replace(/\/$/, '').split('/').pop() || '').replace(/[-_]+/g, ' ').replace(/\.\w+$/, '').replace(/^\w/, (c) => c.toUpperCase());
 
-export const ACTIVITY_V = 2; // bump when collection changes, so pages re-collect on their next visit
+export const ACTIVITY_V = 3; // bump when collection changes, so pages re-collect on their next visit
 const CHECK = 8; // article pages opened per company (each is one outbound request)
 
 async function fromSitemap(origin: string): Promise<Post[]> {
@@ -229,12 +229,15 @@ export function focusIds(data: any): string[] {
 export function newsQuery(c: any) {
   if (c.news_query?.trim()) return String(c.news_query).trim();
   const name = String(c.name || c.short || '').replace(/\s*\(.*\)/, '').replace(/"/g, '').trim();
-  if (/[a-z][A-Z]|\d|\./.test(name) || name.split(/\s+/).length > 1) return `"${name}"`;
+  const CONTEXT = '(AI OR software OR developer OR startup OR agent OR agents OR "open source")';
+  if (name.split(/\s+/).length > 1) return `"${name}"`;
+  // one-word names, even coined ones, collide with other things ("SuperPlane" aircraft): add a tech context
+  if (/[a-z][A-Z]|\d|\./.test(name)) return `"${name}" AND ${CONTEXT}`;
   const surname = String(c.founder || '').split(/[,;&]| and /)[0].trim().split(/\s+/).pop()?.replace(/"/g, '');
   if (surname && surname.length > 2) return `"${name}" "${surname}"`;
   const bq = String(c.ahrefs?.brand_query || '').replace(/"/g, '').trim();
   if (bq.split(/\s+/).length > 1) return `"${bq}"`;
-  return `"${name}" AND (AI OR software OR startup OR developer)`;
+  return `"${name}" AND ${CONTEXT}`;
 }
 
 /**
