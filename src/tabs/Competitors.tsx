@@ -29,7 +29,7 @@ const COLUMNS: Col[] = [
   { id: 'hq', label: 'Location', get: (c) => c.hq, cls: 'max-w-[180px] truncate' },
   { id: 'dr', label: 'DR', num: true, title: 'Ahrefs Domain Rating: strength of the backlink profile, 0–100', get: (c) => c.ahrefs?.dr },
   { id: 'traffic', label: 'Search traffic', num: true, short: true, title: 'Ahrefs: estimated monthly visits from organic search', get: (c) => c.ahrefs?.traffic },
-  { id: 'brand', label: 'Brand searches', num: true, title: 'Ahrefs: monthly searches for the brand name, worldwide', get: (c) => c.ahrefs?.brand_global, render: (c) => <span title={c.ahrefs?.brand_query ? `“${c.ahrefs.brand_query}” · US ${fmtNum(c.ahrefs.brand_us)}` : undefined}>{fmtNum(c.ahrefs?.brand_global)}</span> },
+  { id: 'brand', label: 'Brand searches', num: true, title: 'Ahrefs: monthly searches for the brand name, worldwide', get: (c) => c.ahrefs?.brand_global, render: (c) => <span title={c.ahrefs?.brand_query ? `“${c.ahrefs.brand_query}”, US ${fmtNum(c.ahrefs.brand_us)}` : undefined}>{fmtNum(c.ahrefs?.brand_global)}</span> },
   { id: 'refdomains', label: 'Linking sites', num: true, short: true, title: 'Ahrefs: referring domains', get: (c) => c.ahrefs?.refdomains },
 ];
 const DEFAULT_COLS = ['overlap', 'website', 'social', 'founder', 'founded', 'employees', 'last_round', 'hq', 'dr', 'traffic', 'brand'];
@@ -241,7 +241,7 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Competitors</h1>
-          <div className="mt-1 text-[13px] text-muted">{chosen.size} in focus of {N}{picks ? ` · ${picks} named by the client` : ''} · updated {fmtDate(row!.updated_at)}</div>
+          <div className="mt-1 text-[13px] text-muted">{chosen.size} in focus of {N}{picks ? `, ${picks} named by the client` : ''}. Updated {fmtDate(row!.updated_at)}</div>
         </div>
         <div className="flex gap-2">
           {agency && <Btn disabled={!!busy} onClick={checkMemory}>{busy === 'memory' ? 'Reading Memory… about 30 s' : 'Check against Memory'}</Btn>}
@@ -277,7 +277,7 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
             {picker && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setPicker(false)} />
-                <div className="absolute right-0 z-20 mt-1 w-64 rounded-lg border border-line bg-panel p-2 shadow-lg">
+                <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-line bg-panel p-2 shadow-lg">
                   {COLUMNS.map((c) => (
                     <label key={c.id} className="flex cursor-pointer items-center justify-between rounded px-2 py-1.5 text-[13px] hover:bg-panel-2">
                       <span>{c.label}{c.title?.startsWith('Ahrefs') && <span className="ml-1 text-[11px] text-muted">Ahrefs</span>}</span>
@@ -384,11 +384,11 @@ function ReviewPanel({ review, data, busy, onApply, onClose }: { review: Review;
 
       <div className="mt-5 grid gap-6 @4xl:grid-cols-2">
         <div>
-          <div className="mb-2 text-[12px] font-medium">Named by the client · {review.named.length}</div>
+          <div className="mb-2 text-[12px] font-medium">Named by the client ({review.named.length})</div>
           {!review.named.length && <div className="text-[13px] text-muted">No competitors named in these documents.</div>}
           <div className="space-y-2">
             {review.named.map((n, i) => (
-              <label key={i} className="flex cursor-pointer gap-3 rounded-lg border border-line p-3 text-[13px] hover:bg-panel-2">
+              <label key={i} className="flex cursor-pointer gap-3 rounded-md border border-line p-3 text-[13px] hover:bg-panel-2">
                 <input type="checkbox" checked={named[i]} onChange={() => setNamed(named.map((v, j) => (j === i ? !v : v)))} className="mt-0.5 h-4 w-4 accent-[var(--mb-text)]" />
                 <span className="min-w-0">
                   <span className="font-medium">{n.name}</span>
@@ -400,11 +400,11 @@ function ReviewPanel({ review, data, busy, onApply, onClose }: { review: Review;
           </div>
         </div>
         <div>
-          <div className="mb-2 text-[12px] font-medium">Our list against the brief · {changes.length} suggestions</div>
+          <div className="mb-2 text-[12px] font-medium">Our list against the brief ({changes.length} suggestions)</div>
           {!changes.length && <div className="text-[13px] text-muted">Everything else still fits.</div>}
           <div className="space-y-2">
             {changes.map((r, i) => (
-              <label key={r.id} className="flex cursor-pointer gap-3 rounded-lg border border-line p-3 text-[13px] hover:bg-panel-2">
+              <label key={r.id} className="flex cursor-pointer gap-3 rounded-md border border-line p-3 text-[13px] hover:bg-panel-2">
                 <input type="checkbox" checked={ch[i]} onChange={() => setCh(ch.map((v, j) => (j === i ? !v : v)))} className="mt-0.5 h-4 w-4 accent-[var(--mb-text)]" />
                 <span className="min-w-0">
                   <span className="font-medium">{name(r.id)}</span>

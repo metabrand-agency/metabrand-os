@@ -28,7 +28,7 @@ export default function Assets({ info }: { info: WsInfo }) {
         <Card className="p-5">
           <Label>Add asset by link</Label>
           <form onSubmit={async (e) => { e.preventDefault(); await api(`/w/${s}/assets`, { body: form }); setForm({ url: '', title: '', visibility: 'internal' }); load(); }} className="flex flex-wrap gap-2">
-            <Input className="min-w-[320px] flex-[2]" placeholder="https://www.figma.com/design/…  ·  https://github.com/…  ·  video URL" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} required />
+            <Input className="min-w-[320px] flex-[2]" placeholder="Figma, GitHub or video link" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} required />
             <Input className="flex-1" placeholder="Title (optional)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <Select value={form.visibility} options={['internal', 'client']} onChange={(v) => setForm({ ...form, visibility: v })} />
             <Btn kind="primary" type="submit">Add</Btn>
@@ -61,7 +61,7 @@ export default function Assets({ info }: { info: WsInfo }) {
 
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-8" onClick={() => setPreview(null)}>
-          <iframe src={figmaEmbed(preview.url)} className="h-full w-full max-w-6xl rounded-xl border border-line bg-panel" allowFullScreen />
+          <iframe src={figmaEmbed(preview.url)} className="h-full w-full max-w-6xl rounded-md border border-line bg-panel" allowFullScreen />
         </div>
       )}
     </div>

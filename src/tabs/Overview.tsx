@@ -74,7 +74,7 @@ export default function Overview({ info, reload }: { info: WsInfo; reload: () =>
             <Label>Client contacts</Label>
             <div className="space-y-2">
               {contacts.map((x) => (
-                <div key={x.id} className="text-[13px]"><span className="font-medium">{x.name}</span> <span className="text-muted">· {x.role} · {x.email}</span></div>
+                <div key={x.id} className="text-[13px]"><span className="font-medium">{x.name}</span> <span className="text-muted">{x.role}, {x.email}</span></div>
               ))}
               {!contacts.length && <div className="text-[13px] text-muted">No contacts yet.</div>}
             </div>

@@ -22,7 +22,7 @@ export default function DemoLogin() {
 
   return (
     <div className="grid-bg flex h-full items-center justify-center">
-      <div className="w-[380px] rounded-2xl border border-line bg-panel p-8 shadow-2xl">
+      <div className="w-[380px] rounded-md border border-line bg-panel p-8 shadow-2xl">
         <Logo />
         <h1 className="mt-8 text-xl font-semibold tracking-tight">Sign in to your workspace</h1>
         <div className="mt-6 space-y-3">

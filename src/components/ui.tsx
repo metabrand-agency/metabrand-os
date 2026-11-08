@@ -69,7 +69,7 @@ export function Select({ value, onChange, options, labels }: { value: string; on
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-line bg-panel ${className}`}>{children}</div>;
+  return <div className={`rounded-md border border-line bg-panel ${className}`}>{children}</div>;
 }
 
 export function Label({ children }: { children: ReactNode }) {
@@ -78,7 +78,7 @@ export function Label({ children }: { children: ReactNode }) {
 
 export function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-xl border border-line bg-panel px-4 py-3">
+    <div className="rounded-md border border-line bg-panel px-4 py-3">
       <div className="num text-2xl font-medium">{value}</div>
       <div className="mt-1 text-[11px] uppercase tracking-[.08em] text-muted">{label}</div>
     </div>

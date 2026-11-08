@@ -17,7 +17,9 @@ async function query(env: Env, host: string, country: string, where: any | null,
     target: host, mode: 'subdomains', country: country.toLowerCase(), date: new Date().toISOString().slice(0, 10),
     select: 'keyword,best_position,sum_traffic,volume,best_position_url', order_by: 'sum_traffic:desc', limit: String(limit),
   });
-  if (where) q.set('where', JSON.stringify(where));
+  // organic positions only: AI Overview citations, sitelinks etc. would show as #1
+  const main = { field: 'is_main_position', is: ['eq', true] };
+  q.set('where', JSON.stringify(where ? { and: [main, where] } : main));
   const r = await fetch(`${BASE}?${q}`, { headers: { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`Ahrefs ${r.status}: ${(await r.text()).slice(0, 160)}`);
   const j: any = await r.json();
@@ -54,11 +56,21 @@ export async function loadSeo(env: Env, data: any, country: string) {
       }
     }));
   }
+  // volume and keyword difficulty from Keywords Explorer
+  const kd: Record<string, number> = {};
+  if (union.length) {
+    const r = await fetch(`https://api.ahrefs.com/v3/keywords-explorer/overview?${new URLSearchParams({ select: 'keyword,volume,difficulty', country: country.toLowerCase(), keywords: union.join(',') })}`, {
+      headers: { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json' }, signal: AbortSignal.timeout(20000),
+    }).catch(() => null);
+    const j: any = r && r.ok ? await r.json() : null;
+    for (const k of j?.keywords || []) { if (k.difficulty != null) kd[k.keyword] = k.difficulty; if (k.volume != null) vol[k.keyword] = k.volume; }
+  }
   return {
     as_of: new Date().toISOString().slice(0, 7),
+    positions: 'organic',
     ids: targets.map((t) => t.id),
     top,
-    gap: { keywords: union.map((keyword) => ({ keyword, volume: vol[keyword] })).sort((a, b) => b.volume - a.volume), positions, checked: targets.map((t) => t.id) },
+    gap: { keywords: union.map((keyword) => ({ keyword, volume: vol[keyword], ...(kd[keyword] != null ? { kd: kd[keyword] } : {}) })).sort((a, b) => b.volume - a.volume), positions, checked: targets.map((t) => t.id) },
     source: 'Ahrefs',
   };
 }

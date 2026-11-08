@@ -60,13 +60,13 @@ export default function Chat({ slug, name, onAction, onClose }: { slug: string; 
             <p className="mt-2 text-[13px] text-muted">Market, competitors, meetings, assets. I'll open the right view for you.</p>
             <div className="mt-5 space-y-2">
               {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => send(s)} className="block w-full rounded-lg border border-line px-3 py-2 text-left text-[13px] text-muted hover:border-muted hover:text-text">{s}</button>
+                <button key={s} onClick={() => send(s)} className="block w-full rounded-md border border-line px-3 py-2 text-left text-[13px] text-muted hover:border-muted hover:text-text">{s}</button>
               ))}
             </div>
           </div>
         )}
         {msgs.map((m, i) => {
-          if (m.role === 'user') return <div key={i} className="anim-rise ml-8 rounded-lg bg-panel-2 px-3 py-2 text-[13px]">{m.content}</div>;
+          if (m.role === 'user') return <div key={i} className="anim-rise ml-8 rounded-md bg-panel-2 px-3 py-2 text-[13px]">{m.content}</div>;
           const { body, options } = splitOptions(m.content);
           const last = i === msgs.length - 1;
           return (
@@ -92,7 +92,7 @@ export default function Chat({ slug, name, onAction, onClose }: { slug: string; 
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
           rows={3}
           placeholder="Ask, or tell me what to make…"
-          className="w-full resize-none rounded-lg border border-line bg-panel-2 px-3 py-2 text-[13px] outline-none placeholder:text-muted focus:border-muted"
+          className="w-full resize-none rounded-md border border-line bg-panel-2 px-3 py-2 text-[13px] outline-none placeholder:text-muted focus:border-muted"
         />
       </form>
     </aside>

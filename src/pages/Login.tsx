@@ -26,7 +26,7 @@ export default function Login() {
 
   return (
     <div className="grid-bg flex h-full items-center justify-center">
-      <form onSubmit={submit} className="w-[360px] rounded-2xl border border-line bg-panel p-8 shadow-sm">
+      <form onSubmit={submit} className="w-[360px] rounded-md border border-line bg-panel p-8 shadow-sm">
         <Logo />
         <h1 className="mt-8 text-xl font-semibold tracking-tight">Sign in</h1>
         <p className="mt-1 text-[13px] text-muted">Project workspace. Use the code you received from Metabrand.</p>

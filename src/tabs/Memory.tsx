@@ -76,7 +76,7 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
           <div className="space-y-3">
             {hits.map((h) => (
               <button key={h.id} onClick={() => api(`/w/${s}/documents/${h.id}`).then(setOpen)} className="block w-full text-left">
-                <div className="text-[13px] font-medium">{h.title} <span className="text-muted">· {h.kind}</span></div>
+                <div className="text-[13px] font-medium">{h.title} <span className="text-muted">{h.kind}</span></div>
                 <div className="mt-0.5 text-[13px] text-muted" dangerouslySetInnerHTML={{ __html: h.snip }} />
               </button>
             ))}
@@ -106,7 +106,7 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
         </Card>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-line">
+      <div className="overflow-hidden rounded-md border border-line">
         {docs.map((d) => (
           <button key={d.id} onClick={() => api(`/w/${s}/documents/${d.id}`).then(setOpen)} className="grid w-full grid-cols-[1fr_auto] gap-4 border-b border-line px-5 py-3.5 text-left last:border-0 hover:bg-panel">
             <div className="min-w-0">
@@ -121,9 +121,9 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-8" onClick={() => setOpen(null)}>
-          <div className="max-h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-line bg-panel p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-full w-full max-w-3xl overflow-y-auto rounded-md border border-line bg-panel p-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
-              <div><div className="text-xl font-semibold">{open.title}</div><div className="text-[12px] text-muted">{open.kind} · {fmtDate(open.created_at)}</div></div>
+              <div><div className="text-xl font-semibold">{open.title}</div><div className="text-[12px] text-muted">{open.kind}, {fmtDate(open.created_at)}</div></div>
               <div className="flex gap-2">
                 {info.access.isAgency && <Btn onClick={async () => { await api(`/w/${s}/documents/${open.id}`, { method: 'DELETE' }); setOpen(null); load(); }}>Delete</Btn>}
                 <Btn onClick={() => setOpen(null)}>Close</Btn>

@@ -24,7 +24,7 @@ export type SeoKw = { keyword: string; position: number; traffic: number; volume
 export type SeoCountry = {
   as_of: string; ids: string[]; source?: string;
   top: Record<string, { all: SeoKw[]; content: SeoKw[] }>;
-  gap: { keywords: { keyword: string; volume: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
+  gap: { keywords: { keyword: string; volume: number; kd?: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
 };
 export type MarketData = {
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
@@ -96,7 +96,7 @@ export function RefreshButton({ hasNew, onClick }: { hasNew: boolean; onClick: (
     setState('done');
     setTimeout(() => setState('idle'), 1800);
   };
-  if (hasNew && state === 'idle') return <Btn kind="brand" onClick={run}>New data · Refresh</Btn>;
+  if (hasNew && state === 'idle') return <Btn kind="brand" onClick={run}>New data, refresh</Btn>;
   return (
     <span title="Reload the latest data saved for this project">
       <Btn onClick={run} disabled={state === 'busy'}>{state === 'busy' ? 'Refreshing…' : state === 'done' ? 'Up to date ✓' : 'Refresh'}</Btn>
@@ -143,9 +143,9 @@ export function SitePreview({ url, children }: { url: string; children: React.Re
     >
       {children}
       {pos && createPortal(
-        <div style={{ position: 'fixed', left: pos.x, top: pos.y, width: W }} className="pointer-events-none z-50 overflow-hidden rounded-lg border border-line bg-panel shadow-xl">
+        <div style={{ position: 'fixed', left: pos.x, top: pos.y, width: W }} className="pointer-events-none z-50 overflow-hidden rounded-md border border-line bg-panel shadow-xl">
           <img src={shotUrl(url)} alt="" style={{ width: W, height: H }} className="block bg-panel-2 object-cover object-top" />
-          <div className="border-t border-line px-2.5 py-1.5 text-[11px] text-muted">{domain(url)} · first screen</div>
+          <div className="border-t border-line px-2.5 py-1.5 text-[11px] text-muted">{domain(url)}</div>
         </div>,
         document.body,
       )}
@@ -169,7 +169,7 @@ export function Dossier({ c, isClient, onClose, extra }: { c: Company; isClient:
     ['Social', c.linkedin || c.socials ? <Socials c={c} /> : null],
     ['Ahrefs DR', c.ahrefs?.dr],
     ['Search traffic', c.ahrefs?.traffic != null ? `${fmtNum(c.ahrefs.traffic)}/mo` : null],
-    ['Brand searches', c.ahrefs?.brand_global != null ? `${fmtNum(c.ahrefs.brand_global)}/mo · “${c.ahrefs.brand_query}”` : null],
+    ['Brand searches', c.ahrefs?.brand_global != null ? `${fmtNum(c.ahrefs.brand_global)}/mo (“${c.ahrefs.brand_query}”)` : null],
     ['Linking sites', c.ahrefs?.refdomains != null ? fmtNum(c.ahrefs.refdomains) : null],
     ['Data', c.data_sources?.join(', ')],
     ['Open source', c.open_source == null ? null : c.open_source ? 'Yes' : 'No'],
@@ -184,7 +184,7 @@ export function Dossier({ c, isClient, onClose, extra }: { c: Company; isClient:
       </div>
       <div className="mt-2 flex items-center gap-2 text-lg font-semibold tracking-tight"><Favicon url={c.url} name={c.name} size={20} />{c.name}</div>
       {c.url && <a href={c.url} target="_blank" className="text-[12px] text-muted hover:text-text">{domain(c.url)} ↗</a>}
-      {c.client_pick && <div className="mt-3 rounded-md bg-panel-2 px-3 py-2 text-[12px]"><span className="font-medium">Named by the client</span>{c.client_pick.quote && <span className="text-muted"> · “{c.client_pick.quote}”</span>}{c.client_pick.doc && <span className="text-muted"> ({c.client_pick.doc})</span>}</div>}
+      {c.client_pick && <div className="mt-3 rounded-md bg-panel-2 px-3 py-2 text-[12px]"><span className="font-medium">Named by the client</span>{c.client_pick.quote && <span className="mt-1 block text-muted">“{c.client_pick.quote}”</span>}{c.client_pick.doc && <span className="text-muted"> ({c.client_pick.doc})</span>}</div>}
       {c.hero && <div className="mt-4 text-[17px] leading-snug">“{c.hero}”</div>}
       {c.sub && <div className="mt-1 text-[13px] text-muted">{c.sub}</div>}
       {!!c.claims?.length && (
@@ -207,7 +207,7 @@ export function Dossier({ c, isClient, onClose, extra }: { c: Company; isClient:
       {extra}
       {!!c.sources?.length && (
         <div className="mt-5">
-          <Label>Sources · {c.sources.length}</Label>
+          <Label>Sources ({c.sources.length})</Label>
           <ul className="space-y-1 text-[12px]">{c.sources.map((u) => <li key={u}><a href={u} target="_blank" className="text-muted hover:text-text">{domain(u)} ↗</a></li>)}</ul>
         </div>
       )}
@@ -221,10 +221,10 @@ export function JsonEditor({ data, onSave }: { data: MarketData; onSave: (d: Mar
   const [err, setErr] = useState('');
   return (
     <div className="text-[12px]">
-      <button onClick={() => { setOpen(!open); setTxt(JSON.stringify(data, null, 2)); setErr(''); }} className="text-muted hover:text-text">{open ? '▾' : '▸'} Data (JSON) · agency only</button>
+      <button onClick={() => { setOpen(!open); setTxt(JSON.stringify(data, null, 2)); setErr(''); }} className="text-muted hover:text-text">{open ? '▾' : '▸'} Data (JSON), agency only</button>
       {open && (
         <div className="mt-2 space-y-2">
-          <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={14} className="mono w-full rounded-lg border border-line bg-panel p-3 outline-none" />
+          <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={14} className="mono w-full rounded-md border border-line bg-panel p-3 outline-none" />
           {err && <div className="text-[var(--color-direct)]">{err}</div>}
           <Btn kind="primary" onClick={() => { try { const d = JSON.parse(txt); if (!Array.isArray(d.companies)) throw new Error('Needs a "companies" array'); onSave(d); setOpen(false); } catch (e: any) { setErr(e.message); } }}>Save data</Btn>
         </div>
@@ -244,7 +244,7 @@ export function EmptyResearch({ info, title, onLoaded }: { info: WsInfo; title: 
         {info.access.isAgency && (
           <div className="mt-4 space-y-2">
             <div className="text-[13px] text-muted">Paste research JSON (client, axes, companies, findings), produced by a research run.</div>
-            <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={8} placeholder='{"client": {...}, "axes": {...}, "companies": [...], "findings": [...]}' className="mono w-full rounded-lg border border-line bg-panel p-3 text-[12px] outline-none" />
+            <textarea value={txt} onChange={(e) => setTxt(e.target.value)} rows={8} placeholder='{"client": {...}, "axes": {...}, "companies": [...], "findings": [...]}' className="mono w-full rounded-md border border-line bg-panel p-3 text-[12px] outline-none" />
             {err && <div className="text-[12px] text-[var(--color-direct)]">{err}</div>}
             <Btn kind="primary" onClick={async () => {
               try {

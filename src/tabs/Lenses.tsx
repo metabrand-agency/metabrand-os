@@ -49,7 +49,7 @@ function placeLabels(pts: Pt[]): Record<string, Place> {
   return out;
 }
 
-export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }) {
+export default function Lenses({ info, focus, view = 'maps' }: { info: WsInfo; focus?: string; view?: 'maps' | 'seo' }) {
   const agency = info.access.isAgency;
   const { row, setRow, reload, hasNew, save } = useResearch(info.slug);
   const [lensId, setLensId] = useState<string | null>(null);
@@ -72,7 +72,6 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
   useEffect(() => {
     if (!data || !focus) return;
     const f = focus.toLowerCase();
-    if (['seo', 'content gap', 'keywords', '__seo'].includes(f)) { setLensId('__seo'); return; }
     const l = lenses.find((x) => x.id === focus || x.title.toLowerCase().includes(f));
     if (l) { setLensId(l.id); return; }
     if (OVERLAP[f]) { setFilter(f); return; }
@@ -93,6 +92,21 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
 
   if (row === undefined) return <div className="text-muted">Loading…</div>;
   if (!data || !lens) return <EmptyResearch info={info} title="Lenses" onLoaded={reload} />;
+
+  if (view === 'seo') {
+    return (
+      <div className="@container space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">SEO content gap</h1>
+            <div className="mt-1 text-[13px] text-muted">Organic search keywords of the client and the competitors in focus, from Ahrefs</div>
+          </div>
+          <RefreshButton hasNew={hasNew} onClick={reload} />
+        </div>
+        <SeoLens info={info} data={data} setRow={setRow} />
+      </div>
+    );
+  }
 
   const saveLenses = (next: Lens[]) => save({ ...data, lenses: next });
   const setLocalLens = (l: Lens) => setRow({ ...row!, data: { ...data, lenses: lenses.map((x) => (x.id === l.id ? l : x)) } as MarketData });
@@ -142,10 +156,10 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
 
   const selPos = selected ? lens.positions[selected.id] : lens.positions.__client;
   const posBlock = selPos && (
-    <div className="mt-5 rounded-lg bg-panel-2 p-3 text-[12px]">
+    <div className="mt-5 rounded-md bg-panel-2 p-3 text-[12px]">
       <div className="flex items-center justify-between text-muted">
         <span>On “{lens.title}”</span>
-        <span className="num">x {selPos.x} · y {selPos.y}</span>
+        <span className="num">x {selPos.x}, y {selPos.y}</span>
       </div>
       {selPos.note && <div className="mt-1.5 text-text">{selPos.note}</div>}
       <div className="mt-1.5 flex items-center justify-between text-muted">
@@ -164,8 +178,8 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
     <div className="@container space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Lenses</h1>
-          <div className="mt-1 text-[13px] text-muted">{focusIds.size} competitors in focus of {N} · {lenses.length} {lenses.length === 1 ? 'matrix' : 'matrices'}</div>
+          <h1 className="text-2xl font-semibold tracking-tight">Market maps</h1>
+          <div className="mt-1 text-[13px] text-muted">{focusIds.size} competitors in focus of {N}, {lenses.length} {lenses.length === 1 ? 'map' : 'maps'}</div>
         </div>
         <RefreshButton hasNew={hasNew} onClick={reload} />
       </div>
@@ -173,16 +187,13 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
       {/* lens switcher */}
       <div className="flex flex-wrap items-center gap-2">
         {lenses.map((l) => (
-          <button key={l.id} onClick={() => { setLensId(l.id); setAdding(false); }} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-[13px] ${l.id === lens.id && !adding && lensId !== '__seo' ? 'border-text bg-panel' : 'border-line text-muted hover:text-text'}`}>
+          <button key={l.id} onClick={() => { setLensId(l.id); setAdding(false); }} className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-left text-[13px] ${l.id === lens.id && !adding ? 'border-text bg-panel' : 'border-line text-muted hover:text-text'}`}>
             {l.title}
             <span className="rounded border border-line px-1 text-[10px] text-muted">{l.source === 'ai' ? 'AI' : 'Custom'}</span>
           </button>
         ))}
-        <button onClick={() => { setLensId('__seo'); setAdding(false); }} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] ${lensId === '__seo' && !adding ? 'border-text bg-panel' : 'border-line text-muted hover:text-text'}`}>
-          SEO · content gap <span className="rounded border border-line px-1 text-[10px] text-muted">Ahrefs</span>
-        </button>
         {agency && (
-          <button onClick={() => setAdding(!adding)} className={`rounded-lg border border-dashed px-3 py-1.5 text-[13px] ${adding ? 'border-text' : 'border-line text-muted hover:text-text'}`}>+ New lens</button>
+          <button onClick={() => setAdding(!adding)} className={`rounded-md border border-dashed px-3 py-1.5 text-[13px] ${adding ? 'border-text' : 'border-line text-muted hover:text-text'}`}>+ New lens</button>
         )}
       </div>
 
@@ -190,7 +201,6 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
         <NewLens slug={info.slug} existing={lenses} onAdd={(ls) => { saveLenses([...lenses, ...ls]); setLensId(ls[0]?.id || null); setAdding(false); }} />
       )}
 
-      {lensId === '__seo' && !adding ? <SeoLens info={info} data={data} setRow={setRow} /> : (<>
       {/* legend = filter */}
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => setFilter(null)} className={`rounded-full border px-3 py-1 text-[12px] ${!filter ? 'border-text' : 'border-line text-muted hover:text-text'}`}>All types</button>
@@ -256,7 +266,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
                   <circle cx={px(p.x)} cy={py(p.y)} r={r} fill={hollow ? 'var(--mb-panel)' : o.color} stroke={hollow ? 'var(--mb-muted)' : 'var(--mb-panel)'} strokeWidth={2} strokeDasharray={hollow ? '3 2' : undefined} />
                   {showLabel && (
                     <text x={lp?.x} y={lp?.y} fontSize={16} fill="var(--mb-text)" textAnchor={lp?.anchor} style={{ paintOrder: 'stroke', stroke: 'var(--mb-panel)', strokeWidth: 4 }} fontWeight={isSel ? 600 : 400}>
-                      {shortName(c)}{p.adjusted && agency ? ' ·' : ''}
+                      {shortName(c)}{p.adjusted && agency ? '*' : ''}
                     </text>
                   )}
                 </g>
@@ -282,7 +292,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
 
           {tipCo && tipPos && !drag && (
             <div
-              className="pointer-events-none absolute z-10 w-64 rounded-lg border border-line bg-panel p-3 text-[12px] shadow-lg"
+              className="pointer-events-none absolute z-10 w-64 rounded-md border border-line bg-panel p-3 text-[12px] shadow-lg"
               style={{
                 left: `${(px(tipPos.x) / W) * 100}%`,
                 top: `${(py(tipPos.y) / H) * 100}%`,
@@ -294,8 +304,8 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
               {tipCo.hero && <div className="mt-2 text-text">“{tipCo.hero}”</div>}
               {tipPos.note && <div className="mt-2 text-muted">{tipPos.note}</div>}
               <div className="mt-2 flex justify-between text-muted">
-                <span>{tipId === '__client' ? 'Client' : `${OVERLAP[tipCo.overlap]?.label}${focusIds.has(tipCo.id) ? ' · in focus' : ''}`}</span>
-                <span className="num">x {tipPos.x} · y {tipPos.y}</span>
+                <span>{tipId === '__client' ? 'Client' : `${OVERLAP[tipCo.overlap]?.label}${focusIds.has(tipCo.id) ? ', in focus' : ''}`}</span>
+                <span className="num">x {tipPos.x}, y {tipPos.y}</span>
               </div>
             </div>
           )}
@@ -303,7 +313,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
           <div className="flex items-center justify-between gap-4 border-t border-line px-4 py-2 text-[11px] text-muted">
             <span>
               {lens.source === 'ai' ? 'AI estimate from public messaging.' : 'Custom axes, companies placed by AI.'}{agency && ' Drag a point to adjust; the AI estimate is kept.'}
-              {agency && unplaced.length > 0 && <> · <button disabled={placing} onClick={placeMissing} className="underline hover:text-text">{placing ? 'Placing…' : `Place ${unplaced.length} new with AI`}</button></>}
+              {agency && unplaced.length > 0 && <> <button disabled={placing} onClick={placeMissing} className="underline hover:text-text">{placing ? 'Placing…' : `Place ${unplaced.length} new with AI`}</button></>}
               {err && <span className="text-[var(--color-direct)]"> {err}</span>}
             </span>
             {agency && lenses.length > 1 && (
@@ -315,35 +325,6 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
         <Dossier c={selected || data.client} isClient={!selected} onClose={selected ? () => setSel(null) : undefined} extra={posBlock} />
       </div>
 
-      {/* findings */}
-      {data.findings?.length > 0 && (
-        <div>
-          <Label>Findings</Label>
-          <div className="grid gap-4 @3xl:grid-cols-3">
-            {data.findings.map((f, i) => {
-              const ids = data.companies.filter((c) => f.what.includes(shortName(c)) || f.what.includes(c.name.split(' ')[0])).map((c) => c.id);
-              return (
-                <Card key={i} className="p-4 transition hover:border-muted">
-                  <div onMouseEnter={() => ids.length && setHl(ids)} onMouseLeave={() => setHl(null)}>
-                    <div className="flex items-center justify-between text-[11px] text-muted">
-                      <span>{LENS_LABEL[f.lens || ''] || f.lens}</span>
-                      {f.confidence && <span>confidence: {f.confidence}</span>}
-                    </div>
-                    <div className="mt-2 text-[15px] font-medium leading-snug">{f.title}</div>
-                    <dl className="mt-3 space-y-2 text-[13px] leading-relaxed">
-                      <div><dt className="text-[11px] text-muted">What</dt><dd>{f.what}</dd></div>
-                      <div><dt className="text-[11px] text-muted">So what</dt><dd>{f.so_what}</dd></div>
-                      <div><dt className="text-[11px] text-muted">Now what</dt><dd>{f.now_what}</dd></div>
-                    </dl>
-                    {ids.length > 0 && <div className="mt-3 text-[11px] text-muted">Hover to highlight {ids.length} on the map</div>}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      </>)}
     </div>
   );
 }

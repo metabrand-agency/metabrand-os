@@ -22,7 +22,7 @@ export default function Setup() {
 
   return (
     <div className="grid-bg flex h-full items-center justify-center">
-      <form onSubmit={submit} className="w-[400px] rounded-2xl border border-line bg-panel p-8">
+      <form onSubmit={submit} className="w-[400px] rounded-md border border-line bg-panel p-8">
         <Logo />
         <h1 className="mt-8 text-xl font-semibold tracking-tight">First-time setup</h1>
         <p className="mt-1 text-[13px] text-muted">Creates the Metabrand organisation, your admin account and the SuperPlane demo project.</p>

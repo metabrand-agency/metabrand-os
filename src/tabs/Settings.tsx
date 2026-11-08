@@ -28,7 +28,7 @@ export default function Settings({ info, reload }: { info: WsInfo; reload: () =>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <Card className="p-5 text-[14px]">
           <div>Signed in as <span className="font-medium">{me?.user.email}</span></div>
-          <div className="mt-1 text-muted">Access to {info.name} · {info.access.level.replace('_', ' ')}</div>
+          <div className="mt-1 text-muted">Access to {info.name}, {info.access.level.replace('_', ' ')}</div>
           <div className="mt-4 text-[13px] text-muted">To add teammates or change access, write to your Metabrand team.</div>
           <div className="mt-4"><Btn onClick={logout}>Sign out</Btn></div>
         </Card>
@@ -43,7 +43,7 @@ export default function Settings({ info, reload }: { info: WsInfo; reload: () =>
       <VisibilityCard info={info} reload={reload} />
       <SourcesCard info={info} />
       <div className="flex items-center justify-between border-t border-line pt-4 text-[13px] text-muted">
-        <span>Signed in as {me?.user.email} · agency</span>
+        <span>Signed in as {me?.user.email} (agency)</span>
         <Btn onClick={logout}>Sign out</Btn>
       </div>
     </div>
@@ -124,7 +124,7 @@ function AccessCard({ info }: { info: WsInfo }) {
       )}
 
       {issued && (
-        <div className="mb-5 rounded-lg border border-line bg-panel-2 p-4">
+        <div className="mb-5 rounded-md border border-line bg-panel-2 p-4">
           <div className="flex items-center justify-between">
             <div className="text-[13px]">Code for <span className="font-medium">{issued.email}</span>, shown once:</div>
             <button onClick={() => setIssued(null)} className="text-muted hover:text-text" aria-label="Close">✕</button>
@@ -182,10 +182,10 @@ function SourcesCard({ info }: { info: WsInfo }) {
   }, [info.slug]);
   const ai = usage.find((u) => u.provider === 'anthropic');
   const rows: [string, string, boolean][] = [
-    ['AI chat, research and documents', health?.ai ? 'Anthropic API · connected' : 'Anthropic API · key not set', Boolean(health?.ai)],
-    ['Company facts (team, rounds, LinkedIn)', health?.apollo ? 'Apollo API · connected' : 'Apollo API · key not set (APOLLO_API_KEY)', Boolean(health?.apollo)],
-    ['DR, search traffic, brand searches', health?.ahrefs ? 'Ahrefs API · connected' : 'Ahrefs API · key not set (AHREFS_API_KEY)', Boolean(health?.ahrefs)],
-    ['Design files', 'Figma · links now, sync later', false],
+    ['AI chat, research and documents', health?.ai ? 'Anthropic API connected' : 'Anthropic API key not set', Boolean(health?.ai)],
+    ['Company facts (team, rounds, LinkedIn)', health?.apollo ? 'Apollo API connected' : 'Apollo key not set (APOLLO_API_KEY)', Boolean(health?.apollo)],
+    ['DR, search traffic, brand searches', health?.ahrefs ? 'Ahrefs API connected' : 'Ahrefs key not set (AHREFS_API_KEY)', Boolean(health?.ahrefs)],
+    ['Design files', 'Figma links now, sync later', false],
   ];
   return (
     <Section title="Data sources and usage" note="We start without paid integrations and add trials one by one to compare quality.">

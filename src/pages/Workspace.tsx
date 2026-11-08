@@ -15,11 +15,11 @@ export type WsInfo = {
   stage?: string; settings?: any; access: { level: string; isAgency: boolean };
 };
 
-type Tab = { id: string; label: string; icon: string; soon?: boolean };
+type Tab = { id: string; label: string; icon: string; soon?: boolean; children?: { id: string; label: string }[] };
 const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
-  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎' }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
+  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }] }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
   { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
@@ -30,6 +30,8 @@ export default function Workspace() {
   const nav = useNavigate();
   const raw = loc.pathname.split('/')[2] || 'overview';
   const tab = raw === 'market' ? 'competitors' : raw; // old links
+  const sub = loc.pathname.split('/')[3] || '';
+  const [openGroups, setOpenGroups] = useState<string[]>(['lenses']);
   const focus = new URLSearchParams(loc.search).get('focus') || undefined;
   const [info, setInfo] = useState<WsInfo | null>(null);
   const [err, setErr] = useState('');
@@ -65,13 +67,32 @@ export default function Workspace() {
             return (
               <div key={gi}>
                 {g.title && <div className="px-3 pb-1 text-[11px] font-medium text-muted">{g.title}</div>}
-                {tabs.map((t) => (
-                  <button key={t.id} disabled={t.soon} onClick={() => go(t.id)} className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition disabled:cursor-default ${tab === t.id ? 'bg-panel-2 font-medium text-text shadow-[inset_2px_0_0_var(--mb-brand)]' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
-                    <span className="w-4 text-center text-[12px] opacity-70">{t.icon}</span>
-                    <span className="flex-1">{t.label}</span>
-                    {t.soon && <span className="rounded border border-line px-1.5 text-[10px] text-muted">soon</span>}
-                  </button>
-                ))}
+                {tabs.map((t) => {
+                  const open = openGroups.includes(t.id);
+                  const active = tab === t.id && !t.children;
+                  return (
+                    <div key={t.id}>
+                      <button
+                        disabled={t.soon}
+                        onClick={() => (t.children ? setOpenGroups(open ? openGroups.filter((x) => x !== t.id) : [...openGroups, t.id]) : go(t.id))}
+                        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition disabled:cursor-default ${active ? 'bg-panel-2 font-medium text-text shadow-[inset_2px_0_0_var(--mb-brand)]' : tab === t.id ? 'text-text' : 'text-muted hover:bg-panel-2 hover:text-text'}`}
+                      >
+                        <span className="w-4 text-center text-[12px] opacity-70">{t.icon}</span>
+                        <span className="flex-1">{t.label}</span>
+                        {t.soon && <span className="rounded border border-line px-1.5 text-[10px] text-muted">soon</span>}
+                        {t.children && <svg viewBox="0 0 16 16" className={`h-3 w-3 text-muted transition ${open ? '' : '-rotate-90'}`}><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                      </button>
+                      {t.children && open && t.children.map((ch, i) => {
+                        const on = tab === t.id && (sub === ch.id || (!sub && i === 0));
+                        return (
+                          <button key={ch.id} onClick={() => nav(`/${slug}/${t.id}/${ch.id}`)} className={`flex w-full items-center rounded-md py-1.5 pl-[42px] pr-3 text-left text-[13px] ${on ? 'bg-panel-2 font-medium text-text shadow-[inset_2px_0_0_var(--mb-brand)]' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
+                            {ch.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -82,20 +103,20 @@ export default function Workspace() {
               <span className="w-4 text-center text-[12px] opacity-70">⚙</span>Settings
             </button>
           )}
-          <div className="px-3 pt-2 text-[11px] text-muted">{info.access.isAgency ? 'Agency' : 'Client'} · {info.access.level.replace('_', ' ')}</div>
+          <div className="px-3 pt-2 text-[11px] text-muted">{info.access.isAgency ? 'Agency' : 'Client'}, {info.access.level.replace('_', ' ')}</div>
           <div className="px-3 pt-2"><ThemeSwitch /></div>
         </div>
       </aside>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 flex h-12 items-center justify-between border-b border-line bg-ink/85 px-8 backdrop-blur">
-          <div className="text-[13px] text-muted">{info.name} <span className="px-1">/</span> <span className="text-text">{TABS.find((t) => t.id === tab)?.label}</span></div>
+          <div className="text-[13px] text-muted">{info.name} <span className="px-1">/</span> <span className="text-text">{TABS.find((t) => t.id === tab)?.label}</span>{tab === 'lenses' && <><span className="px-1">/</span><span className="text-text">{sub === 'seo' ? 'SEO content gap' : 'Market maps'}</span></>}</div>
           {!chatOpen && <button onClick={() => setChatOpen(true)} className="brand-dot rounded-full px-3 py-1 text-[12px] font-medium text-brand-ink hover:brightness-95">✦ Ask AI</button>}
         </div>
         <div className="px-8 py-8">
           {tab === 'overview' && <Overview info={info} reload={reload} />}
           {tab === 'competitors' && <Competitors info={info} focus={focus} />}
-          {tab === 'lenses' && <Lenses info={info} focus={focus} />}
+          {tab === 'lenses' && <Lenses info={info} focus={focus} view={sub === 'seo' || ['seo', 'content gap', 'keywords'].includes((focus || '').toLowerCase()) ? 'seo' : 'maps'} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}
