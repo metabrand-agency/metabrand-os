@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Btn, Card, Input, Label, Select, Badge } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
+import BrandKit from './BrandKit';
 
 const KIND_LABEL: Record<string, string> = { figma: 'Figma', github_repo: 'GitHub', video: 'Video', webflow_site: 'Webflow', website: 'Website', link: 'Link', logo: 'Logo', font: 'Font' };
 
@@ -21,8 +22,12 @@ export default function Assets({ info }: { info: WsInfo }) {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
-        <p className="mt-1 text-[13px] text-muted">What the brand ships with: logos, Figma libraries and templates, code, videos, sites. Briefs, calls and references go to Memory.</p>
+        <p className="mt-1 text-[13px] text-muted">What the brand ships with: logos, colours, fonts and icons to download, plus Figma libraries, code, videos and sites. Briefs, calls and references go to Memory.</p>
       </div>
+
+      <BrandKit info={info} />
+
+      <h2 className="border-t border-line pt-8 text-[17px] font-semibold tracking-tight">Files and links</h2>
 
       {info.access.isAgency && (
         <Card className="p-5">

@@ -18,6 +18,7 @@
   "homepage": "https://github.com/metabrand-agency/metabrand-os#readme",
   "dependencies": {
     "d3-geo": "^3.1.2",
+    "fflate": "^0.8.3",
     "hono": "^4.13.17",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

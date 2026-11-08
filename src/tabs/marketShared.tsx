@@ -28,7 +28,8 @@ export type SeoCountry = {
   gap: { keywords: { keyword: string; volume: number; kd?: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
 };
 export type News = { query: string; count_30d: number; latest: { title: string; url: string; date?: string; source?: string }[]; checked_at: number };
-export type Activity = { v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
+export type Links = { count_30d: number; capped?: boolean; latest: { title: string; url: string; date?: string; published?: string; source?: string; dr?: number; type?: string }[]; checked_at: number };
+export type Activity = { links?: Links | null; v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
 export const ACTIVITY_V = 2; // matches the server; older entries are collected again
 export type MarketData = {
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
@@ -111,7 +112,7 @@ export function useActivityRefresh(slug: string, data: MarketData | null | undef
   const dataRef = useRef(data);
   dataRef.current = data;
 
-  const refresh = useCallback(async (only?: string[]) => {
+  const refresh = useCallback(async (only?: string[], force = false) => {
     const d = dataRef.current;
     if (!d) return;
     const queue = [...(only || focusOrder(d))];
@@ -123,7 +124,7 @@ export function useActivityRefresh(slug: string, data: MarketData | null | undef
       for (let id = queue.shift(); id; id = queue.shift()) {
         const cur = id;
         setProgress((p) => ({ ...p, active: [...p.active, cur] }));
-        try { accept(await api<Row>(`/w/${slug}/radar/refresh`, { body: { id: cur } })); } catch { fails.push(cur); }
+        try { accept(await api<Row>(`/w/${slug}/radar/refresh`, { body: { id: cur, force } })); } catch { fails.push(cur); }
         setProgress((p) => ({ ...p, done: p.done + 1, active: p.active.filter((x) => x !== cur) }));
       }
     };

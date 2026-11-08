@@ -226,17 +226,66 @@ export function newsQuery(c: any) {
   return `"${name}" AND (AI OR software OR startup OR developer)`;
 }
 
+/**
+ * New links from articles in the last 30 days (Ahrefs): listicles, news, stories, opinion pieces.
+ * Docs, tutorials, repos and link farms are dropped. About 8 Ahrefs units per row, so at most 20 rows.
+ */
+export async function newLinksFor(env: Env, url: string) {
+  if (!env.AHREFS_API_KEY) return null;
+  let host = '';
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
+  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const where = { and: [
+    { field: 'first_seen_link', is: ['gte', since] },
+    { field: 'is_content', is: ['eq', true] },
+    { field: 'is_spam', is: ['eq', false] },
+    { field: 'page_type_source', is: ['substring', 'Article'] },
+    { not: { field: 'page_type_source', is: ['substring', 'Tutorial'] } },
+    { not: { field: 'page_type_source', is: ['substring', 'How_to'] } },
+  ] };
+  const q = new URLSearchParams({
+    target: host, mode: 'subdomains', history: 'live', aggregation: '1_per_domain', limit: '20', order_by: 'domain_rating_source:desc',
+    select: 'url_from,title,name_source,domain_rating_source,first_seen_link,source_page_publish_date,page_type_source',
+    where: JSON.stringify(where),
+  });
+  const r = await fetch(`https://api.ahrefs.com/v3/site-explorer/all-backlinks?${q}`, { headers: { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json' }, signal: AbortSignal.timeout(20000) }).catch(() => null);
+  if (!r?.ok) return null;
+  const j: any = await r.json().catch(() => null);
+  const root = host.split('.').slice(-2).join('.');
+  const rows = (j?.backlinks || []).filter((b: any) => {
+    const src = String(b.name_source || '').replace(/^www\./, '');
+    return b.title && b.url_from && !src.endsWith(root)
+      && !/^\d+\.|\.xyz$|^github\.com$|pbn/i.test(src) // link farms and code repos
+      && String(b.title).length < 220;
+  });
+  const type = (t?: string) => (t || '').split(',')[0].split('/').pop()?.replace(/_/g, ' ') || 'Article';
+  const latest = rows.map((b: any) => ({
+    title: decode(String(b.title)).replace(/\s+[|–—-]\s+[^|–—-]{2,40}$/, ''),
+    url: b.url_from,
+    date: b.first_seen_link,
+    published: b.source_page_publish_date || undefined,
+    source: String(b.name_source).replace(/^www\./, ''),
+    dr: b.domain_rating_source != null ? Math.round(b.domain_rating_source) : undefined,
+    type: type(b.page_type_source),
+  }));
+  return { count_30d: latest.length, capped: (j?.backlinks || []).length >= 20, latest, checked_at: Date.now() };
+}
+
 /** Refreshes one company (one request per company keeps us within the platform's outbound request limit). */
-export async function refreshOne(env: Env, c: any) {
+export async function refreshOne(env: Env, c: any, prev?: any, forceLinks = false) {
   const hq = c?.hq?.split('/')[0]?.trim();
-  const [act, news, ah, geo] = await Promise.all([
+  // Ahrefs links cost units: reuse them for a week unless someone asks for an update
+  const linksFresh = !forceLinks && prev?.links && Date.now() - prev.links.checked_at < 7 * 864e5;
+  const [act, news, ah, geo, links] = await Promise.all([
     c.url ? activityFor(c.url).catch(() => null) : null,
     newsFor(newsQuery(c)).catch(() => null),
     c.url ? ahrefs(env, c.url, c.short || c.name) : null,
     hq && c.geo?.q !== hq ? geocode(hq) : null,
+    linksFresh ? prev.links : c.url ? newLinksFor(env, c.url).catch(() => null) : null,
   ]);
+  const extra = { news, links: links || prev?.links || null };
   return {
-    activity: act ? { ...act, news } : news ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), news } : null,
+    activity: act ? { ...act, ...extra } : news || links ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), ...extra } : null,
     ahrefs: ah ? { ...(c.ahrefs || {}), ...ah } : undefined,
     geo: geo ? { ...geo, q: hq } : undefined,
   };

@@ -5,11 +5,12 @@ import { Btn, Card, Favicon, Select } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import { EmptyResearch, MarketData, RefreshButton, companyById, displayName, domain, focusOrder, useActivityRefresh, useResearch } from './marketShared';
 
-type Item = { id: string; kind: 'news' | 'post'; title: string; url: string; date?: string; source?: string };
+type Item = { id: string; kind: 'news' | 'post' | 'link'; title: string; url: string; date?: string; source?: string; dr?: number; type?: string };
 const fmtDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 const cleanSource = (s?: string) => (s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 const cleanTitle = (t: string, src?: string) => (src && t.endsWith(` - ${src}`) ? t.slice(0, -(src.length + 3)) : t);
-const KINDS = ['all', 'news', 'post'] as const;
+const KINDS = ['all', 'news', 'link', 'post'] as const;
+const KIND_LABEL: Record<Item['kind'], string> = { news: 'News', link: 'New link', post: 'Own post' };
 const PERIODS = ['30', '90', 'all'] as const;
 
 export default function Monitor({ info }: { info: WsInfo }) {
@@ -33,6 +34,7 @@ export default function Monitor({ info }: { info: WsInfo }) {
     return [
       ...(a.news?.latest || []).map((n) => ({ id, kind: 'news' as const, ...n, title: cleanTitle(n.title, n.source), source: cleanSource(n.source) })),
       ...(a.latest || []).map((p) => ({ id, kind: 'post' as const, ...p, source: domain(p.url) })),
+      ...(a.links?.latest || []).map((l) => ({ id, kind: 'link' as const, ...l })),
     ];
   });
   const shown = items
@@ -46,10 +48,10 @@ export default function Monitor({ info }: { info: WsInfo }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">PR Monitor</h1>
-          <div className="mt-1 text-[13px] text-muted">News and own posts, {data.client.name} and {ids.length - 1} competitors in focus</div>
+          <div className="mt-1 text-[13px] text-muted">News, new links from articles and own posts, {data.client.name} and {ids.length - 1} competitors in focus</div>
         </div>
         <div className="flex gap-2">
-          {agency && <Btn disabled={busy} onClick={() => refresh()}>{label}</Btn>}
+          {agency && <Btn disabled={busy} onClick={() => refresh(undefined, true)}>{label}</Btn>}
           <RefreshButton hasNew={hasNew} onClick={reload} />
         </div>
       </div>
@@ -57,7 +59,7 @@ export default function Monitor({ info }: { info: WsInfo }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <Select value={who} onChange={setWho} options={['all', ...ids]} labels={Object.fromEntries([['all', 'All companies'], ...ids.map((id) => [id, displayName(data, id)])])} />
-        <Select value={kind} onChange={(v) => setKind(v as typeof kind)} options={KINDS} labels={{ all: 'News and own posts', news: 'News', post: 'Own posts' }} />
+        <Select value={kind} onChange={(v) => setKind(v as typeof kind)} options={KINDS} labels={{ all: 'All types', news: 'News', link: 'New links (Ahrefs)', post: 'Own posts' }} />
         <Select value={period} onChange={(v) => setPeriod(v as typeof period)} options={PERIODS} labels={{ 30: 'Last 30 days', 90: 'Last 90 days', all: 'Any time' }} />
         <span className="num ml-1 text-[12px] text-muted">{shown.length} items</span>
       </div>
@@ -82,9 +84,9 @@ export default function Monitor({ info }: { info: WsInfo }) {
                   <td className="px-3 py-2">
                     <span className={`flex min-w-0 items-center gap-1.5 ${x.id === '__client' ? 'font-medium' : ''}`}><Favicon url={c.url} name={c.name} size={14} /><span className="truncate">{displayName(data, x.id)}</span></span>
                   </td>
-                  <td className="px-3 py-2 text-muted">{x.kind === 'news' ? 'News' : 'Own post'}</td>
+                  <td className="px-3 py-2 text-muted" title={x.type}>{KIND_LABEL[x.kind]}</td>
                   <td className="px-3 py-2"><a href={x.url} target="_blank" rel="noreferrer" className="line-clamp-2 hover:underline">{x.title}</a></td>
-                  <td className="truncate px-4 py-2 text-muted">{x.source}</td>
+                  <td className="px-4 py-2 text-muted"><span className="flex items-baseline justify-between gap-2"><span className="truncate">{x.source}</span>{x.dr != null && <span className="num shrink-0 text-[11px]" title="Ahrefs Domain Rating of the linking site">DR {x.dr}</span>}</span></td>
                 </tr>
               );
             })}

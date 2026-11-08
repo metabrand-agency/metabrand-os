@@ -9,6 +9,7 @@ import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
 import { refreshOne, focusIds } from './radar';
+import { SUPERPLANE_KIT } from './kits/superplane';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -307,10 +308,15 @@ app.delete('/w/:slug/assets/:id', async (c) => {
 // research
 app.get('/w/:slug/research/:kind', async (c) => {
   const ws = c.get('ws');
-  const row = await c.env.DB.prepare('SELECT data_json, status, updated_at FROM research WHERE workspace_id = ? AND kind = ?').bind(ws.id, c.req.param('kind')).first<any>();
+  const settings = JSON.parse(ws.settings_json || '{}');
+  let row = await c.env.DB.prepare('SELECT data_json, status, updated_at FROM research WHERE workspace_id = ? AND kind = ?').bind(ws.id, c.req.param('kind')).first<any>();
+  // demo workspace: brand kit taken from its Figma guidelines
+  if (!row && c.req.param('kind') === 'brand_kit' && settings.demo) {
+    row = { data_json: JSON.stringify(SUPERPLANE_KIT), status: 'published', updated_at: Date.now() };
+    await c.env.DB.prepare('INSERT INTO research (workspace_id, kind, data_json, status, updated_at) VALUES (?, ?, ?, ?, ?)').bind(ws.id, 'brand_kit', row.data_json, row.status, row.updated_at).run();
+  }
   if (!row || (!c.get('access').isAgency && row.status !== 'published')) return c.json(null);
   let data = JSON.parse(row.data_json);
-  const settings = JSON.parse(ws.settings_json || '{}');
   const patched = settings.demo && c.req.param('kind') === 'market_map' ? applyDemoPatch(data) : null;
   if (patched) {
     data = patched;
@@ -424,7 +430,7 @@ app.post('/w/:slug/radar/refresh', async (c) => {
   const deny = agencyOnly(c);
   if (deny) return deny;
   const ws = c.get('ws');
-  const { id } = await c.req.json<{ id?: string }>();
+  const { id, force } = await c.req.json<{ id?: string; force?: boolean }>();
   const load = async () => {
     const r = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
     return r ? { data: JSON.parse(r.data_json), status: r.status } : null;
@@ -434,7 +440,7 @@ app.post('/w/:slug/radar/refresh', async (c) => {
   if (!id) return c.json({ ids: ['__client', ...focusIds(cur.data)] });
   const company = id === '__client' ? cur.data.client : cur.data.companies.find((x: any) => x.id === id);
   if (!company) return c.json({ error: 'Unknown company' }, 404);
-  const res = await refreshOne(c.env, company);
+  const res = await refreshOne(c.env, company, cur.data.activity?.[id], !!force);
   // write only this company's fields, atomically, so parallel refreshes and edits don't overwrite each other
   const idx = cur.data.companies.findIndex((x: any) => x.id === id);
   const at = id === '__client' ? '$.client' : `$.companies[${idx}]`;
