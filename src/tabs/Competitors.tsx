@@ -6,7 +6,7 @@ import { Fragment, ReactNode, useEffect, useState } from 'react';
 import { api, fmtDate } from '../api';
 import { Btn, Card, Favicon, Input, Select } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
-import { Company, Dossier, EmptyResearch, JsonEditor, MarketData, OVERLAP, RefreshButton, Socials, Swatch, fmtNum, lensesOf, selectedIds, shortName, siteName, useResearch } from './marketShared';
+import { Company, Dossier, EmptyResearch, JsonEditor, MarketData, OVERLAP, RefreshButton, SitePreview, Socials, Swatch, fmtNum, lensesOf, selectedIds, shortName, siteName, useResearch, warmShots } from './marketShared';
 
 const OVERLAP_ORDER = ['direct', 'angle', 'substitute', 'may_enter'];
 const FACTS = ['founded', 'employees', 'last_round', 'hq', 'linkedin', 'founder', 'founder_linkedin', 'open_source'] as const;
@@ -18,7 +18,7 @@ type Col = { id: string; label: string; title?: string; num?: boolean; short?: b
 
 const COLUMNS: Col[] = [
   { id: 'overlap', label: 'Type', get: (c) => OVERLAP_ORDER.indexOf(c.overlap), render: (c) => (c.overlap ? <span className="flex items-center gap-1.5"><Swatch k={c.overlap} />{OVERLAP[c.overlap]?.label}</span> : '') },
-  { id: 'website', label: 'Website', get: (c) => siteName(c.url), render: (c) => (c.url ? <a href={c.url} target="_blank" onClick={(e) => e.stopPropagation()} className="text-muted underline decoration-line underline-offset-2 hover:text-text">{siteName(c.url)}</a> : '—') },
+  { id: 'website', label: 'Website', get: (c) => siteName(c.url), render: (c) => (c.url ? <SitePreview url={c.url}><a href={c.url} target="_blank" onClick={(e) => e.stopPropagation()} className="text-muted underline decoration-line underline-offset-2 hover:text-text">{siteName(c.url)}</a></SitePreview> : '—') },
   { id: 'social', label: 'Social', sortable: false, get: () => '', render: (c) => <Socials c={c} /> },
   { id: 'founder', label: 'Founder / CEO', get: (c) => c.founder, render: (c) => (c.founder ? (c.founder_linkedin ? <a href={c.founder_linkedin} target="_blank" onClick={(e) => e.stopPropagation()} className="underline decoration-line underline-offset-2 hover:decoration-text">{c.founder}</a> : c.founder) : '—') },
   { id: 'segment', label: 'Segment', get: (c) => c.segment, cls: 'text-muted' },
@@ -67,6 +67,10 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
   const [review, setReview] = useState<Review | null>(null);
   const [err, setErr] = useState('');
   const data = row?.data;
+
+  // start rendering site screenshots once, so hover previews are ready
+  const urlsKey = data ? [data.client.url, ...data.companies.map((c) => c.url)].join('|') : '';
+  useEffect(() => { if (data) warmShots([data.client.url, ...data.companies.map((c) => c.url)]); }, [urlsKey]);
 
   useEffect(() => {
     if (!data || !focus) return;

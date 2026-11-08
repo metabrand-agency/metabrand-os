@@ -1,5 +1,6 @@
 // Shared pieces for the Market (companies) and Lenses (matrices) tabs.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api';
 import { Btn, Card, Favicon, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
@@ -112,6 +113,38 @@ export function Socials({ c }: { c: Company }) {
   );
 }
 export const siteName = (u?: string) => (u ? domain(u) : '');
+
+/** First-screen screenshot of a site (WordPress mShots: free, no key; the first request starts rendering). */
+export const shotUrl = (u: string) => `https://s.wordpress.com/mshots/v1/${encodeURIComponent(u)}?w=1280&h=800`;
+/** Ask for screenshots in advance so hover previews are ready. */
+export function warmShots(urls: (string | undefined)[]) {
+  for (const u of urls) if (u) { const i = new Image(); i.src = shotUrl(u); }
+}
+
+/** Shows a small first-screen preview of the site while hovering the link. */
+export function SitePreview({ url, children }: { url: string; children: React.ReactNode }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const W = 320, H = 200;
+  return (
+    <span
+      onMouseEnter={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const below = r.bottom + 8 + H + 28 < window.innerHeight;
+        setPos({ x: Math.min(r.left, window.innerWidth - W - 12), y: below ? r.bottom + 8 : r.top - H - 36 });
+      }}
+      onMouseLeave={() => setPos(null)}
+    >
+      {children}
+      {pos && createPortal(
+        <div style={{ position: 'fixed', left: pos.x, top: pos.y, width: W }} className="pointer-events-none z-50 overflow-hidden rounded-lg border border-line bg-panel shadow-xl">
+          <img src={shotUrl(url)} alt="" style={{ width: W, height: H }} className="block bg-panel-2 object-cover object-top" />
+          <div className="border-t border-line px-2.5 py-1.5 text-[11px] text-muted">{domain(url)} · first screen</div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
+}
 
 export function Swatch({ k }: { k: string }) {
   if (k === 'may_enter') return <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted" />;
