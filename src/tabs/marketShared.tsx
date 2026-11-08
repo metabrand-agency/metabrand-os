@@ -14,6 +14,7 @@ export type Company = {
   data_sources?: string[];
   socials?: { x?: string; github?: string; youtube?: string; facebook?: string };
   client_pick?: { quote?: string; doc?: string };
+  geo?: { lat: number; lng: number; q?: string };
   selected?: boolean;
 };
 export type Finding = { lens?: string; title: string; what: string; so_what: string; now_what: string; confidence?: string };
@@ -26,9 +27,11 @@ export type SeoCountry = {
   top: Record<string, { all: SeoKw[]; content: SeoKw[] }>;
   gap: { keywords: { keyword: string; volume: number; kd?: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
 };
+export type Activity = { source?: string; posts_30d: number; latest: { title: string; url: string; date?: string }[]; checked_at: number };
 export type MarketData = {
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
   seo?: Record<string, SeoCountry>;
+  activity?: Record<string, Activity>;
 };
 export type Row = { data: MarketData; status: string; updated_at: number };
 

@@ -8,6 +8,7 @@ import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
 import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
+import Radar from '../tabs/Radar';
 import Settings from '../tabs/Settings';
 
 export type WsInfo = {
@@ -19,7 +20,7 @@ type Tab = { id: string; label: string; icon: string; soon?: boolean; children?:
 const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
-  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }] }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
+  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }] }, { id: 'radar', label: 'Brand Radar', icon: '◉' }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
   { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
@@ -117,6 +118,7 @@ export default function Workspace() {
           {tab === 'overview' && <Overview info={info} reload={reload} />}
           {tab === 'competitors' && <Competitors info={info} focus={focus} />}
           {tab === 'lenses' && <Lenses info={info} focus={focus} view={sub === 'seo' || ['seo', 'content gap', 'keywords'].includes((focus || '').toLowerCase()) ? 'seo' : 'maps'} />}
+          {tab === 'radar' && <Radar info={info} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}
