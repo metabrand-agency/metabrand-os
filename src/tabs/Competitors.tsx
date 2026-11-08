@@ -230,7 +230,7 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => setFilter(null)} className={`rounded-full border px-3 py-1 text-[12px] ${!filter ? 'border-text' : 'border-line text-muted hover:text-text'}`}>All {N}</button>
-        {picks > 0 && <button onClick={() => setFilter(filter === 'client_pick' ? null : 'client_pick')} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] ${filter === 'client_pick' ? 'border-text' : 'border-line text-muted hover:text-text'}`}><span className="brand-dot h-2.5 w-2.5 rounded-full" /> Named by client <span className="num">{picks}</span></button>}
+        {picks > 0 && <button onClick={() => setFilter(filter === 'client_pick' ? null : 'client_pick')} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] ${filter === 'client_pick' ? 'border-text' : 'border-line text-muted hover:text-text'}`}><span className="h-3 w-[5px] rounded-[1px] bg-brand" /> Named by client <span className="num">{picks}</span></button>}
         {OVERLAP_ORDER.map((k) => (
           <button key={k} title={OVERLAP[k].note} onClick={() => setFilter(filter === k ? null : k)} className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] ${filter === k ? 'border-text' : 'border-line text-muted hover:text-text'}`}>
             <Swatch k={k} /> {OVERLAP[k].label} <span className="num">{counts[k]}</span>
@@ -291,13 +291,12 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
                 return (
                   <Fragment key={c.id}>
                     <tr onClick={() => setSel(c.id === sel ? null : c.id)} className={`group cursor-pointer border-b border-line last:border-0 hover:bg-panel-2 ${sel === c.id ? 'bg-panel-2' : ''} ${isWorking ? 'bg-panel-2' : ''}`}>
-                      <td className={`${pin(bg)} left-0 w-10 min-w-10 max-w-10 py-2.5 pl-3 pr-0`} onClick={(e) => e.stopPropagation()}>
+                      <td title={c.client_pick ? 'Named by the client' : undefined} className={`${pin(bg)} left-0 w-10 min-w-10 max-w-10 py-2.5 pl-3 pr-0 ${c.client_pick ? 'shadow-[inset_5px_0_0_var(--mb-brand)]' : ''}`} onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={on} disabled={!agency} onChange={() => toggle(c.id)} className="h-4 w-4 cursor-pointer align-middle accent-[var(--mb-text)] disabled:cursor-default" aria-label={`${c.name} in focus`} />
                       </td>
                       <td className={`${pin(bg)} left-10 px-3 py-2.5 whitespace-nowrap shadow-[1px_0_0_var(--mb-line)]`}>
                         <div className={`flex items-center gap-2 font-medium ${on ? '' : 'opacity-45'}`}>
                           <Favicon url={c.url} name={c.name} />{shortName(c)}
-                          {c.client_pick && <span title="Named by the client" className="brand-dot h-2 w-2 rounded-full" />}
                           {isWorking && <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-line border-t-text" />}
                         </div>
                         {isWorking && <div className="mt-0.5 pl-6 text-[11px] text-muted"><span className="animate-pulse">Enriching: Apollo, Ahrefs, AI web search…</span></div>}
