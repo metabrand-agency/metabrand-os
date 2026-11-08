@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
+import Markdown from './Markdown';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Action = { type: 'navigate'; tab: string; focus?: string };
@@ -70,7 +71,7 @@ export default function Chat({ slug, name, onAction, onClose }: { slug: string; 
           const last = i === msgs.length - 1;
           return (
             <div key={i} className="anim-rise text-[13px] leading-relaxed">
-              <div className="whitespace-pre-wrap">{body}</div>
+              <Markdown text={body} />
               {last && options.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {options.map((o) => (
