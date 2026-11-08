@@ -8,7 +8,7 @@ type Post = { title: string; url: string; date?: string };
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const GEO_UA = 'MetabrandOS/1.0 (+https://app.metabrand.digital)';
 
-async function getText(url: string, ms = 7000): Promise<{ text: string; url: string; type: string } | null> {
+export async function getText(url: string, ms = 7000): Promise<{ text: string; url: string; type: string } | null> {
   try {
     const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', 'accept-language': 'en-US,en;q=0.9' }, redirect: 'follow', signal: AbortSignal.timeout(ms) });
     if (!r.ok) return null;
@@ -37,7 +37,7 @@ async function getHead(url: string, ms = 6000): Promise<string | null> {
     return null;
   }
 }
-const metaOf = (html: string, key: string) =>
+export const metaOf = (html: string, key: string) =>
   html.match(new RegExp(`<meta[^>]+(?:property|name|itemprop)=["']${key}["'][^>]*content=["']([^"']+)["']`, 'i'))?.[1] ||
   html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name|itemprop)=["']${key}["']`, 'i'))?.[1];
 /** The page's preview image (og:image or twitter:image), absolute, or null. */
@@ -57,7 +57,7 @@ async function articleInfo(url: string): Promise<{ title?: string; date?: string
   return { title: title ? decode(title).replace(/\s+[|–—-]\s+[^|–—-]+$/, '') : undefined, date: isoDate(date) };
 }
 
-const decode = (s: string) =>
+export const decode = (s: string) =>
   s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&#x([\da-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16))).replace(/\s+/g, ' ').trim();
 const tag = (xml: string, name: string) => xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i'))?.[1];

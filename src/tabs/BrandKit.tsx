@@ -6,13 +6,15 @@ import { strToU8, zipSync } from 'fflate';
 import { api } from '../api';
 import { Btn, Card, Input, Label, Select } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
+import { Shot } from './marketShared';
 
 export type KitVariant = { color: string; bg?: string | null; file: string };
 export type KitLogo = { id: string; name: string; w: number; h: number; frame?: { w: number; h: number }; svg: string; mono?: boolean; variants: KitVariant[] };
 export type KitColor = { name: string; hex: string; rgb?: string; cmyk?: string; pantone?: string };
 export type KitFont = { family: string; google?: boolean; weights?: number[]; use?: string; styles?: { name: string; tag?: string; weight: number; size: number; lh: number; ls: number; upper?: boolean; sample: string }[] };
 export type KitIcon = { id: string; name: string; w: number; h: number; svg: string; mono?: boolean };
-export type Kit = { brand: string; source?: string; logos: KitLogo[]; colors: { group: string; items: KitColor[] }[]; fonts: KitFont[]; icons: KitIcon[]; icon_color?: string };
+export type KitLink = { title: string; url: string; note?: string };
+export type Kit = { links?: KitLink[]; brand: string; source?: string; logos: KitLogo[]; colors: { group: string; items: KitColor[] }[]; fonts: KitFont[]; icons: KitIcon[]; icon_color?: string };
 
 // ---------- drawing and files ----------
 const svgDoc = (inner: string, w: number, h: number, outW = w, outH = h) =>
@@ -197,6 +199,30 @@ function KitView({ kit, agency, onChange }: { kit: Kit; agency: boolean; onChang
           <Btn kind="primary" disabled={!!busy} onClick={() => run('all', everything)}>{busy === 'all' ? 'Packing…' : 'Download brand kit (ZIP)'}</Btn>
         </div>
       </div>
+
+      {/* Brand tools and pages on the client's own site (generative art, brand book, press kit) */}
+      {(!!kit.links?.length || edit) && (
+        <section>
+          <h2 className="mb-3 text-[17px] font-semibold tracking-tight">Brand tools</h2>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {(kit.links || []).map((l, i) => (
+              <Card key={l.url} className="group overflow-hidden">
+                <a href={l.url} target="_blank" rel="noreferrer" className="block">
+                  <Shot url={l.url} className="aspect-[16/10] w-full border-b border-line bg-panel-2 object-cover object-top" />
+                </a>
+                <div className="flex items-start justify-between gap-2 p-3">
+                  <a href={l.url} target="_blank" rel="noreferrer" className="min-w-0">
+                    <div className="text-[13px] font-medium hover:underline">{l.title} ↗</div>
+                    <div className="truncate text-[12px] text-muted">{l.note || l.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</div>
+                  </a>
+                  {edit && <button onClick={() => onChange({ ...kit, links: (kit.links || []).filter((_, j) => j !== i) })} className="shrink-0 text-[11px] text-muted hover:text-[var(--color-direct)]">Remove</button>}
+                </div>
+              </Card>
+            ))}
+          </div>
+          {edit && <AddLink kit={kit} onChange={onChange} />}
+        </section>
+      )}
 
       {/* Logos */}
       <section id="kit-logos" className="scroll-mt-16">
@@ -447,6 +473,24 @@ function AddFont({ kit, onChange }: { kit: Kit; onChange: (k: Kit) => Promise<vo
       <div className="w-56"><Input placeholder="Google font, e.g. Inter" value={f.family} onChange={(e) => setF({ ...f, family: e.target.value })} /></div>
       <div className="w-56"><Input placeholder="Used for, e.g. Headings" value={f.use} onChange={(e) => setF({ ...f, use: e.target.value })} /></div>
       <Btn type="submit" disabled={!f.family.trim()}>Add font</Btn>
+    </form>
+  );
+}
+
+function AddLink({ kit, onChange }: { kit: Kit; onChange: (k: Kit) => Promise<void> }) {
+  const [f, setF] = useState({ title: '', url: '' });
+  return (
+    <form className="mt-3 flex flex-wrap items-center gap-2" onSubmit={async (e) => {
+      e.preventDefault();
+      const u = f.url.trim();
+      if (!u) return;
+      const url = /^https?:\/\//.test(u) ? u : `https://${u}`;
+      await onChange({ ...kit, links: [...(kit.links || []), { title: f.title.trim() || url.replace(/^https?:\/\//, ''), url }] });
+      setF({ title: '', url: '' });
+    }}>
+      <div className="w-56"><Input placeholder="Title, e.g. Generative art" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+      <div className="w-72"><Input placeholder="Link" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} /></div>
+      <Btn type="submit" disabled={!f.url.trim()}>Add link</Btn>
     </form>
   );
 }

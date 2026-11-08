@@ -31,7 +31,9 @@ export type News = { query: string; count_30d: number; latest: { title: string; 
 export type Links = { count_30d: number; capped?: boolean; latest: { title: string; url: string; date?: string; published?: string; source?: string; dr?: number; type?: string }[]; checked_at: number };
 export type Activity = { links?: Links | null; v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
 export const ACTIVITY_V = 2; // matches the server; older entries are collected again
+export type Branding = { v?: number; palette: { hex: string; role: 'accent' | 'neutral'; share: number }[]; accent: string | null; fonts: { family: string; source: string }[]; image: string | null; theme_color?: string | null; checked_at: number };
 export type MarketData = {
+  branding?: Record<string, Branding>;
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
   seo?: Record<string, SeoCountry>;
   activity?: Record<string, Activity>;
@@ -101,16 +103,19 @@ export const companyById = (d: MarketData, id: string) => (id === '__client' ? d
 export const displayName = (d: MarketData, id: string) => (id === '__client' ? d.client.name : shortName(companyById(d, id)));
 
 /**
- * Collects posts, news, HQ coordinates and fresh Ahrefs metrics, one request per company, three at a time.
- * On the first visit it fills in whatever is missing or older than a day (agency only; free sources).
+ * Runs one request per company (client + competitors in focus), three at a time, with progress.
+ * On the first visit it fills in whatever `stale` reports as missing or old (agency only).
  */
-export function useActivityRefresh(slug: string, data: MarketData | null | undefined, accept: (r: Row) => void, agency: boolean) {
+export function useCompanyQueue(opts: { slug: string; data: MarketData | null | undefined; accept: (r: Row) => void; agency: boolean; path: string; stale: (d: MarketData, id: string) => boolean; idle: string }) {
+  const { slug, data, accept, agency, path, idle } = opts;
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; active: string[] }>({ done: 0, total: 0, active: [] });
   const [err, setErr] = useState('');
   const tried = useRef(false);
   const dataRef = useRef(data);
   dataRef.current = data;
+  const staleRef = useRef(opts.stale);
+  staleRef.current = opts.stale;
 
   const refresh = useCallback(async (only?: string[], force = false) => {
     const d = dataRef.current;
@@ -124,26 +129,32 @@ export function useActivityRefresh(slug: string, data: MarketData | null | undef
       for (let id = queue.shift(); id; id = queue.shift()) {
         const cur = id;
         setProgress((p) => ({ ...p, active: [...p.active, cur] }));
-        try { accept(await api<Row>(`/w/${slug}/radar/refresh`, { body: { id: cur, force } })); } catch { fails.push(cur); }
+        try { accept(await api<Row>(`/w/${slug}/${path}`, { body: { id: cur, force } })); } catch { fails.push(cur); }
         setProgress((p) => ({ ...p, done: p.done + 1, active: p.active.filter((x) => x !== cur) }));
       }
     };
     await Promise.all([worker(), worker(), worker()]);
     if (fails.length) setErr(`Couldn't update ${fails.map((id) => displayName(d, id)).join(', ')}. Try again.`);
     setBusy(false);
-  }, [slug, accept]);
+  }, [slug, accept, path]);
 
   useEffect(() => {
     if (!data || !agency || tried.current) return;
-    const act = data.activity || {};
-    const stale = (id: string) => { const a = act[id]; const c = companyById(data, id); return !a || a.v !== ACTIVITY_V || a.news === undefined || Date.now() - a.checked_at > 864e5 || (!!c?.hq && !c.geo); };
-    const missing = focusOrder(data).filter(stale);
     tried.current = true;
+    const missing = focusOrder(data).filter((id) => staleRef.current(data, id));
     if (missing.length) refresh(missing);
   }, [data, agency, refresh]);
 
-  const label = busy ? `Updating ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…` : 'Update data';
+  const label = busy ? `Updating ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…` : idle;
   return { busy, progress, err, refresh, label };
+}
+
+/** Posts, news, new links, HQ coordinates and fresh Ahrefs metrics (Brand Visibility, PR Monitor). */
+export function useActivityRefresh(slug: string, data: MarketData | null | undefined, accept: (r: Row) => void, agency: boolean) {
+  return useCompanyQueue({
+    slug, data, accept, agency, path: 'radar/refresh', idle: 'Update data',
+    stale: (d, id) => { const a = d.activity?.[id]; const c = companyById(d, id); return !a || a.v !== ACTIVITY_V || a.news === undefined || Date.now() - a.checked_at > 864e5 || (!!c?.hq && !c.geo); },
+  });
 }
 
 /** Reloads the research from the database (changes made elsewhere: another tab, the chat, an import). */
@@ -182,6 +193,13 @@ export const siteName = (u?: string) => (u ? domain(u) : '');
 
 /** First-screen screenshot of a site (WordPress mShots: free, no key; the first request starts rendering). */
 export const shotUrl = (u: string) => `https://s.wordpress.com/mshots/v1/${encodeURIComponent(u)}?w=1280&h=800`;
+/** A homepage screenshot that retries while the screenshot service is still rendering it (it returns a small placeholder first). */
+export function Shot({ url, className }: { url: string; className?: string }) {
+  const [n, setN] = useState(0);
+  const src = `${shotUrl(url)}${n ? `&r=${n}` : ''}`;
+  return <img src={src} alt="" loading="lazy" className={className} onLoad={(e) => { const img = e.currentTarget; if (img.naturalWidth < 1000 && n < 4) setTimeout(() => setN(n + 1), 4000); }} />;
+}
+
 /** Ask for screenshots in advance so hover previews are ready. */
 export function warmShots(urls: (string | undefined)[]) {
   for (const u of urls) if (u) { const i = new Image(); i.src = shotUrl(u); }

@@ -9,7 +9,8 @@ import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
 import { refreshOne, focusIds, ogImage } from './radar';
-import { SUPERPLANE_KIT } from './kits/superplane';
+import { SUPERPLANE_KIT, patchKit } from './kits/superplane';
+import { brandingFor } from './branding';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -333,6 +334,10 @@ app.get('/w/:slug/research/:kind', async (c) => {
   }
   if (!row || (!c.get('access').isAgency && row.status !== 'published')) return c.json(null);
   let data = JSON.parse(row.data_json);
+  if (c.req.param('kind') === 'brand_kit' && settings.demo) {
+    const k = patchKit(data);
+    if (k) { data = k; row.updated_at = Date.now(); await c.env.DB.prepare('UPDATE research SET data_json = ?, updated_at = ? WHERE workspace_id = ? AND kind = ?').bind(JSON.stringify(k), row.updated_at, ws.id, 'brand_kit').run(); }
+  }
   const patched = settings.demo && c.req.param('kind') === 'market_map' ? applyDemoPatch(data) : null;
   if (patched) {
     data = patched;
@@ -472,6 +477,28 @@ app.post('/w/:slug/radar/refresh', async (c) => {
     .bind(...binds, now, ws.id, ...(guard ? [id] : [])).run();
   const fresh = (await load())!;
   return c.json({ data: fresh.data, status: fresh.status, updated_at: now });
+});
+
+// Competitor branding lens: palette, fonts and social image from each homepage; one company per call
+app.post('/w/:slug/branding/refresh', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const ws = c.get('ws');
+  const { id } = await c.req.json<{ id: string }>();
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
+  if (!row) return c.json({ error: 'No competitors yet' }, 400);
+  const data = JSON.parse(row.data_json);
+  const company = id === '__client' ? data.client : data.companies.find((x: any) => x.id === id);
+  if (!company?.url) return c.json({ error: 'No website for this company' }, 400);
+  const b = await brandingFor(company.url).catch(() => null);
+  const now = Date.now();
+  if (b) {
+    await c.env.DB.prepare(`UPDATE research SET data_json = json_set(json_set(data_json, '$.branding', json(coalesce(json_extract(data_json, '$.branding'), '{}'))), ?, json(?)), updated_at = ? WHERE workspace_id = ? AND kind = 'market_map'`)
+      .bind(`$.branding."${id.replace(/"/g, '')}"`, JSON.stringify(b), now, ws.id).run();
+  }
+  const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
+  if (!b) return c.json({ error: `Couldn't read ${company.url}` }, 502);
+  return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
 });
 
 // SEO lens: load top keywords + content gap for a country from Ahrefs, save into the research (agency only)
