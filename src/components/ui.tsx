@@ -30,7 +30,7 @@ export function Favicon({ url, name, size = 16 }: { url?: string | null; name: s
   const box = { width: size, height: size };
   if (!host || broken)
     return <span style={box} className="inline-flex shrink-0 items-center justify-center rounded-[4px] bg-panel-2 text-[9px] font-semibold uppercase text-muted">{name.slice(0, 1)}</span>;
-  return <img src={`https://www.google.com/s2/favicons?domain=${host}&sz=64`} alt="" style={box} className="shrink-0 rounded-[4px] bg-white" onError={() => setBroken(true)} />;
+  return <img src={`https://www.google.com/s2/favicons?domain=${host}&sz=64`} alt="" style={{ ...box, minWidth: size }} className="shrink-0 rounded-[4px] bg-white object-contain" onError={() => setBroken(true)} />;
 }
 
 export function Btn({ children, onClick, kind = 'ghost', type = 'button', disabled }: { children: ReactNode; onClick?: () => void; kind?: 'primary' | 'ghost' | 'brand'; type?: 'button' | 'submit'; disabled?: boolean }) {

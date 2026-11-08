@@ -93,9 +93,9 @@ export function Socials({ c }: { c: Company }) {
   const links = SOCIAL.map(([k, label, site]) => [k === 'linkedin' ? c.linkedin : c.socials?.[k], label, site] as const).filter(([href]) => href);
   if (!links.length) return <span className="text-muted">—</span>;
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex w-max items-center gap-1.5">
       {links.map(([href, label, site]) => (
-        <a key={label} href={href!} target="_blank" title={label} onClick={(e) => e.stopPropagation()} className="opacity-80 hover:opacity-100"><Favicon url={site} name={label} size={14} /></a>
+        <a key={label} href={href!} target="_blank" title={label} onClick={(e) => e.stopPropagation()} className="inline-flex h-[14px] w-[14px] shrink-0 opacity-80 hover:opacity-100"><Favicon url={site} name={label} size={14} /></a>
       ))}
     </span>
   );
