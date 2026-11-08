@@ -19,7 +19,7 @@ const CLIENT_TABS = [
   ['assets', 'Assets (shared items only)'],
   ['guide', 'Online guide'],
   ['merch', 'Merch'],
-  ['generate', 'Post covers'],
+  ['generate', 'Generate Covers'],
 ] as const;
 
 export default function Settings({ info, reload }: { info: WsInfo; reload: () => void }) {

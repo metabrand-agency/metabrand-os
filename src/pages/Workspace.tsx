@@ -26,7 +26,7 @@ const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: 'overview' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: 'memory' }, { id: 'competitors', label: 'Competitors', icon: 'competitors' }] },
   { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: 'lenses', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: 'visibility' }, { id: 'monitor', label: 'PR Monitor', icon: 'monitor' }] },
-  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: 'assets' }, { id: 'guide', label: 'Online guide', icon: 'guide' }, { id: 'merch', label: 'Merch', icon: 'merch' }, { id: 'generate', label: 'Post covers', icon: 'generate' }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: 'assets' }, { id: 'guide', label: 'Online guide', icon: 'guide' }, { id: 'merch', label: 'Merch', icon: 'merch' }, { id: 'generate', label: 'Generate Covers', icon: 'generate' }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: 'settings' }];
 

@@ -183,7 +183,7 @@ function BrandBlock({ info, kit }: { info: WsInfo; kit: Kit | null }) {
   const tools: { to?: string; href?: string; icon: string; title: string; text: string }[] = [
     { to: `/${info.slug}/guide`, icon: 'guide', title: 'Online guide', text: 'Logo, colour, type, layout and applications' },
     ...(art ? [{ href: art.url, icon: 'link', title: art.title, text: art.note || 'The brand’s own generative art tool' }] : []),
-    { to: `/${info.slug}/generate`, icon: 'generate', title: 'Social post covers', text: 'LinkedIn, stories and screens in the brand style' },
+    { to: `/${info.slug}/generate`, icon: 'generate', title: 'Generate Covers', text: 'LinkedIn, stories and screens in the brand style' },
     { to: `/${info.slug}/assets`, icon: 'assets', title: 'Assets', text: 'Logos, colours, fonts, icons, backgrounds, videos' },
   ];
   const [busy, setBusy] = useState('');

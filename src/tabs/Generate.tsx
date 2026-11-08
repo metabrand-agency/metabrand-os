@@ -153,7 +153,7 @@ export default function Generate({ info }: { info: WsInfo }) {
     <div className="grid gap-6 lg:grid-cols-[330px_minmax(0,1fr)]">
       <aside className="space-y-4 self-start lg:sticky lg:top-16">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight">Social post covers</h1>
+          <h1 className="text-[22px] font-semibold tracking-tight">Generate Covers</h1>
           <p className="mt-1 text-[13px] text-muted">On-brand covers for social posts, from the {fromSite ? 'colours and fonts on the site (add a brand kit in Assets for logos and exact colours)' : 'brand kit'}. Pick a format, write or generate a headline.</p>
         </div>
 
