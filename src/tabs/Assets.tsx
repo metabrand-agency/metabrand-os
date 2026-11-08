@@ -108,7 +108,7 @@ function Backgrounds({ kit }: { kit: Kit | null }) {
           </Card>
         ))}
       </div>
-      <Lightbox items={bgs.map((b) => ({ src: b.src, title: b.name, label: 'Backgrounds' }))} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
+      <Lightbox items={bgs.map((b) => ({ src: b.src, label: `Backgrounds · ${b.name}` }))} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </section>
   );
 }

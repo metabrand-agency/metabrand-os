@@ -44,7 +44,7 @@ export default function Merch({ info }: { info: WsInfo }) {
         ))}
       </div>
 
-      <Lightbox items={s.slides.map((sl, k) => ({ src: sl.img!, title: `${kit?.brand} merch`, bg: sl.bg }))} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
+      <Lightbox items={s.slides.map((sl, k) => ({ src: sl.img!, label: `${kit?.brand} merch`, bg: sl.bg }))} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
     </div>
   );
 }

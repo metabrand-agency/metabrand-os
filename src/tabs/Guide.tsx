@@ -129,7 +129,19 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
   const i = guide.sections.indexOf(s);
   const prev = guide.sections[i - 1], next = guide.sections[i + 1];
   // the viewer pages through every picture of the guide, section by section
-  const all = useMemo(() => guide.sections.flatMap((x) => x.slides.filter((sl) => sl.img).map((sl) => ({ sl, item: { src: sl.img!, title: sl.title, label: x.title, bg: sl.bg } as LightItem }))), [guide]);
+  const all = useMemo(() => guide.sections.flatMap((x) => x.slides.filter((sl) => sl.img).map((sl) => ({
+    sl,
+    item: {
+      src: sl.img!, title: sl.title, label: `${x.num ? `${x.num} ` : ''}${x.title}`, bg: sl.bg,
+      aside: sl.title || sl.text ? (
+        <div>
+          <div className="text-[11px] uppercase tracking-[.1em] text-white/40">{x.title}</div>
+          {sl.title && <div className="mt-2 text-[17px] leading-snug text-white" style={{ fontFamily: display(kit) }}>{sl.title}</div>}
+          {sl.text && <Body text={sl.text} className="mt-3 text-[12.5px] text-white/60 [&_.text-text]:text-white/90" />}
+        </div>
+      ) : undefined,
+    } as LightItem,
+  }))), [guide, kit]);
   const [open, setOpen] = useState<number | null>(null);
   const show = (sl: GuideSlide) => { const k = all.findIndex((a) => a.sl === sl); if (k >= 0) setOpen(k); };
   return (
@@ -176,7 +188,11 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
               </button>
             ))}
           </div>
-        ) : s.slides.map((sl, k) => <Slide key={sl.img || k} sl={sl} kit={kit} onOpen={() => show(sl)} />)}
+        ) : (
+          <div className="space-y-10 pb-[12vh]">
+            {s.slides.map((sl, k) => <Slide key={sl.img || k} sl={sl} kit={kit} onOpen={() => show(sl)} />)}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 border-t border-line">
@@ -191,7 +207,7 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
 /** Guideline text: paragraphs, line breaks, and "### " lines as small headings. */
 function Body({ text, className = '' }: { text: string; className?: string }) {
   return (
-    <div className={`space-y-3 text-[14px] leading-relaxed text-muted ${className}`}>
+    <div className={`space-y-2.5 text-[13px] leading-relaxed text-muted ${className}`}>
       {text.split(/\n{2,}/).map((p, i) => {
         const lines = p.split('\n');
         const head = lines[0].startsWith('### ') ? lines.shift()!.slice(4) : '';
@@ -206,36 +222,31 @@ function Body({ text, className = '' }: { text: string; className?: string }) {
   );
 }
 
-/** One guideline page: the visual from Figma, its notes as live text beside it. */
+/** One guideline page: the visual from Figma with its notes below. Pages are cards that stick under the
+ *  section bar, so the next one slides over the previous while scrolling. */
+const CARD = 'sticky top-[104px] overflow-hidden rounded-lg border border-line bg-panel shadow-[0_-18px_40px_-24px_rgba(0,0,0,.45)]';
 function Slide({ sl, kit, onOpen }: { sl: GuideSlide; kit: Kit; onOpen: () => void }) {
   if (sl.statement) {
     return (
-      <figure className="rounded-md border border-line bg-panel px-10 py-12">
-        <h2 className="max-w-[1100px] text-[clamp(36px,5vw,72px)] leading-[1] tracking-[-0.02em]" style={{ fontFamily: display(kit) }}>{sl.title}</h2>
-        {sl.text && <Body text={sl.text} className="mt-8 max-w-[760px] text-[17px]" />}
-      </figure>
-    );
-  }
-  const pic = sl.img && (
-    <button onClick={onOpen} title="Open full screen" className="group block w-full cursor-zoom-in overflow-hidden rounded-md border border-line">
-      <img src={sl.img} alt={sl.title || ''} loading="lazy" className="w-full transition duration-500 group-hover:scale-[1.01]" />
-    </button>
-  );
-  if (!sl.text) {
-    return (
-      <figure>
-        {pic}
-        {sl.title && <figcaption className="mt-3 text-[15px] tracking-[-0.01em]" style={{ fontFamily: display(kit) }}>{sl.title}</figcaption>}
+      <figure className={`${CARD} px-8 py-10`}>
+        <h2 className="max-w-[900px] text-[clamp(28px,3.4vw,48px)] leading-[1.02] tracking-[-0.02em]" style={{ fontFamily: display(kit) }}>{sl.title}</h2>
+        {sl.text && <Body text={sl.text} className="mt-6 max-w-[680px] text-[14px]" />}
       </figure>
     );
   }
   return (
-    <figure className="grid gap-6 lg:grid-cols-[260px_1fr] lg:gap-10">
-      <figcaption className="lg:sticky lg:top-28 lg:self-start">
-        <div className="text-[20px] leading-tight tracking-[-0.01em]" style={{ fontFamily: display(kit) }}>{sl.title}</div>
-        <Body text={sl.text} className="mt-3" />
-      </figcaption>
-      {pic}
+    <figure className={CARD}>
+      {sl.img && (
+        <button onClick={onOpen} title="Open full screen" className="group block w-full cursor-zoom-in bg-panel-2">
+          <img src={sl.img} alt={sl.title || ''} loading="lazy" className="mx-auto block max-h-[calc(100vh-250px)] w-auto max-w-full object-contain transition duration-500 group-hover:scale-[1.01]" />
+        </button>
+      )}
+      {(sl.title || sl.text) && (
+        <figcaption className={`grid gap-1.5 px-5 py-3.5 ${sl.text ? 'md:grid-cols-[220px_1fr] md:gap-6' : ''} ${sl.img ? 'border-t border-line' : ''}`}>
+          <div className="text-[14px] leading-snug tracking-[-0.01em]" style={{ fontFamily: display(kit) }}>{sl.title}</div>
+          {sl.text && <Body text={sl.text} className="max-w-[720px] text-[12.5px]" />}
+        </figcaption>
+      )}
     </figure>
   );
 }
