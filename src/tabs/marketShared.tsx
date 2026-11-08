@@ -5,7 +5,7 @@ import { api } from '../api';
 import { Btn, Card, Favicon, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 
-export type Company = {
+export type Company = { news_query?: string;
   id: string; name: string; short?: string; url?: string; tier: number; overlap: string; segment?: string; category_label?: string;
   hero?: string; sub?: string; claims?: string[]; proof?: string[]; funding?: string | null; hq?: string; founded?: number;
   open_source?: boolean | null; x: number; y: number; sources?: string[]; founders?: string;
@@ -27,7 +27,9 @@ export type SeoCountry = {
   top: Record<string, { all: SeoKw[]; content: SeoKw[] }>;
   gap: { keywords: { keyword: string; volume: number; kd?: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
 };
-export type Activity = { source?: string; posts_30d: number; latest: { title: string; url: string; date?: string }[]; checked_at: number };
+export type News = { query: string; count_30d: number; latest: { title: string; url: string; date?: string; source?: string }[]; checked_at: number };
+export type Activity = { v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
+export const ACTIVITY_V = 2; // matches the server; older entries are collected again
 export type MarketData = {
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
   seo?: Record<string, SeoCountry>;
@@ -87,7 +89,60 @@ export function useResearch(slug: string) {
     loaded.current = res.updated_at;
     setRow((r) => (r ? { ...r, updated_at: res.updated_at } : r));
   }, [slug]);
-  return { row, setRow, reload, hasNew, save };
+  // take a row the server just returned (no "new data" prompt for our own changes)
+  const accept = useCallback((r: Row) => { setRow(r); loaded.current = Math.max(loaded.current, r.updated_at); }, []);
+  return { row, setRow, reload, hasNew, save, accept };
+}
+
+/** Client + competitors in focus, in display order. */
+export const focusOrder = (d: MarketData) => ['__client', ...d.companies.filter((c) => selectedIds(d).has(c.id)).map((c) => c.id)];
+export const companyById = (d: MarketData, id: string) => (id === '__client' ? d.client : d.companies.find((c) => c.id === id)!);
+export const displayName = (d: MarketData, id: string) => (id === '__client' ? d.client.name : shortName(companyById(d, id)));
+
+/**
+ * Collects posts, news, HQ coordinates and fresh Ahrefs metrics, one request per company, three at a time.
+ * On the first visit it fills in whatever is missing or older than a day (agency only; free sources).
+ */
+export function useActivityRefresh(slug: string, data: MarketData | null | undefined, accept: (r: Row) => void, agency: boolean) {
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number; active: string[] }>({ done: 0, total: 0, active: [] });
+  const [err, setErr] = useState('');
+  const tried = useRef(false);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const refresh = useCallback(async (only?: string[]) => {
+    const d = dataRef.current;
+    if (!d) return;
+    const queue = [...(only || focusOrder(d))];
+    if (!queue.length) return;
+    setErr(''); setBusy(true);
+    setProgress({ done: 0, total: queue.length, active: [] });
+    const fails: string[] = [];
+    const worker = async () => {
+      for (let id = queue.shift(); id; id = queue.shift()) {
+        const cur = id;
+        setProgress((p) => ({ ...p, active: [...p.active, cur] }));
+        try { accept(await api<Row>(`/w/${slug}/radar/refresh`, { body: { id: cur } })); } catch { fails.push(cur); }
+        setProgress((p) => ({ ...p, done: p.done + 1, active: p.active.filter((x) => x !== cur) }));
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    if (fails.length) setErr(`Couldn't update ${fails.map((id) => displayName(d, id)).join(', ')}. Try again.`);
+    setBusy(false);
+  }, [slug, accept]);
+
+  useEffect(() => {
+    if (!data || !agency || tried.current) return;
+    const act = data.activity || {};
+    const stale = (id: string) => { const a = act[id]; const c = companyById(data, id); return !a || a.v !== ACTIVITY_V || a.news === undefined || Date.now() - a.checked_at > 864e5 || (!!c?.hq && !c.geo); };
+    const missing = focusOrder(data).filter(stale);
+    tried.current = true;
+    if (missing.length) refresh(missing);
+  }, [data, agency, refresh]);
+
+  const label = busy ? `Updating ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…` : 'Update data';
+  return { busy, progress, err, refresh, label };
 }
 
 /** Reloads the research from the database (changes made elsewhere: another tab, the chat, an import). */

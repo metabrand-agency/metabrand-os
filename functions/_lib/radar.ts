@@ -1,23 +1,56 @@
-// Brand Radar data: recent publishing activity (RSS/Atom feeds or the sitemap), HQ coordinates,
-// and fresh Ahrefs metrics when a key is set. Works for any project: client + competitors in focus.
+// Brand Visibility and PR Monitor data: recent publishing activity (RSS/Atom feeds, or the sitemap plus the
+// articles' own publish dates), Google News mentions, HQ coordinates, fresh Ahrefs metrics. Any project.
 import type { Env } from './auth';
 import { ahrefs } from './companies';
 
 type Post = { title: string; url: string; date?: string };
-const UA = 'Mozilla/5.0 (compatible; MetabrandOS/1.0; +https://app.metabrand.digital)';
+// Many sites refuse bot-looking requests; a regular browser UA gets the public HTML/RSS.
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+const GEO_UA = 'MetabrandOS/1.0 (+https://app.metabrand.digital)';
 
 async function getText(url: string, ms = 7000): Promise<{ text: string; url: string; type: string } | null> {
   try {
-    const r = await fetch(url, { headers: { 'user-agent': UA, accept: '*/*' }, redirect: 'follow', signal: AbortSignal.timeout(ms) });
+    const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', 'accept-language': 'en-US,en;q=0.9' }, redirect: 'follow', signal: AbortSignal.timeout(ms) });
     if (!r.ok) return null;
     return { text: (await r.text()).slice(0, 1_500_000), url: r.url, type: r.headers.get('content-type') || '' };
   } catch {
     return null;
   }
 }
+/** Reads a page only up to </head> (or 200 KB): enough for title and publish-date meta tags. */
+async function getHead(url: string, ms = 6000): Promise<string | null> {
+  try {
+    const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'en-US,en;q=0.9' }, redirect: 'follow', signal: AbortSignal.timeout(ms) });
+    if (!r.ok || !r.body) return null;
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let html = '';
+    while (html.length < 200_000) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += dec.decode(value, { stream: true });
+      if (/<\/head>/i.test(html.slice(-70_000))) break;
+    }
+    reader.cancel().catch(() => {});
+    return html;
+  } catch {
+    return null;
+  }
+}
+const metaOf = (html: string, key: string) =>
+  html.match(new RegExp(`<meta[^>]+(?:property|name|itemprop)=["']${key}["'][^>]*content=["']([^"']+)["']`, 'i'))?.[1] ||
+  html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name|itemprop)=["']${key}["']`, 'i'))?.[1];
+async function articleInfo(url: string): Promise<{ title?: string; date?: string } | null> {
+  const h = await getHead(url);
+  if (!h) return null;
+  const date = metaOf(h, 'article:published_time') || h.match(/"datePublished"\s*:\s*"([^"]+)"/)?.[1] || metaOf(h, 'date') || metaOf(h, 'datePublished') || h.match(/<time[^>]+datetime=["']([^"']+)["']/i)?.[1];
+  const title = metaOf(h, 'og:title') || h.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1];
+  return { title: title ? decode(title).replace(/\s+[|–—-]\s+[^|–—-]+$/, '') : undefined, date: isoDate(date) };
+}
+
 const decode = (s: string) =>
   s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/\s+/g, ' ').trim();
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&#x([\da-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16))).replace(/\s+/g, ' ').trim();
 const tag = (xml: string, name: string) => xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i'))?.[1];
 const isoDate = (s?: string) => { if (!s) return undefined; const d = new Date(decode(s)); return isNaN(+d) ? undefined : d.toISOString(); };
 
@@ -35,20 +68,64 @@ function parseFeed(xml: string): Post[] {
 }
 
 const POSTY = /\/(blog|news|articles?|posts?|insights|resources\/blog|changelog|updates|stories)\/[^/?#]+/i;
+const NOT_POST = /\/(category|categories|tag|tags|topic|topics|author|authors|page)(\/|$)/i;
 const titleFromSlug = (u: string) => decodeURIComponent(u.replace(/\/$/, '').split('/').pop() || '').replace(/[-_]+/g, ' ').replace(/\.\w+$/, '').replace(/^\w/, (c) => c.toUpperCase());
 
+export const ACTIVITY_V = 2; // bump when collection changes, so pages re-collect on their next visit
+const CHECK = 8; // article pages opened per company (each is one outbound request)
+
 async function fromSitemap(origin: string): Promise<Post[]> {
-  const root = await getText(`${origin}/sitemap.xml`);
+  const robots = await getText(`${origin}/robots.txt`, 4000);
+  const listed = [...(robots?.text || '').matchAll(/^\s*sitemap:\s*(\S+)/gim)].map((m) => m[1]);
+  let root = null;
+  for (const u of [...listed, `${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`].slice(0, 3)) { root = await getText(u); if (root && /<(urlset|sitemapindex)/i.test(root.text)) break; root = null; }
   if (!root) return [];
   let xml = root.text;
   // sitemap index: open the child sitemaps that look like blog/posts (or the first two)
   if (/<sitemapindex/i.test(xml)) {
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map((m) => decode(m[1]));
-    const pick = [...locs.filter((l) => /blog|post|news|article/i.test(l)), ...locs].slice(0, 3);
+    const pick = [...new Set([...locs.filter((l) => /blog|post|news|article|changelog/i.test(l)), ...locs])].slice(0, 2);
     xml = (await Promise.all(pick.map((l) => getText(l)))).map((r) => r?.text || '').join('\n');
   }
   const urls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/gi)].map((m) => ({ loc: decode(tag(m[1], 'loc') || ''), lastmod: isoDate(tag(m[1], 'lastmod')) }));
-  return urls.filter((u) => POSTY.test(u.loc)).map((u) => ({ title: titleFromSlug(u.loc), url: u.loc, date: u.lastmod }));
+  return urls.filter((u) => POSTY.test(u.loc) && !NOT_POST.test(new URL(u.loc, origin).pathname)).map((u) => ({ title: titleFromSlug(u.loc), url: u.loc, date: u.lastmod }));
+}
+
+/** Post links in page order from /blog or /news (newest first on most sites). */
+async function fromIndexPages(origin: string): Promise<Post[]> {
+  for (const path of ['/blog', '/news']) {
+    const page = await getText(origin + path);
+    if (!page) continue;
+    const base = new URL(page.url).origin;
+    const urls = [...new Set([...page.text.matchAll(/href=["']([^"'#?]+)["']/gi)].map((m) => { try { return new URL(m[1], base).toString(); } catch { return ''; } }))]
+      .filter((u) => u && POSTY.test(u) && !NOT_POST.test(new URL(u).pathname));
+    if (urls.length) return urls.map((u) => ({ url: u, title: titleFromSlug(u) }));
+  }
+  return [];
+}
+
+/** Sitemap lastmod is often the deploy time for every page. True when one day covers most entries. */
+function bulkStamped(posts: Post[]) {
+  const days = posts.map((p) => p.date?.slice(0, 10)).filter(Boolean) as string[];
+  if (days.length < 6) return !days.length;
+  const n: Record<string, number> = {};
+  for (const d of days) n[d] = (n[d] || 0) + 1;
+  return Math.max(...Object.values(n)) / days.length >= 0.35;
+}
+
+/** Newest-first order for sitemap posts: by lastmod when it is trustworthy, else the order on the blog's index page. */
+async function orderPosts(origin: string, posts: Post[]): Promise<Post[]> {
+  if (!bulkStamped(posts)) return [...posts].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const seg: Record<string, number> = {};
+  for (const p of posts) { const s = new URL(p.url).pathname.split('/')[1]; seg[s] = (seg[s] || 0) + 1; }
+  const section = Object.entries(seg).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const page = section ? await getText(`${origin}/${section}`) : null;
+  const byPath = new Map(posts.map((p) => [new URL(p.url).pathname.replace(/\/$/, ''), p]));
+  const seen = new Set<Post>();
+  for (const m of (page?.text || '').matchAll(/href=["']([^"'#?]+)["']/gi)) {
+    try { const p = byPath.get(new URL(m[1], origin).pathname.replace(/\/$/, '')); if (p) seen.add(p); } catch { /* skip */ }
+  }
+  return [...seen, ...posts.filter((p) => !seen.has(p))];
 }
 
 export async function activityFor(url: string) {
@@ -56,31 +133,70 @@ export async function activityFor(url: string) {
   const origin = new URL(home?.url || url).origin;
   const found = [...(home?.text || '').matchAll(/<link[^>]+type=["']application\/(?:rss|atom)\+xml["'][^>]*>/gi)]
     .map((m) => m[0].match(/href=["']([^"']+)["']/i)?.[1]).filter(Boolean).map((h) => new URL(h!, origin).toString());
-  const candidates = [...new Set([...found, ...['/feed', '/rss.xml', '/feed.xml', '/blog/rss.xml', '/blog/feed', '/atom.xml', '/blog/rss', '/rss', '/index.xml', '/blog/index.xml'].map((p) => origin + p)])].slice(0, 8);
+  const candidates = [...new Set([...found, ...['/rss.xml', '/feed', '/blog/rss.xml', '/feed.xml', '/blog/feed', '/atom.xml'].map((p) => origin + p)])].slice(0, 6);
   let posts: Post[] = [];
   let source = '';
   for (const c of candidates) {
     const r = await getText(c, 5000);
     if (r && /<(rss|feed|rdf:RDF)[\s>]/i.test(r.text)) { posts = parseFeed(r.text); source = c; if (posts.length) break; }
   }
+  let capped = posts.length >= 10; // a feed only carries its newest items
   if (!posts.length) {
     const host = new URL(origin).hostname.replace(/^www\./, '');
-    posts = (await fromSitemap(origin)).filter((p) => { try { return new URL(p.url).hostname.endsWith(host); } catch { return false; } });
-    source = posts.length ? `${origin}/sitemap.xml` : '';
+    const sameHost = (p: Post) => { try { return new URL(p.url).hostname.endsWith(host); } catch { return false; } };
+    let all = (await fromSitemap(origin)).filter(sameHost);
+    let from = `${origin}/sitemap.xml`;
+    if (!all.length) { all = (await fromIndexPages(origin)).filter(sameHost); from = `${origin}/blog`; } // no sitemap: read the blog page itself
+    // check the newest candidates' own pages for the real publish date and title
+    const top = (await orderPosts(origin, all)).slice(0, CHECK);
+    const infos = await Promise.all(top.map((p) => articleInfo(p.url).catch(() => null)));
+    posts = top.map((p, i) => ({ url: p.url, title: infos[i]?.title || p.title, date: infos[i]?.date })).filter((p) => p.date);
+    source = posts.length ? from : '';
+    capped = all.length > CHECK;
   }
   posts.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const month = Date.now() - 30 * 864e5;
+  const recent = posts.filter((p) => p.date && +new Date(p.date) >= month).length;
   return {
+    v: ACTIVITY_V,
     source,
-    posts_30d: posts.filter((p) => p.date && +new Date(p.date) >= month).length,
-    latest: posts.slice(0, 5),
+    posts_30d: recent,
+    // every checked article is recent and there are more: the real number is higher
+    posts_30d_more: capped && recent >= posts.length && recent > 0,
+    latest: posts.slice(0, 8),
     checked_at: Date.now(),
   };
 }
 
+export async function newsFor(query: string) {
+  const r = await getText(`https://news.google.com/rss/search?${new URLSearchParams({ q: `${query} when:30d`, hl: 'en-US', gl: 'US', ceid: 'US:en' })}`, 7000);
+  if (!r || !/<rss/i.test(r.text)) return null;
+  const items = (r.text.match(/<item[\s>][\s\S]*?<\/item>/gi) || []).map((it) => {
+    const source = decode(tag(it, 'source') || '');
+    const title = decode(tag(it, 'title') || '');
+    return {
+      title: source && title.endsWith(` - ${source}`) ? title.slice(0, -(source.length + 3)) : title, // Google adds " - Source"
+      url: decode(tag(it, 'link') || ''),
+      date: isoDate(tag(it, 'pubDate')),
+      source: source.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+    };
+  }).filter((x) => x.title && x.url);
+  items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return { query, count_30d: items.length, latest: items.slice(0, 10), checked_at: Date.now() };
+}
+
+/** City → coordinates. Open-Meteo geocoding first (free, no key), OpenStreetMap Nominatim as fallback. */
 async function geocode(q: string): Promise<{ lat: number; lng: number } | null> {
+  const [city, ...rest] = q.split(',').map((x) => x.trim());
+  const country = rest.pop()?.toLowerCase();
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?${new URLSearchParams({ q, format: 'json', limit: '1' })}`, { headers: { 'user-agent': UA, 'accept-language': 'en' }, signal: AbortSignal.timeout(6000) });
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${new URLSearchParams({ name: city, count: '5', language: 'en', format: 'json' })}`, { signal: AbortSignal.timeout(6000) });
+    const j: any = r.ok ? await r.json() : null;
+    const hit = (j?.results || []).find((x: any) => !country || String(x.country || '').toLowerCase() === country || (country === 'united states' && x.country_code === 'US')) || j?.results?.[0];
+    if (hit) return { lat: hit.latitude, lng: hit.longitude };
+  } catch { /* try the fallback */ }
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?${new URLSearchParams({ q, format: 'json', limit: '1' })}`, { headers: { 'user-agent': GEO_UA, 'accept-language': 'en' }, signal: AbortSignal.timeout(6000) });
     const j: any = r.ok ? await r.json() : [];
     return j?.[0] ? { lat: Number(j[0].lat), lng: Number(j[0].lon) } : null;
   } catch {
@@ -88,38 +204,40 @@ async function geocode(q: string): Promise<{ lat: number; lng: number } | null> 
   }
 }
 
-function focusIds(data: any): string[] {
+export function focusIds(data: any): string[] {
   const cs = data.companies || [];
   if (cs.some((c: any) => typeof c.selected === 'boolean')) return cs.filter((c: any) => c.selected).map((c: any) => c.id);
   return [...cs].sort((a: any, b: any) => Number(!!b.client_pick) - Number(!!a.client_pick) || (a.tier || 9) - (b.tier || 9)).slice(0, 5).map((c: any) => c.id);
 }
 
-/** Updates activity, geo and Ahrefs metrics for the client and competitors in focus. Returns new data. */
-export async function refreshRadar(env: Env, data: any) {
-  const ids = ['__client', ...focusIds(data)];
-  const get = (id: string) => (id === '__client' ? data.client : data.companies.find((c: any) => c.id === id));
-  const activity = { ...(data.activity || {}) };
-  const patch: Record<string, any> = {};
-  await Promise.all(ids.map(async (id) => {
-    const c = get(id);
-    if (!c?.url) return;
-    const [act, ah] = await Promise.all([activityFor(c.url).catch(() => null), ahrefs(env, c.url, c.short || c.name)]);
-    if (act) activity[id] = act;
-    if (ah) patch[id] = { ...(patch[id] || {}), ahrefs: { ...(c.ahrefs || {}), ...ah } };
-  }));
-  // geocode HQs once (Nominatim asks for at most one request per second)
-  for (const id of ids) {
-    const c = get(id);
-    const hq = c?.hq?.split('/')[0]?.trim();
-    if (!hq || c.geo?.q === hq) continue;
-    const g = await geocode(hq);
-    if (g) patch[id] = { ...(patch[id] || {}), geo: { ...g, q: hq } };
-    await new Promise((r) => setTimeout(r, 1100));
-  }
+/**
+ * Google News query. Distinctive names ("SuperPlane", "HumanLayer") as they are. Common words ("Factory", "Warp")
+ * are paired with the founder's surname, which is precise; otherwise the Ahrefs brand query or a context filter.
+ * A query set by hand on the company (news_query) always wins.
+ */
+export function newsQuery(c: any) {
+  if (c.news_query?.trim()) return String(c.news_query).trim();
+  const name = String(c.name || c.short || '').replace(/\s*\(.*\)/, '').replace(/"/g, '').trim();
+  if (/[a-z][A-Z]|\d|\./.test(name) || name.split(/\s+/).length > 1) return `"${name}"`;
+  const surname = String(c.founder || '').split(/[,;&]| and /)[0].trim().split(/\s+/).pop()?.replace(/"/g, '');
+  if (surname && surname.length > 2) return `"${name}" "${surname}"`;
+  const bq = String(c.ahrefs?.brand_query || '').replace(/"/g, '').trim();
+  if (bq.split(/\s+/).length > 1) return `"${bq}"`;
+  return `"${name}" AND (AI OR software OR startup OR developer)`;
+}
+
+/** Refreshes one company (one request per company keeps us within the platform's outbound request limit). */
+export async function refreshOne(env: Env, c: any) {
+  const hq = c?.hq?.split('/')[0]?.trim();
+  const [act, news, ah, geo] = await Promise.all([
+    c.url ? activityFor(c.url).catch(() => null) : null,
+    newsFor(newsQuery(c)).catch(() => null),
+    c.url ? ahrefs(env, c.url, c.short || c.name) : null,
+    hq && c.geo?.q !== hq ? geocode(hq) : null,
+  ]);
   return {
-    ...data,
-    activity,
-    client: patch.__client ? { ...data.client, ...patch.__client } : data.client,
-    companies: data.companies.map((c: any) => (patch[c.id] ? { ...c, ...patch[c.id] } : c)),
+    activity: act ? { ...act, news } : news ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), news } : null,
+    ahrefs: ah ? { ...(c.ahrefs || {}), ...ah } : undefined,
+    geo: geo ? { ...geo, q: hq } : undefined,
   };
 }

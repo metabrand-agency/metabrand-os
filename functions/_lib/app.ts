@@ -8,7 +8,7 @@ import { researchCompany } from './companies';
 import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
-import { refreshRadar } from './radar';
+import { refreshOne, focusIds } from './radar';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -419,27 +419,37 @@ app.post('/w/:slug/competitors/from-memory', async (c) => {
   }
 });
 
-// Brand Radar: publishing activity, HQ coordinates, fresh Ahrefs metrics for client + focus (agency only)
+// Brand Visibility and PR Monitor data: posts, news, HQ coordinates, fresh Ahrefs metrics; one company per call
 app.post('/w/:slug/radar/refresh', async (c) => {
   const deny = agencyOnly(c);
   if (deny) return deny;
   const ws = c.get('ws');
-  const row = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
-  if (!row) return c.json({ error: 'No competitors yet' }, 400);
-  const next = await refreshRadar(c.env, JSON.parse(row.data_json));
-  // merge into the latest saved data so edits made meanwhile are kept
-  const cur = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
-  const base = JSON.parse(cur!.data_json);
-  const byId = Object.fromEntries(next.companies.map((x: any) => [x.id, x]));
-  const merged = {
-    ...base,
-    activity: next.activity,
-    client: { ...base.client, ahrefs: next.client.ahrefs, geo: next.client.geo },
-    companies: base.companies.map((x: any) => (byId[x.id] ? { ...x, ahrefs: byId[x.id].ahrefs, geo: byId[x.id].geo } : x)),
+  const { id } = await c.req.json<{ id?: string }>();
+  const load = async () => {
+    const r = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
+    return r ? { data: JSON.parse(r.data_json), status: r.status } : null;
   };
+  const cur = await load();
+  if (!cur) return c.json({ error: 'No competitors yet' }, 400);
+  if (!id) return c.json({ ids: ['__client', ...focusIds(cur.data)] });
+  const company = id === '__client' ? cur.data.client : cur.data.companies.find((x: any) => x.id === id);
+  if (!company) return c.json({ error: 'Unknown company' }, 404);
+  const res = await refreshOne(c.env, company);
+  // write only this company's fields, atomically, so parallel refreshes and edits don't overwrite each other
+  const idx = cur.data.companies.findIndex((x: any) => x.id === id);
+  const at = id === '__client' ? '$.client' : `$.companies[${idx}]`;
+  let expr = `json_set(data_json, '$.activity', json(coalesce(json_extract(data_json, '$.activity'), '{}')))`;
+  const binds: unknown[] = [];
+  const set = (path: string, v: unknown) => { expr = `json_set(${expr}, ?, json(?))`; binds.push(path, JSON.stringify(v)); };
+  if (res.activity) set(`$.activity."${id.replace(/"/g, '')}"`, res.activity);
+  if (res.ahrefs) set(`${at}.ahrefs`, res.ahrefs);
+  if (res.geo) set(`${at}.geo`, res.geo);
   const now = Date.now();
-  await c.env.DB.prepare('UPDATE research SET data_json = ?, updated_at = ? WHERE workspace_id = ? AND kind = ?').bind(JSON.stringify(merged), now, ws.id, 'market_map').run();
-  return c.json({ data: merged, status: row.status, updated_at: now });
+  const guard = id === '__client' ? '' : ` AND json_extract(data_json, '$.companies[${idx}].id') = ?`;
+  await c.env.DB.prepare(`UPDATE research SET data_json = ${expr}, updated_at = ? WHERE workspace_id = ? AND kind = 'market_map'${guard}`)
+    .bind(...binds, now, ws.id, ...(guard ? [id] : [])).run();
+  const fresh = (await load())!;
+  return c.json({ data: fresh.data, status: fresh.status, updated_at: now });
 });
 
 // SEO lens: load top keywords + content gap for a country from Ahrefs, save into the research (agency only)

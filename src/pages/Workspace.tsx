@@ -8,7 +8,8 @@ import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
 import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
-import Radar from '../tabs/Radar';
+import Visibility from '../tabs/Visibility';
+import Monitor from '../tabs/Monitor';
 import Settings from '../tabs/Settings';
 
 export type WsInfo = {
@@ -20,7 +21,7 @@ type Tab = { id: string; label: string; icon: string; soon?: boolean; children?:
 const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
-  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }] }, { id: 'radar', label: 'Brand Radar', icon: '◉' }, { id: 'monitor', label: 'Monitor', icon: '∿', soon: true }] },
+  { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }] }, { id: 'visibility', label: 'Brand Visibility', icon: '◉' }, { id: 'monitor', label: 'PR Monitor', icon: '∿' }] },
   { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏', soon: true }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
@@ -30,7 +31,8 @@ export default function Workspace() {
   const loc = useLocation();
   const nav = useNavigate();
   const raw = loc.pathname.split('/')[2] || 'overview';
-  const tab = raw === 'market' ? 'competitors' : raw; // old links
+  const ALIAS: Record<string, string> = { market: 'competitors', radar: 'visibility' }; // old links
+  const tab = ALIAS[raw] || raw;
   const sub = loc.pathname.split('/')[3] || '';
   const [openGroups, setOpenGroups] = useState<string[]>(['lenses']);
   const focus = new URLSearchParams(loc.search).get('focus') || undefined;
@@ -45,9 +47,9 @@ export default function Workspace() {
 
   if (err) return <div className="p-10 text-muted">{err}</div>;
   if (!info) return <div className="p-10 text-muted">Loading…</div>;
-  const hidden: string[] = ((!info.access.isAgency && info.settings?.hidden_tabs) || []).map((t: string) => (t === 'market' ? 'competitors' : t));
+  const hidden: string[] = ((!info.access.isAgency && info.settings?.hidden_tabs) || []).map((t: string) => ALIAS[t] || t);
 
-  const go = (t: string, f?: string) => nav(`/${slug}/${t === 'market' ? 'competitors' : t}${f ? `?focus=${encodeURIComponent(f)}` : ''}`);
+  const go = (t: string, f?: string) => nav(`/${slug}/${ALIAS[t] || t}${f ? `?focus=${encodeURIComponent(f)}` : ''}`);
   const reload = () => setRev((r) => r + 1);
 
   return (
@@ -118,7 +120,8 @@ export default function Workspace() {
           {tab === 'overview' && <Overview info={info} reload={reload} />}
           {tab === 'competitors' && <Competitors info={info} focus={focus} />}
           {tab === 'lenses' && <Lenses info={info} focus={focus} view={sub === 'seo' || ['seo', 'content gap', 'keywords'].includes((focus || '').toLowerCase()) ? 'seo' : 'maps'} />}
-          {tab === 'radar' && <Radar info={info} />}
+          {tab === 'visibility' && <Visibility info={info} />}
+          {tab === 'monitor' && <Monitor info={info} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}

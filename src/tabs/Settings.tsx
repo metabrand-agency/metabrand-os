@@ -14,7 +14,8 @@ const CLIENT_TABS = [
   ['memory', 'Memory (shared items only)'],
   ['competitors', 'Competitors'],
   ['lenses', 'Lenses'],
-  ['radar', 'Brand Radar'],
+  ['visibility', 'Brand Visibility'],
+  ['monitor', 'PR Monitor'],
   ['assets', 'Assets (shared items only)'],
 ] as const;
 
