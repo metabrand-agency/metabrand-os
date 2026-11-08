@@ -118,13 +118,14 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
   const research = (body: any) => api<{ company: any }>(`/w/${info.slug}/competitors/research`, { body }).then((r) => r.company);
   const uniqueId = (name: string, taken: Set<string>) => { let id = slugify(name); for (let i = 2; taken.has(id); i++) id = `${slugify(name)}-${i}`; taken.add(id); return id; };
 
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    if (!q.trim()) return;
+  async function add(e?: React.FormEvent, pick?: Sug) {
+    e?.preventDefault();
+    if (!q.trim() && !pick) return;
     setErr(''); setBusy('add');
     try {
-      const found = await research({ query: q.trim() });
-      const id = uniqueId(found.name || q, new Set(data!.companies.map((c) => c.id)));
+      // a picked suggestion comes with its website, so same-named companies don't get mixed up
+      const found = await research(pick?.domain ? { name: pick.name, url: `https://${pick.domain}` } : { query: (pick?.name || q).trim() });
+      const id = uniqueId(found.name || pick?.name || q, new Set(data!.companies.map((c) => c.id)));
       const d = withFlags(data!);
       await save({ ...d, companies: [...d.companies, { ...found, id, overlap, tier: 2, x: 50, y: 50, selected: chosen.size < 5 }] });
       setQ(''); setSel(id);
@@ -254,7 +255,10 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
 
       {agency && (
         <form onSubmit={add} className="flex flex-wrap items-center gap-2">
-          <div className="min-w-[260px] flex-1"><Input placeholder="Add a competitor: name or website, e.g. linear.app" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="min-w-[260px] flex-1">
+            <CompanySearch slug={info.slug} value={q} onChange={setQ} disabled={!!busy} companies={data.companies}
+              onPick={(s) => add(undefined, s)} onShow={(id) => { setQ(''); setSel(id); }} />
+          </div>
           <Select value={overlap} options={OVERLAP_ORDER} labels={Object.fromEntries(OVERLAP_ORDER.map((k) => [k, OVERLAP[k].label]))} onChange={setOverlap} />
           <Btn kind="primary" type="submit" disabled={!q.trim() || !!busy}>{busy === 'add' ? 'Researching… about 20 s' : 'Add'}</Btn>
         </form>
@@ -362,6 +366,87 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
       <div className="text-[11px] text-muted">Facts from Apollo and AI web research; DR, search traffic, brand searches and linking sites from Ahrefs. Click a column to sort; scroll the table sideways.</div>
 
       {agency && <JsonEditor data={data} onSave={save} />}
+    </div>
+  );
+}
+
+type Sug = { name: string; domain: string; logo?: string };
+const hostOf = (u?: string) => { try { return u ? new URL(u.startsWith('http') ? u : `https://${u}`).hostname.replace(/^www\./, '').toLowerCase() : ''; } catch { return ''; } };
+
+/** The add field: companies drop down while you type, each with its website, so among many
+ *  same-named ones (Metabrand…) you pick the right one. Enter without a pick researches the text as typed. */
+function CompanySearch({ slug, value, onChange, onPick, onShow, companies, disabled }: {
+  slug: string; value: string; onChange: (v: string) => void; onPick: (s: Sug) => void; onShow: (id: string) => void; companies: Company[]; disabled?: boolean;
+}) {
+  const [found, setItems] = useState<Sug[]>([]);
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(-1);
+  const [loading, setLoading] = useState(false);
+  const seq = useRef(0);
+  const known = new Map(companies.map((c) => [hostOf(c.url), c] as const).filter(([h]) => h));
+  const s = value.trim();
+  // a typed website goes first, even when no directory knows it
+  const typed = /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+\/?$/i.test(s) ? hostOf(s) : '';
+  const items = typed && !found.some((x) => x.domain === typed) ? [{ name: typed, domain: typed }, ...found] : found;
+
+  useEffect(() => {
+    const n = ++seq.current;
+    if (s.length < 2) { setItems([]); setLoading(false); return; }
+    setLoading(true);
+    const t = setTimeout(() => {
+      api<{ suggestions: Sug[] }>(`/w/${slug}/competitors/suggest?q=${encodeURIComponent(s)}`)
+        .then((r) => { if (n === seq.current) { setItems(r.suggestions || []); setHi(-1); } })
+        .catch(() => { if (n === seq.current) setItems([]); })
+        .finally(() => { if (n === seq.current) setLoading(false); });
+    }, 220);
+    return () => clearTimeout(t);
+  }, [s, slug]);
+
+  const choose = (x: Sug) => {
+    const c = known.get(x.domain);
+    setOpen(false);
+    if (c) onShow(c.id);
+    else if (x.name === x.domain) onPick({ name: x.domain, domain: '' }); // a bare website: the research reads the name off the site
+    else { onChange(x.name); onPick(x); }
+  };
+  const rows = items.length + 1; // the last row researches the text as typed
+  const onKey = (e: React.KeyboardEvent) => {
+    if (!open || s.length < 2) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => (h + 1) % rows); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => (h <= 0 ? rows - 1 : h - 1)); }
+    else if (e.key === 'Escape') setOpen(false);
+    else if (e.key === 'Enter' && hi >= 0 && hi < items.length) { e.preventDefault(); choose(items[hi]); }
+    else if (e.key === 'Enter') setOpen(false);
+  };
+  const show = open && s.length >= 2 && !disabled;
+
+  return (
+    <div className="relative">
+      <Input placeholder="Add a competitor: start typing a name or a website, e.g. linear.app" value={value} disabled={disabled}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onKeyDown={onKey}
+        role="combobox" aria-expanded={show} autoComplete="off" />
+      {show && (
+        <div className="absolute inset-x-0 top-full z-30 mt-1 max-h-[360px] overflow-y-auto rounded-md border border-line bg-panel py-1 shadow-xl" onMouseDown={(e) => e.preventDefault()}>
+          {items.map((x, k) => {
+            const c = known.get(x.domain);
+            return (
+              <div key={x.domain} onMouseEnter={() => setHi(k)} onClick={() => choose(x)}
+                className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-[13px] ${hi === k ? 'bg-panel-2' : ''}`}>
+                <Favicon url={`https://${x.domain}`} name={x.name} size={20} />
+                <span className="min-w-0 flex-1 truncate">{x.name}{x.name !== x.domain && <span className="text-muted"> {x.domain}</span>}</span>
+                {c ? <span className="shrink-0 text-[11px] text-muted">In the list, show</span>
+                  : <a href={`https://${x.domain}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Open the website to check it's the right one" className="shrink-0 rounded px-1.5 text-[12px] text-muted hover:text-text">↗</a>}
+              </div>
+            );
+          })}
+          {loading && !items.length && <div className="px-3 py-2 text-[12px] text-muted">Looking up companies…</div>}
+          {!loading && !items.length && <div className="px-3 py-2 text-[12px] text-muted">No matches in the company directories. Type the website for a small or new company.</div>}
+          <div onMouseEnter={() => setHi(items.length)} onClick={() => { setOpen(false); onPick({ name: s, domain: '' }); }}
+            className={`mt-1 cursor-pointer border-t border-line px-3 py-2 text-[12px] text-muted ${hi === items.length ? 'bg-panel-2 text-text' : ''}`}>
+            Research “{s}” as typed, with web search
+          </div>
+        </div>
+      )}
     </div>
   );
 }

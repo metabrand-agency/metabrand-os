@@ -4,7 +4,7 @@ import { SCHEMA } from './schema';
 import { Env, SessionUser, Access, makeSession, readSession, loadUser, accessFor, uid, newCode, hashCode } from './auth';
 import { chat } from './chat';
 import { aiLenses } from './lenses';
-import { researchCompany } from './companies';
+import { researchCompany, suggestCompanies } from './companies';
 import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
@@ -453,6 +453,24 @@ app.post('/w/:slug/competitors/research', async (c) => {
   } catch (e: any) {
     return c.json({ error: e.message }, 502);
   }
+});
+
+// competitors: name suggestions while typing (agency only; free public autocomplete, cached a day)
+app.get('/w/:slug/competitors/suggest', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const q = (c.req.query('q') || '').trim().toLowerCase().slice(0, 60);
+  if (q.length < 2) return c.json({ suggestions: [] });
+  const cache = (globalThis as any).caches?.default as Cache | undefined;
+  const key = new Request(`https://cache.metabrand.internal/suggest?q=${encodeURIComponent(q)}`);
+  const hit = await cache?.match(key).catch(() => undefined);
+  if (hit) return c.json(await hit.json());
+  const body = { suggestions: await suggestCompanies(q) };
+  if (cache && body.suggestions.length) {
+    const put = cache.put(key, new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json', 'cache-control': 'max-age=86400' } })).catch(() => {});
+    try { c.executionCtx.waitUntil(put); } catch { await put; }
+  }
+  return c.json(body);
 });
 
 // competitors vs project memory: who the client names, and how our list holds up (agency only; nothing is saved here)

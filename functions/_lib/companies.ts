@@ -125,6 +125,32 @@ export async function ahrefs(env: Env, url: string | undefined, name: string) {
   }
 }
 
+export type Suggestion = { name: string; domain: string; logo?: string };
+/** Company name autocomplete while typing: Clearbit's and Clearout's free public endpoints (no keys,
+ *  no credits). Clearbit ranks well-known companies better, Clearout adds smaller ones. */
+export async function suggestCompanies(q: string): Promise<Suggestion[]> {
+  const s = q.trim();
+  if (s.length < 2) return [];
+  const get = (u: string) =>
+    fetch(u, { headers: { accept: 'application/json', 'user-agent': 'MetabrandOS/1.0' }, signal: AbortSignal.timeout(4000) })
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [cb, co]: any[] = await Promise.all([
+    get(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${encodeURIComponent(s)}`),
+    get(`https://api.clearout.io/public/companies/autocomplete?query=${encodeURIComponent(s)}`),
+  ]);
+  const out: Suggestion[] = [];
+  const seen = new Set<string>();
+  const push = (name: any, domain: any, logo?: any) => {
+    const d = String(domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+    if (!d || !d.includes('.') || seen.has(d)) return;
+    seen.add(d);
+    out.push({ name: String(name || d).trim(), domain: d, ...(typeof logo === 'string' && logo && !/default-company/.test(logo) ? { logo } : {}) });
+  };
+  for (const x of Array.isArray(cb) ? cb : []) push(x?.name, x?.domain, x?.logo);
+  for (const x of Array.isArray(co?.data) ? co.data : []) push(x?.name, x?.domain, x?.logo_url);
+  return out.slice(0, 8);
+}
+
 export async function researchCompany(env: Env, wsId: string, input: { query?: string; name?: string; url?: string }, clientName: string) {
   const url = input.url || (input.query ? normalizeUrl(input.query) : null);
   const page = url ? await readHomepage(url) : null;
