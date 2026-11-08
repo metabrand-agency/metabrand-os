@@ -327,8 +327,8 @@ function KitView({ kit, agency, onChange }: { kit: Kit; agency: boolean; onChang
                   <img src={dataUri(iconSvg(i, iconColor, 40))} alt={i.name} className="h-10 w-10" />
                 </div>
                 <div className="flex items-center justify-between gap-1 border-t border-line px-2 py-1.5 text-[11px]">
-                  <span className="truncate text-muted">{i.name}</span>
-                  <span className="flex shrink-0 gap-1.5 opacity-0 transition group-hover:opacity-100">
+                  <span className="truncate text-muted group-hover:hidden">{i.name}</span>
+                  <span className="hidden shrink-0 gap-1.5 group-hover:flex">
                     <button onClick={() => save(svgBlob(iconSvg(i, iconColor)), `${name}.svg`)} className="hover:underline">SVG</button>
                     <button onClick={() => run(i.id, async () => { const W = Number(iconSize); save(await pngBlob(iconSvg(i, iconColor, W), W, Math.round((W / i.w) * i.h)), `${name}.png`); })} className="hover:underline">PNG</button>
                     {edit && <button onClick={() => onChange({ ...kit, icons: kit.icons.filter((x) => x.id !== i.id) })} className="text-muted hover:text-[var(--color-direct)]">Remove</button>}

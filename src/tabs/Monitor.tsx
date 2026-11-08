@@ -5,7 +5,20 @@ import { Btn, Card, Favicon, Select } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import { EmptyResearch, MarketData, RefreshButton, companyById, displayName, domain, focusOrder, useActivityRefresh, useResearch } from './marketShared';
 
-type Item = { id: string; kind: 'news' | 'post' | 'link'; title: string; url: string; date?: string; source?: string; dr?: number; type?: string };
+type Item = { id: string; kind: 'news' | 'post' | 'link'; title: string; url: string; date?: string; source?: string; site?: string; dr?: number; type?: string };
+
+/** Small preview: the page's own image for posts and links; the publisher's icon for news (Google News hides the article URL). */
+function Thumb({ x }: { x: Item }) {
+  const [failed, setFailed] = useState(false);
+  const site = x.kind === 'news' ? x.site : domain(x.url);
+  const box = 'h-10 w-16 shrink-0 overflow-hidden rounded border border-line bg-panel-2';
+  if (x.kind !== 'news' && !failed) return <img src={`/api/og?u=${encodeURIComponent(x.url)}`} alt="" loading="lazy" onError={() => setFailed(true)} className={`${box} object-cover`} />;
+  return (
+    <span className={`${box} flex items-center justify-center`}>
+      {site ? <img src={`https://www.google.com/s2/favicons?domain=${site}&sz=64`} alt="" loading="lazy" className="h-5 w-5 rounded-sm" /> : <span className="text-[11px] text-muted">{(x.source || '?').slice(0, 1)}</span>}
+    </span>
+  );
+}
 const fmtDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 const cleanSource = (s?: string) => (s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 const cleanTitle = (t: string, src?: string) => (src && t.endsWith(` - ${src}`) ? t.slice(0, -(src.length + 3)) : t);
@@ -85,7 +98,7 @@ export default function Monitor({ info }: { info: WsInfo }) {
                     <span className={`flex min-w-0 items-center gap-1.5 ${x.id === '__client' ? 'font-medium' : ''}`}><Favicon url={c.url} name={c.name} size={14} /><span className="truncate">{displayName(data, x.id)}</span></span>
                   </td>
                   <td className="px-3 py-2 text-muted" title={x.type}>{KIND_LABEL[x.kind]}</td>
-                  <td className="px-3 py-2"><a href={x.url} target="_blank" rel="noreferrer" className="line-clamp-2 hover:underline">{x.title}</a></td>
+                  <td className="px-3 py-2"><span className="flex items-center gap-3"><Thumb x={x} /><a href={x.url} target="_blank" rel="noreferrer" className="line-clamp-2 hover:underline">{x.title}</a></span></td>
                   <td className="px-4 py-2 text-muted"><span className="flex items-baseline justify-between gap-2"><span className="truncate">{x.source}</span>{x.dr != null && <span className="num shrink-0 text-[11px]" title="Ahrefs Domain Rating of the linking site">DR {x.dr}</span>}</span></td>
                 </tr>
               );

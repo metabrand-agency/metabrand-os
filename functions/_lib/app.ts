@@ -8,7 +8,7 @@ import { researchCompany } from './companies';
 import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
-import { refreshOne, focusIds } from './radar';
+import { refreshOne, focusIds, ogImage } from './radar';
 import { SUPERPLANE_KIT } from './kits/superplane';
 import superplaneMarket from '../../data/superplane/market.json';
 
@@ -97,6 +97,22 @@ app.use('/*', async (c, next) => {
   if (!user) return c.json({ error: 'Not signed in' }, 401);
   c.set('user', user);
   return next();
+});
+
+// Preview image of a page (og:image) for thumbnails in PR Monitor; cached for a week at the edge.
+app.get('/og', async (c) => {
+  let url: URL;
+  try { url = new URL(c.req.query('u') || ''); if (!/^https?:$/.test(url.protocol)) throw new Error(); } catch { return c.body(null, 400); }
+  const cache = (globalThis as any).caches?.default as Cache | undefined;
+  const key = new Request(`https://og.metabrand-os/${encodeURIComponent(url.toString())}`);
+  const hit = await cache?.match(key).catch(() => undefined);
+  if (hit) return hit;
+  const img = await ogImage(url.toString()).catch(() => null);
+  const res = img
+    ? new Response(null, { status: 302, headers: { location: img, 'cache-control': 'public, max-age=604800' } })
+    : new Response(null, { status: 404, headers: { 'cache-control': 'public, max-age=86400' } });
+  if (cache) { const put = cache.put(key, res.clone()).catch(() => {}); try { c.executionCtx.waitUntil(put); } catch { await put; } }
+  return res;
 });
 
 app.get('/me', async (c) => {

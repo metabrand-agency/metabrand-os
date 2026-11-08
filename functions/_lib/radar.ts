@@ -40,6 +40,15 @@ async function getHead(url: string, ms = 6000): Promise<string | null> {
 const metaOf = (html: string, key: string) =>
   html.match(new RegExp(`<meta[^>]+(?:property|name|itemprop)=["']${key}["'][^>]*content=["']([^"']+)["']`, 'i'))?.[1] ||
   html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name|itemprop)=["']${key}["']`, 'i'))?.[1];
+/** The page's preview image (og:image or twitter:image), absolute, or null. */
+export async function ogImage(url: string): Promise<string | null> {
+  const h = await getHead(url, 5000);
+  if (!h) return null;
+  const raw = metaOf(h, 'og:image:secure_url') || metaOf(h, 'og:image') || metaOf(h, 'twitter:image') || metaOf(h, 'twitter:image:src');
+  if (!raw) return null;
+  try { const u = new URL(decode(raw), url); return /^https?:$/.test(u.protocol) ? u.toString() : null; } catch { return null; }
+}
+
 async function articleInfo(url: string): Promise<{ title?: string; date?: string } | null> {
   const h = await getHead(url);
   if (!h) return null;
@@ -174,11 +183,13 @@ export async function newsFor(query: string) {
   const items = (r.text.match(/<item[\s>][\s\S]*?<\/item>/gi) || []).map((it) => {
     const source = decode(tag(it, 'source') || '');
     const title = decode(tag(it, 'title') || '');
+    const site = it.match(/<source[^>]+url=["']([^"']+)["']/i)?.[1];
     return {
       title: source && title.endsWith(` - ${source}`) ? title.slice(0, -(source.length + 3)) : title, // Google adds " - Source"
       url: decode(tag(it, 'link') || ''),
       date: isoDate(tag(it, 'pubDate')),
       source: source.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+      site: site ? site.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : undefined,
     };
   }).filter((x) => x.title && x.url);
   items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));

@@ -8,7 +8,7 @@ export type MapPoint = { id: string; name: string; lat: number; lng: number; cli
 const W = 960, H = 470;
 const landShape = feature(land as any, (land as any).objects.land) as any;
 
-export default function WorldMap({ points }: { points: MapPoint[] }) {
+export default function WorldMap({ points, accent = 'var(--mb-brand)' }: { points: MapPoint[]; accent?: string }) {
   // zoom to where the companies are (with room for labels); world view if they are spread out
   const projection = geoNaturalEarth1();
   const coords = points.map((p) => [p.lng, p.lat] as [number, number]);
@@ -37,7 +37,7 @@ export default function WorldMap({ points }: { points: MapPoint[] }) {
       <path d={path(landShape) || ''} fill="var(--mb-panel-2)" stroke="var(--mb-line)" strokeWidth={0.6} clipPath="url(#mapclip)" />
       {groups.map((g, i) => (
         <g key={i}>
-          <circle cx={g.x} cy={g.y} r={g.client ? 7 : 5} fill={g.client ? 'var(--mb-brand)' : 'var(--mb-text)'} stroke={g.client ? 'var(--mb-text)' : 'var(--mb-panel)'} strokeWidth={g.client ? 1.5 : 2} />
+          <circle cx={g.x} cy={g.y} r={g.client ? 7 : 5} fill={g.client ? accent : 'var(--mb-text)'} stroke="var(--mb-panel)" strokeWidth={2} />
           {g.names.map((n, j) => (
             <text key={n} x={g.x + 10} y={g.y + 4 + j * 15} fontSize={12.5} fill="var(--mb-text)" style={{ paintOrder: 'stroke', stroke: 'var(--mb-panel)', strokeWidth: 4 }}>{n}</text>
           ))}

@@ -4,7 +4,7 @@ import { api } from '../api';
 import { Btn, Card, Input, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import SeoLens from './SeoLens';
-import { Company, Dossier, EmptyResearch, Lens, MarketData, OVERLAP, RefreshButton, Swatch, lensesOf, selectedIds, shortName, useResearch } from './marketShared';
+import { Company, Dossier, EmptyResearch, Lens, MarketData, OVERLAP, RefreshButton, Swatch, lensesOf, selectedIds, shortName, useResearch, useClientColor } from './marketShared';
 
 const LENS_LABEL: Record<string, string> = { promise_clusters: 'Promise clusters', perceptual_map: 'Perceptual map', proof: 'Proof audit' };
 
@@ -52,6 +52,7 @@ function placeLabels(pts: Pt[]): Record<string, Place> {
 export default function Lenses({ info, focus, view = 'maps' }: { info: WsInfo; focus?: string; view?: 'maps' | 'seo' }) {
   const agency = info.access.isAgency;
   const { row, setRow, reload, hasNew, save } = useResearch(info.slug);
+  const accent = useClientColor(info.slug);
   const [lensId, setLensId] = useState<string | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
@@ -282,8 +283,8 @@ export default function Lenses({ info, focus, view = 'maps' }: { info: WsInfo; f
                   onPointerDown={(e) => { (e.target as Element).setPointerCapture?.(e.pointerId); setDrag({ id: '__client', moved: false }); }}
                   style={{ cursor: agency ? 'grab' : 'pointer' }}
                 >
-                  <circle cx={px(p.x)} cy={py(p.y)} r={22} fill="var(--mb-brand)" opacity={0.28} />
-                  <circle cx={px(p.x)} cy={py(p.y)} r={14} fill="var(--mb-brand)" stroke="var(--mb-text)" strokeWidth={2} />
+                  <circle cx={px(p.x)} cy={py(p.y)} r={22} fill={accent} opacity={0.22} />
+                  <circle cx={px(p.x)} cy={py(p.y)} r={14} fill={accent} />
                   <text x={labels.__client?.x} y={labels.__client?.y} textAnchor={labels.__client?.anchor} fontSize={18} fontWeight={600} fill="var(--mb-text)" style={{ paintOrder: 'stroke', stroke: 'var(--mb-panel)', strokeWidth: 5 }}>{data.client.name}</text>
                 </g>
               );

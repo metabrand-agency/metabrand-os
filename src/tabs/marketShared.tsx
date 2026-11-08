@@ -27,7 +27,7 @@ export type SeoCountry = {
   top: Record<string, { all: SeoKw[]; content: SeoKw[] }>;
   gap: { keywords: { keyword: string; volume: number; kd?: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
 };
-export type News = { query: string; count_30d: number; latest: { title: string; url: string; date?: string; source?: string }[]; checked_at: number };
+export type News = { query: string; count_30d: number; latest: { title: string; url: string; date?: string; source?: string; site?: string }[]; checked_at: number };
 export type Links = { count_30d: number; capped?: boolean; latest: { title: string; url: string; date?: string; published?: string; source?: string; dr?: number; type?: string }[]; checked_at: number };
 export type Activity = { links?: Links | null; v?: number; source?: string; posts_30d: number; posts_30d_more?: boolean; latest: { title: string; url: string; date?: string }[]; checked_at: number; news?: News | null };
 export const ACTIVITY_V = 2; // matches the server; older entries are collected again
@@ -318,4 +318,21 @@ export function EmptyResearch({ info, title, onLoaded }: { info: WsInfo; title: 
       </Card>
     </div>
   );
+}
+
+/** The client's own brand colour (its brand kit accent: the first saturated colour), for charts and maps. */
+const accentCache: Record<string, Promise<string | null>> = {};
+export function pickAccent(kit: any): string | null {
+  if (!kit) return null;
+  if (kit.accent) return kit.accent;
+  const sat = (hex: string) => { const n = parseInt(hex.replace('#', '').slice(0, 6), 16); const v = [(n >> 16) & 255, (n >> 8) & 255, n & 255]; return Math.max(...v) - Math.min(...v); };
+  for (const g of kit.colors || []) for (const c of g.items || []) if (/^#[0-9a-f]{6}$/i.test(c.hex) && sat(c.hex) > 80) return c.hex;
+  return null;
+}
+export function useClientColor(slug: string) {
+  const [color, setColor] = useState<string | null>(null);
+  useEffect(() => {
+    (accentCache[slug] ||= api<{ data: any } | null>(`/w/${slug}/research/brand_kit`).then((r) => pickAccent(r?.data)).catch(() => null)).then(setColor);
+  }, [slug]);
+  return color || 'var(--mb-brand)';
 }

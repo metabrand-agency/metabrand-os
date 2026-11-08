@@ -78,7 +78,7 @@ export default function Workspace() {
                       <button
                         disabled={t.soon}
                         onClick={() => (t.children ? setOpenGroups(open ? openGroups.filter((x) => x !== t.id) : [...openGroups, t.id]) : go(t.id))}
-                        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition disabled:cursor-default ${active ? 'bg-panel-2 font-medium text-text shadow-[inset_2px_0_0_var(--mb-brand)]' : tab === t.id ? 'text-text' : 'text-muted hover:bg-panel-2 hover:text-text'}`}
+                        className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition disabled:cursor-default ${active ? 'bg-panel-2 font-medium text-text' : tab === t.id ? 'text-text' : 'text-muted hover:bg-panel-2 hover:text-text'}`}
                       >
                         <span className="w-4 text-center text-[12px] opacity-70">{t.icon}</span>
                         <span className="flex-1">{t.label}</span>
@@ -88,7 +88,7 @@ export default function Workspace() {
                       {t.children && open && t.children.map((ch, i) => {
                         const on = tab === t.id && (sub === ch.id || (!sub && i === 0));
                         return (
-                          <button key={ch.id} onClick={() => nav(`/${slug}/${t.id}/${ch.id}`)} className={`flex w-full items-center rounded-md py-1.5 pl-[42px] pr-3 text-left text-[13px] ${on ? 'bg-panel-2 font-medium text-text shadow-[inset_2px_0_0_var(--mb-brand)]' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
+                          <button key={ch.id} onClick={() => nav(`/${slug}/${t.id}/${ch.id}`)} className={`flex w-full items-center rounded-md py-1.5 pl-[42px] pr-3 text-left text-[13px] ${on ? 'bg-panel-2 font-medium text-text' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
                             {ch.label}
                           </button>
                         );
@@ -102,7 +102,7 @@ export default function Workspace() {
         </nav>
         <div className="border-t border-line px-2 py-2">
           {!hidden.includes('settings') && (
-            <button onClick={() => go('settings')} className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] ${tab === 'settings' ? 'bg-panel-2 font-medium shadow-[inset_2px_0_0_var(--mb-brand)]' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
+            <button onClick={() => go('settings')} className={`flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] ${tab === 'settings' ? 'bg-panel-2 font-medium' : 'text-muted hover:bg-panel-2 hover:text-text'}`}>
               <span className="w-4 text-center text-[12px] opacity-70">⚙</span>Settings
             </button>
           )}

@@ -3,7 +3,7 @@
 import { lazy, ReactNode, Suspense } from 'react';
 import { Btn, Card, Favicon, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
-import { Company, EmptyResearch, RefreshButton, companyById, fmtNum, focusOrder, shortName, useActivityRefresh, useResearch } from './marketShared';
+import { Company, EmptyResearch, RefreshButton, companyById, fmtNum, focusOrder, shortName, useActivityRefresh, useClientColor, useResearch } from './marketShared';
 
 const WorldMap = lazy(() => import('./WorldMap'));
 
@@ -14,7 +14,7 @@ const money = (s?: string | null) => {
 };
 const fmtMoney = (n: number) => (n >= 1e9 ? `$${(n / 1e9).toFixed(1)}B` : n >= 1e6 ? `$${Math.round(n / 1e5) / 10}M` : `$${Math.round(n / 1e3)}K`);
 
-function Bars({ title, hint, rows, format = fmtNum }: { title: string; hint: string; rows: Bar[]; format?: (n: number) => string }) {
+function Bars({ title, hint, rows, format = fmtNum, accent }: { title: string; hint: string; rows: Bar[]; format?: (n: number) => string; accent: string }) {
   const max = Math.max(1, ...rows.map((r) => r.value || 0));
   const sorted = [...rows].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
   return (
@@ -31,7 +31,7 @@ function Bars({ title, hint, rows, format = fmtNum }: { title: string; hint: str
               {r.value != null && r.value > 0 && (
                 <span
                   className="h-3 shrink-0 rounded-r-[3px]"
-                  style={{ width: `${Math.max(1.5, (r.value / max) * 78)}%`, background: r.id === '__client' ? 'var(--mb-brand)' : 'var(--mb-muted)', boxShadow: r.id === '__client' ? 'inset 0 0 0 1px var(--mb-brand-edge)' : undefined }}
+                  style={{ width: `${Math.max(1.5, (r.value / max) * 78)}%`, background: r.id === '__client' ? accent : 'var(--mb-muted)' }}
                 />
               )}
               <span className="num truncate text-muted">{r.value == null ? '—' : r.label || format(r.value)}</span>
@@ -48,6 +48,7 @@ export default function Visibility({ info }: { info: WsInfo }) {
   const { row, reload, hasNew, accept } = useResearch(info.slug);
   const data = row?.data;
   const { busy, err, refresh, label } = useActivityRefresh(info.slug, data, accept, agency);
+  const accent = useClientColor(info.slug);
   const ids = data ? focusOrder(data) : [];
   const byId = (id: string) => companyById(data!, id);
 
@@ -76,14 +77,14 @@ export default function Visibility({ info }: { info: WsInfo }) {
       {err && <div className="text-[12px] text-[var(--color-direct)]">{err}</div>}
 
       <div className="grid gap-4 @3xl:grid-cols-2">
-        {chart(<Bars title="Brand searches" hint="Ahrefs, per month, worldwide" rows={bars((c) => c.ahrefs?.brand_global)} />)}
-        {chart(<Bars title="Search traffic" hint="Ahrefs, organic visits per month" rows={bars((c) => c.ahrefs?.traffic)} />)}
-        {chart(<Bars title="Domain Rating" hint="Ahrefs, 0–100" rows={bars((c) => c.ahrefs?.dr)} format={(n) => String(n)} />)}
-        {chart(<Bars title="Linking sites" hint="Ahrefs, referring domains" rows={bars((c) => c.ahrefs?.refdomains)} />)}
-        {chart(<Bars title="News mentions" hint="Google News, last 30 days" rows={bars((_c, id) => activity[id]?.news?.count_30d ?? null, (_c, id) => ((activity[id]?.news?.count_30d ?? 0) >= 100 ? '100+' : undefined))} format={(n) => String(n)} />)}
-        {chart(<Bars title="Posts in the last 30 days" hint="Own blog and changelog" rows={bars((_c, id) => activity[id]?.posts_30d ?? null, (_c, id) => (activity[id]?.posts_30d_more ? `${activity[id].posts_30d}+` : undefined))} format={(n) => String(n)} />)}
-        {chart(<Bars title="Team" hint="Employees, Apollo estimate" rows={bars(team)} />)}
-        {chart(<Bars title="Last round" hint="Amount, Apollo and research" rows={bars((c) => money(c.last_round || c.funding), (c) => (c.last_round || c.funding || '').replace(/\s*\(.*?\)/, ''))} format={fmtMoney} />)}
+        {chart(<Bars accent={accent} title="Brand searches" hint="Ahrefs, per month, worldwide" rows={bars((c) => c.ahrefs?.brand_global)} />)}
+        {chart(<Bars accent={accent} title="Search traffic" hint="Ahrefs, organic visits per month" rows={bars((c) => c.ahrefs?.traffic)} />)}
+        {chart(<Bars accent={accent} title="Domain Rating" hint="Ahrefs, 0–100" rows={bars((c) => c.ahrefs?.dr)} format={(n) => String(n)} />)}
+        {chart(<Bars accent={accent} title="Linking sites" hint="Ahrefs, referring domains" rows={bars((c) => c.ahrefs?.refdomains)} />)}
+        {chart(<Bars accent={accent} title="News mentions" hint="Google News, last 30 days" rows={bars((_c, id) => activity[id]?.news?.count_30d ?? null, (_c, id) => ((activity[id]?.news?.count_30d ?? 0) >= 100 ? '100+' : undefined))} format={(n) => String(n)} />)}
+        {chart(<Bars accent={accent} title="Posts in the last 30 days" hint="Own blog and changelog" rows={bars((_c, id) => activity[id]?.posts_30d ?? null, (_c, id) => (activity[id]?.posts_30d_more ? `${activity[id].posts_30d}+` : undefined))} format={(n) => String(n)} />)}
+        {chart(<Bars accent={accent} title="Team" hint="Employees, Apollo estimate" rows={bars(team)} />)}
+        {chart(<Bars accent={accent} title="Last round" hint="Amount, Apollo and research" rows={bars((c) => money(c.last_round || c.funding), (c) => (c.last_round || c.funding || '').replace(/\s*\(.*?\)/, ''))} format={fmtMoney} />)}
       </div>
 
       <div>
@@ -91,7 +92,7 @@ export default function Visibility({ info }: { info: WsInfo }) {
         <Card className="p-2">
           {geo.length ? (
             <Suspense fallback={<div className="h-64" />}>
-              <WorldMap points={geo.map(({ id, c }) => ({ id, name: id === '__client' ? c.name : shortName(c), lat: c.geo!.lat, lng: c.geo!.lng, client: id === '__client' }))} />
+              <WorldMap accent={accent} points={geo.map(({ id, c }) => ({ id, name: id === '__client' ? c.name : shortName(c), lat: c.geo!.lat, lng: c.geo!.lng, client: id === '__client' }))} />
             </Suspense>
           ) : <div className="p-6 text-[13px] text-muted">{busy ? 'Locating headquarters…' : 'No locations yet.'}</div>}
         </Card>

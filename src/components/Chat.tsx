@@ -5,7 +5,7 @@ import Markdown from './Markdown';
 type Msg = { role: 'user' | 'assistant'; content: string };
 type Action = { type: 'navigate'; tab: string; focus?: string };
 
-const SUGGESTIONS = ['Who are the direct competitors and how do they position?', 'Which claims does everyone in the category make?', 'What did the client say about competitors in our meetings?', 'Show me all Figma and GitHub assets'];
+const SUGGESTIONS = ['Who are the direct competitors and how do they position?', 'Which claims does everyone in the category make?', 'What did the client say about competitors in our meetings?', 'Open the brand kit'];
 
 function splitOptions(text: string): { body: string; options: string[] } {
   const m = text.match(/\n?OPTIONS:\s*(.+)\s*$/);

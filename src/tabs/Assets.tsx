@@ -3,6 +3,7 @@ import { api } from '../api';
 import { Btn, Card, Input, Label, Select, Badge } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
 import BrandKit from './BrandKit';
+import { LINK_KINDS } from './Memory';
 
 const KIND_LABEL: Record<string, string> = { figma: 'Figma', github_repo: 'GitHub', video: 'Video', webflow_site: 'Webflow', website: 'Website', link: 'Link', logo: 'Logo', font: 'Font' };
 
@@ -15,25 +16,26 @@ export default function Assets({ info }: { info: WsInfo }) {
   const [rows, setRows] = useState<any[]>([]);
   const [form, setForm] = useState({ url: '', title: '', visibility: 'internal' });
   const [preview, setPreview] = useState<any>(null);
-  const load = async () => setRows(await api(`/w/${s}/assets`));
+  // sites, Webflow and repositories live in Project memory
+  const load = async () => setRows(((await api<any[]>(`/w/${s}/assets`)) || []).filter((a) => !LINK_KINDS.includes(a.kind)));
   useEffect(() => { load(); }, [s]);
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Assets</h1>
-        <p className="mt-1 text-[13px] text-muted">What the brand ships with: logos, colours, fonts and icons to download, plus Figma libraries, code, videos and sites. Briefs, calls and references go to Memory.</p>
+        <p className="mt-1 text-[13px] text-muted">What the brand ships with: logos, colours, fonts and icons to download, Figma libraries and videos. Sites, repositories, briefs and calls are in Memory.</p>
       </div>
 
       <BrandKit info={info} />
 
-      <h2 className="border-t border-line pt-8 text-[17px] font-semibold tracking-tight">Files and links</h2>
+      <h2 className="border-t border-line pt-8 text-[17px] font-semibold tracking-tight">Figma and video</h2>
 
       {info.access.isAgency && (
         <Card className="p-5">
           <Label>Add asset by link</Label>
           <form onSubmit={async (e) => { e.preventDefault(); await api(`/w/${s}/assets`, { body: form }); setForm({ url: '', title: '', visibility: 'internal' }); load(); }} className="flex flex-wrap gap-2">
-            <Input className="min-w-[320px] flex-[2]" placeholder="Figma, GitHub or video link" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} required />
+            <Input className="min-w-[320px] flex-[2]" placeholder="Figma or video link" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} required />
             <Input className="flex-1" placeholder="Title (optional)" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <Select value={form.visibility} options={['internal', 'client']} onChange={(v) => setForm({ ...form, visibility: v })} />
             <Btn kind="primary" type="submit">Add</Btn>

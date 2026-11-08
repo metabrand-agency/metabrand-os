@@ -65,6 +65,8 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
         <p className="mt-1 text-[13px] text-muted">Briefs, meeting transcripts, correspondence, proposals. Searchable by you, the assistant and any connected AI agent.</p>
       </div>
 
+      <ProjectLinks info={info} />
+
       <form onSubmit={search} className="flex gap-2">
         <Input placeholder="Search memory: “competitors”, “pricing”, “deadline”…" value={q} onChange={(e) => setQ(e.target.value)} />
         <Btn type="submit">Search</Btn>
@@ -133,6 +135,51 @@ export default function Memory({ info, focus }: { info: WsInfo; focus?: string }
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Project links: the live site, Webflow, code repositories and other references (stored with assets). */
+export const LINK_KINDS = ['website', 'webflow_site', 'github_repo', 'link'];
+const LINK_LABEL: Record<string, string> = { website: 'Site', webflow_site: 'Webflow', github_repo: 'GitHub', link: 'Link' };
+function ProjectLinks({ info }: { info: WsInfo }) {
+  const s = info.slug;
+  const [rows, setRows] = useState<any[]>([]);
+  const [url, setUrl] = useState('');
+  const load = async () => setRows(((await api<any[]>(`/w/${s}/assets`)) || []).filter((a) => LINK_KINDS.includes(a.kind)));
+  useEffect(() => { load(); }, [s]);
+  if (!rows.length && !info.access.isAgency) return null;
+  return (
+    <div>
+      <Label>Project links</Label>
+      <div className="flex flex-wrap items-center gap-2">
+        {rows.map((a) => {
+          let host = a.url;
+          try { host = new URL(a.url).hostname.replace(/^www\./, '') + new URL(a.url).pathname.replace(/\/$/, ''); } catch { /* keep */ }
+          return (
+            <span key={a.id} className="group flex items-center gap-2 rounded-md border border-line bg-panel px-2.5 py-1.5 text-[12px]">
+              <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(a.url)}&sz=32`} alt="" className="h-3.5 w-3.5" />
+              <a href={a.url} target="_blank" rel="noreferrer" className="hover:underline" title={a.title}>{a.title && a.title !== a.url ? a.title : host}</a>
+              <span className="text-[11px] text-muted">{LINK_LABEL[a.kind]}</span>
+              {info.access.isAgency && <button onClick={async () => { await api(`/w/${s}/assets/${a.id}`, { method: 'DELETE' }); load(); }} className="text-[11px] text-muted opacity-0 hover:text-[var(--color-direct)] group-hover:opacity-100">Remove</button>}
+            </span>
+          );
+        })}
+        {info.access.isAgency && (
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const u = url.trim();
+            if (!u) return;
+            const full = /^https?:\/\//.test(u) ? u : `https://${u}`;
+            const kind = /github\.com/.test(full) ? 'github_repo' : /webflow/.test(full) ? 'webflow_site' : rows.some((r) => r.kind === 'website') ? 'link' : 'website';
+            await api(`/w/${s}/assets`, { body: { url: full, kind, title: '', visibility: 'internal' } });
+            setUrl(''); load();
+          }} className="flex items-center gap-1.5">
+            <div className="w-64"><Input placeholder="Add site, GitHub or other link" value={url} onChange={(e) => setUrl(e.target.value)} /></div>
+            <Btn type="submit" disabled={!url.trim()}>Add</Btn>
+          </form>
+        )}
+      </div>
     </div>
   );
 }
