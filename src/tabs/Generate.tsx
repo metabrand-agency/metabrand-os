@@ -1,4 +1,4 @@
-// Banner generator (Brand OS): pick a format, write a headline or ask AI for options, and get several
+// Social post covers (Brand OS): pick a format, write a headline or ask AI for options, and get several
 // on-brand variants (statement, big number, type wall, generative flow field, app icon, motion, announcement,
 // photo) drawn from the project's brand kit. Download each as PNG or SVG, or all of them as a ZIP.
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -12,7 +12,7 @@ import { FORMATS, PATTERNS, VARIANTS, embeddedFonts, numberIn, render, rolesOf, 
 type Idea = { headline: string; number?: string; label?: string; angle?: string };
 type Saved = { copy: Copy; fmt: string; topic: string; pat?: Record<string, string> };
 
-const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'banner';
+const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'post-cover';
 function save(blob: Blob, name: string) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -36,7 +36,7 @@ function kitFromSite(name: string, b: any): Kit {
   };
 }
 
-/** Downscale an uploaded photo so banners stay light. */
+/** Downscale an uploaded photo so covers stay light. */
 async function readImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
@@ -134,7 +134,7 @@ export default function Generate({ info }: { info: WsInfo }) {
         if (missing) continue;
         out[`${fileBase(v.id)}.png`] = new Uint8Array(await (await toPng(await fullSvg(v.id), fmt.w, fmt.h)).arrayBuffer());
       }
-      save(new Blob([zipSync(out, { level: 0 })], { type: 'application/zip' }), `${slugify(kit?.brand || info.name)}-banners-${fmt.id}.zip`);
+      save(new Blob([zipSync(out, { level: 0 })], { type: 'application/zip' }), `${slugify(kit?.brand || info.name)}-post-covers-${fmt.id}.zip`);
     } catch (e: any) { setErr(e.message || 'Download failed'); }
     setBusy('');
   };
@@ -153,8 +153,8 @@ export default function Generate({ info }: { info: WsInfo }) {
     <div className="grid gap-6 lg:grid-cols-[330px_minmax(0,1fr)]">
       <aside className="space-y-4 self-start lg:sticky lg:top-16">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight">Banner generator</h1>
-          <p className="mt-1 text-[13px] text-muted">On-brand banners from the {fromSite ? 'colours and fonts on the site (add a brand kit in Assets for logos and exact colours)' : 'brand kit'}. Pick a format, write or generate a headline.</p>
+          <h1 className="text-[22px] font-semibold tracking-tight">Social post covers</h1>
+          <p className="mt-1 text-[13px] text-muted">On-brand covers for social posts, from the {fromSite ? 'colours and fonts on the site (add a brand kit in Assets for logos and exact colours)' : 'brand kit'}. Pick a format, write or generate a headline.</p>
         </div>
 
         <Card className="space-y-0.5 p-3">
@@ -223,7 +223,7 @@ export default function Generate({ info }: { info: WsInfo }) {
                 <button onClick={() => (v.needs === 'image' ? file.current?.click() : document.getElementById('banner-number')?.focus())}
                   className="flex w-full flex-col items-center justify-center gap-1 border-b border-dashed border-line bg-panel-2/40 p-6 text-center text-[13px] text-muted hover:text-text" style={{ aspectRatio: `${fmt.w} / ${fmt.h}` }}>
                   <span className="text-[20px]">{v.needs === 'image' ? '⬆' : '#'}</span>
-                  {v.needs === 'image' ? 'Add a photo for this one' : 'Add a number (or put one in the headline) for a stat banner'}
+                  {v.needs === 'image' ? 'Add a photo for this one' : 'Add a number (or put one in the headline) for a stat cover'}
                 </button>
               ) : (
                 <div className="[&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />

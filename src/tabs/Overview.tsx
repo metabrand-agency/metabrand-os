@@ -1,6 +1,6 @@
 // Overview: the client at a glance. Its main numbers against the competitors in focus, new backlinks from
 // articles and AI citations side by side, the articles about the client, and the brand essentials (logos,
-// the guide, generative art, the banner generator). The project log stays at the bottom for the agency.
+// the guide, generative art, the post cover generator). The project log stays at the bottom for the agency.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, fmtDate, STAGES } from '../api';
@@ -54,7 +54,7 @@ function Header({ info, reload }: { info: WsInfo; reload: () => void }) {
           </div>
         )}
         <Link to={`/${info.slug}/generate`} className="brand-dot flex items-center gap-2 rounded-md px-4 py-2.5 text-[14px] font-medium text-brand-ink hover:brightness-95">
-          <Icon name="generate" />Generate a banner
+          <Icon name="generate" />Make a post cover
         </Link>
       </div>
     </div>
@@ -183,7 +183,7 @@ function BrandBlock({ info, kit }: { info: WsInfo; kit: Kit | null }) {
   const tools: { to?: string; href?: string; icon: string; title: string; text: string }[] = [
     { to: `/${info.slug}/guide`, icon: 'guide', title: 'Online guide', text: 'Logo, colour, type, layout and applications' },
     ...(art ? [{ href: art.url, icon: 'link', title: art.title, text: art.note || 'The brand’s own generative art tool' }] : []),
-    { to: `/${info.slug}/generate`, icon: 'generate', title: 'Banner generator', text: 'LinkedIn and screen formats in the brand style' },
+    { to: `/${info.slug}/generate`, icon: 'generate', title: 'Social post covers', text: 'LinkedIn, stories and screens in the brand style' },
     { to: `/${info.slug}/assets`, icon: 'assets', title: 'Assets', text: 'Logos, colours, fonts, icons, backgrounds, videos' },
   ];
   const [busy, setBusy] = useState('');
@@ -235,7 +235,7 @@ function BrandBlock({ info, kit }: { info: WsInfo; kit: Kit | null }) {
           })}
         </div>
         <Link to={`/${info.slug}/generate`} className="brand-dot mt-3 flex items-center justify-center gap-2 rounded-md px-4 py-3 text-[15px] font-medium text-brand-ink hover:brightness-95">
-          <Icon name="generate" />Generate a banner
+          <Icon name="generate" />Make a post cover
         </Link>
       </Card>
     </div>

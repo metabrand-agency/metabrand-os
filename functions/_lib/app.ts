@@ -539,7 +539,7 @@ app.post('/w/:slug/monitor/ideas', async (c) => {
   return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
 });
 
-// Banner generator: headline options in the brand's voice (any member of the project)
+// Social post covers: headline options in the brand's voice (any member of the project)
 app.post('/w/:slug/generate/headlines', async (c) => {
   const ws = c.get('ws');
   const body = await c.req.json<{ topic?: string }>().catch(() => ({} as { topic?: string }));
