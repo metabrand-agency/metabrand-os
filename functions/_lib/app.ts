@@ -11,6 +11,7 @@ import { loadSeo } from './seo';
 import { refreshOne, focusIds, ogImage } from './radar';
 import { SUPERPLANE_KIT, patchKit } from './kits/superplane';
 import { brandingFor } from './branding';
+import { suggestHeadlines } from './headlines';
 import { METHODS, runMethod } from './methods';
 import superplaneMarket from '../../data/superplane/market.json';
 
@@ -500,6 +501,23 @@ app.post('/w/:slug/branding/refresh', async (c) => {
   const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
   if (!b) return c.json({ error: `Couldn't read ${company.url}` }, 502);
   return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
+});
+
+// Banner generator: headline options in the brand's voice (any member of the project)
+app.post('/w/:slug/generate/headlines', async (c) => {
+  const ws = c.get('ws');
+  const body = await c.req.json<{ topic?: string }>().catch(() => ({} as { topic?: string }));
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
+  const cl = row ? JSON.parse(row.data_json).client || {} : {};
+  const about = {
+    name: cl.name, calls_itself: cl.category_label, hero: cl.hero, sub: cl.sub, claims: (cl.claims || []).slice(0, 6), proof: (cl.proof || []).slice(0, 5),
+    founded: cl.founded, team: cl.employees, funding: cl.last_round || cl.funding,
+    recent_posts: (cl.activity?.latest || []).slice(0, 6).map((p: any) => p.title),
+  };
+  try {
+    const items = await suggestHeadlines(c.env, ws.id, cl.name || ws.name, about, String(body.topic || '').slice(0, 800));
+    return c.json({ items });
+  } catch (e: any) { return c.json({ error: e.message }, 502); }
 });
 
 // Methodology lenses: one framework per call (BAV, Dunford, Blue Ocean, JTBD...), scored by AI for the client + focus

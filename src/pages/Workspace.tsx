@@ -7,6 +7,7 @@ import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
 import Guide from '../tabs/Guide';
+import Generate from '../tabs/Generate';
 import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
 import Visibility from '../tabs/Visibility';
@@ -23,7 +24,7 @@ const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
   { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: '◉' }, { id: 'monitor', label: 'PR Monitor', icon: '∿' }] },
-  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏' }, { id: 'generate', label: 'Generate', icon: '✦', soon: true }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏' }, { id: 'generate', label: 'Generate', icon: '✦' }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
 
@@ -137,6 +138,7 @@ export default function Workspace() {
           {tab === 'monitor' && <Monitor info={info} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
+          {tab === 'generate' && <Generate info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}
         </div>
       </main>
