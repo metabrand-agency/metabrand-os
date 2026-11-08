@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, Me, STAGES, fmtDate } from '../api';
-import { Btn, Input, Logo, Label, Badge } from '../components/ui';
+import { Btn, Input, Logo, Label, Badge, ThemeSwitch } from '../components/ui';
 
 const STAGE_COLOR: Record<string, string> = { lead: '#8a919c', proposal: '#ffc94a', active: '#5ab0ff', launched: 'var(--mb-brand)', monitoring: '#b48cff', archived: '#a1a1aa' };
 
@@ -32,6 +32,7 @@ export default function Projects() {
       <div className="flex items-center justify-between">
         <Logo url={me?.org?.logo_url} name={me?.org?.name || 'Metabrand'} />
         <div className="flex items-center gap-3 text-[12px] text-muted">
+          <ThemeSwitch />
           {me?.user.email}
           <Btn onClick={async () => { await api('/auth/logout', { body: {} }); nav('/login'); }}>Sign out</Btn>
         </div>

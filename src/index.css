@@ -3,7 +3,7 @@
 /*
   Metabrand palette (from metabrand.digital): black / white / whitesmoke greys,
   one accent — Metabrand yellow #fff94b, always used as a fill with black text.
-  Theme follows the OS setting automatically (light / dark).
+  Theme: Auto (follows the OS), Light or Dark; switch in the sidebar.
 */
 :root {
   --mb-bg: #f5f5f5;          /* whitesmoke, as on the site */
@@ -21,8 +21,9 @@
   --mb-substitute: #1baf7a;
   color-scheme: light;
 }
+/* Auto: follow the OS unless the user picked Light. Manual pick: data-theme on <html>. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --mb-bg: #000000;
     --mb-panel: #111111;
     --mb-panel-2: #1d1d1d;   /* site dark section */
@@ -38,6 +39,22 @@
     --mb-substitute: #199e70;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+    --mb-bg: #000000;
+    --mb-panel: #111111;
+    --mb-panel-2: #1d1d1d;   /* site dark section */
+    --mb-line: #2a2a2a;
+    --mb-muted: #8c8c8c;
+    --mb-text: #ffffff;
+    --mb-accent: #ffffff;
+    --mb-brand: #fff94b;
+    --mb-brand-ink: #000000;
+    --mb-brand-edge: transparent;
+    --mb-direct: #d95926;
+    --mb-angle: #3987e5;
+    --mb-substitute: #199e70;
+    color-scheme: dark;
 }
 
 @theme inline {

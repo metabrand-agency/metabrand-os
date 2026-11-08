@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 
 export function Logo({ url, name = 'Metabrand' }: { url?: string | null; name?: string }) {
   if (url) return <img src={url} alt={name} className="h-5" />;
@@ -60,5 +60,29 @@ export function Badge({ children, color }: { children: ReactNode; color?: string
       {color && <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, boxShadow: 'inset 0 0 0 1px var(--mb-brand-edge)' }} />}
       {children}
     </span>
+  );
+}
+
+type Theme = 'auto' | 'light' | 'dark';
+function readTheme(): Theme {
+  try { const t = localStorage.getItem('mos_theme'); return t === 'light' || t === 'dark' ? t : 'auto'; } catch { return 'auto'; }
+}
+export function ThemeSwitch() {
+  const [t, setT] = useState<Theme>(readTheme);
+  const pick = (v: Theme) => {
+    setT(v);
+    if (v === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
+    try { v === 'auto' ? localStorage.removeItem('mos_theme') : localStorage.setItem('mos_theme', v); } catch { /* storage unavailable */ }
+  };
+  const opts: [Theme, string][] = [['auto', 'Auto (system)'], ['light', 'Light'], ['dark', 'Dark']];
+  return (
+    <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-md border border-line p-0.5">
+      {opts.map(([v, label]) => (
+        <button key={v} role="radio" aria-checked={t === v} title={label} onClick={() => pick(v)}
+          className={`flex h-6 items-center gap-1 rounded px-2 text-[11px] ${t === v ? 'bg-panel-2 text-text' : 'text-muted hover:text-text'}`}>
+          {label.split(' ')[0]}
+        </button>
+      ))}
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { api } from '../api';
-import { Logo } from '../components/ui';
+import { Logo, ThemeSwitch } from '../components/ui';
 import Chat from '../components/Chat';
 import Overview from '../tabs/Overview';
 import Memory from '../tabs/Memory';
@@ -81,6 +81,7 @@ export default function Workspace() {
             </button>
           )}
           <div className="px-3 pt-2 text-[11px] text-muted">{info.access.isAgency ? 'Agency' : 'Client'} · {info.access.level.replace('_', ' ')}</div>
+          <div className="px-3 pt-2"><ThemeSwitch /></div>
         </div>
       </aside>
 
