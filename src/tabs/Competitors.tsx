@@ -2,7 +2,7 @@
 // and are flagged; we complement them with adjacent and substitute players.
 // Add by name or website (Apollo + AI research), tick which are in focus, enrich facts, remove.
 // The table is configurable: columns, sort, filters. It scrolls sideways with the company column pinned.
-import { Fragment, ReactNode, useEffect, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useRef, useState } from 'react';
 import { api, fmtDate } from '../api';
 import { Btn, Card, Favicon, Input, Select } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
@@ -63,10 +63,15 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
   const [overlap, setOverlap] = useState('direct');
   const [busy, setBusy] = useState('');
   const [working, setWorking] = useState<string[]>([]);
+  const [queued, setQueued] = useState<string[]>([]);
+  const queue = useRef<string[]>([]);
+  const active = useRef<string[]>([]);
+  const latest = useRef<MarketData | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [review, setReview] = useState<Review | null>(null);
   const [err, setErr] = useState('');
   const data = row?.data;
+  latest.current = data ?? null; // enrich jobs merge into the newest data, so parallel rows don't overwrite each other
 
   // start rendering site screenshots once, so hover previews are ready
   const urlsKey = data ? [data.client.url, ...data.companies.map((c) => c.url)].join('|') : '';
@@ -126,20 +131,44 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
     } catch (x: any) { setErr(x.message); } finally { setBusy(''); }
   }
 
-  async function enrich(list: Company[]) {
-    setErr(''); setBusy('enrich');
-    let d = withFlags(data!);
-    try {
-      for (const c of list) {
-        setWorking([c.id]);
-        const found = await research({ name: c.name, url: c.url });
-        let changed: string[] = [];
-        d = { ...d, companies: d.companies.map((x) => { if (x.id !== c.id) return x; const [m, ch] = mergeFacts(x, found); changed = ch; return m; }) };
-        note(c.id, changed.length ? `Updated: ${changed.join(', ')}` : 'Nothing new found');
-        await save(d);
-      }
-    } catch (x: any) { setErr(x.message); } finally { setWorking([]); setBusy(''); }
+  // Enrich runs as a queue: click as many rows as you like, up to 3 are researched at once.
+  function enrich(list: Company[]) {
+    setErr('');
+    const ids = list.map((c) => c.id).filter((id) => !queue.current.includes(id) && !active.current.includes(id));
+    queue.current.push(...ids);
+    setQueued([...queue.current]);
+    pump();
   }
+  function pump() {
+    while (active.current.length < 3 && queue.current.length) {
+      const id = queue.current.shift()!;
+      active.current = [...active.current, id];
+      setQueued([...queue.current]);
+      setWorking([...active.current]);
+      runOne(id).finally(() => {
+        active.current = active.current.filter((x) => x !== id);
+        setWorking([...active.current]);
+        pump();
+      });
+    }
+  }
+  async function runOne(id: string) {
+    const c = latest.current?.companies.find((x) => x.id === id);
+    if (!c) return;
+    try {
+      const found = await research({ name: c.name, url: c.url });
+      const cur = latest.current!;
+      const base = cur.companies.some((x) => typeof x.selected === 'boolean') ? cur : withFlags(cur);
+      let changed: string[] = [];
+      const next = { ...base, companies: base.companies.map((x) => { if (x.id !== id) return x; const [m, ch] = mergeFacts(x, found); changed = ch; return m; }) };
+      latest.current = next;
+      note(id, changed.length ? `Updated: ${changed.join(', ')}` : 'Nothing new found');
+      await save(next);
+    } catch (x: any) {
+      note(id, `Failed: ${String(x.message).slice(0, 90)}`);
+    }
+  }
+  const pending = working.length + queued.length;
 
   async function checkMemory() {
     setErr(''); setBusy('memory');
@@ -216,7 +245,7 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
         </div>
         <div className="flex gap-2">
           {agency && <Btn disabled={!!busy} onClick={checkMemory}>{busy === 'memory' ? 'Reading Memory… about 30 s' : 'Check against Memory'}</Btn>}
-          {agency && focusList.length > 0 && <Btn disabled={!!busy} onClick={() => enrich(focusList)}>{busy === 'enrich' && working.length ? `Enriching ${data.companies.find((c) => c.id === working[0])?.name}…` : `Enrich ${focusList.length} in focus`}</Btn>}
+          {agency && focusList.length > 0 && <Btn disabled={!!busy || focusList.every((c) => working.includes(c.id) || queued.includes(c.id))} onClick={() => enrich(focusList)}>{pending ? `Enriching… ${pending} left` : `Enrich ${focusList.length} in focus`}</Btn>}
           <RefreshButton hasNew={hasNew} onClick={reload} />
         </div>
       </div>
@@ -291,7 +320,8 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
               {list.map((c) => {
                 const on = chosen.has(c.id);
                 const isWorking = working.includes(c.id);
-                const bg = sel === c.id || isWorking ? 'bg-panel-2' : 'bg-panel';
+                const isQueued = queued.includes(c.id);
+                const bg = sel === c.id || working.includes(c.id) ? 'bg-panel-2' : 'bg-panel';
                 return (
                   <Fragment key={c.id}>
                     <tr onClick={() => setSel(c.id === sel ? null : c.id)} className={`group cursor-pointer border-b border-line last:border-0 hover:bg-panel-2 ${sel === c.id ? 'bg-panel-2' : ''} ${isWorking ? 'bg-panel-2' : ''}`}>
@@ -304,14 +334,15 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
                           {isWorking && <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-line border-t-text" />}
                         </div>
                         {isWorking && <div className="mt-0.5 pl-6 text-[11px] text-muted"><span className="animate-pulse">Enriching: Apollo, Ahrefs, AI web search…</span></div>}
+                        {isQueued && <div className="mt-0.5 pl-6 text-[11px] text-muted">Queued</div>}
                         {notes[c.id] && <div className="mt-0.5 pl-6 text-[11px] text-muted">{notes[c.id]}</div>}
                       </td>
                       {shown.map((col) => cell(c, col, !on))}
                       {agency && (
                         <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <span className={isWorking ? '' : 'invisible group-hover:visible'}>
-                            {c.url && <button title="Enrich: Apollo, Ahrefs, AI web search" disabled={!!busy} onClick={() => enrich([c])} className="px-1 text-muted hover:text-text disabled:opacity-40">↻</button>}
-                            <button title="Remove" disabled={!!busy} onClick={() => remove(c)} className="px-1 text-muted hover:text-text disabled:opacity-40">✕</button>
+                          <span className={isWorking || isQueued ? '' : 'invisible group-hover:visible'}>
+                            {c.url && <button title="Enrich: Apollo, Ahrefs, AI web search" disabled={isWorking || isQueued} onClick={() => enrich([c])} className="px-1 text-muted hover:text-text disabled:opacity-40">↻</button>}
+                            <button title="Remove" disabled={isWorking || isQueued || !!busy} onClick={() => remove(c)} className="px-1 text-muted hover:text-text disabled:opacity-40">✕</button>
                           </span>
                         </td>
                       )}
