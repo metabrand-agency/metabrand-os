@@ -8,6 +8,7 @@ import Memory from '../tabs/Memory';
 import Assets from '../tabs/Assets';
 import Guide from '../tabs/Guide';
 import Generate from '../tabs/Generate';
+import Merch, { merchOf } from '../tabs/Merch';
 import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
 import Visibility from '../tabs/Visibility';
@@ -24,7 +25,7 @@ const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: '⌂' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: '▤' }, { id: 'competitors', label: 'Competitors', icon: '◈' }] },
   { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: '◎', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: '◉' }, { id: 'monitor', label: 'PR Monitor', icon: '∿' }] },
-  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏' }, { id: 'generate', label: 'Generate', icon: '✦' }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: '◫' }, { id: 'guide', label: 'Online guide', icon: '❏' }, { id: 'merch', label: 'Merch', icon: '◇' }, { id: 'generate', label: 'Generate', icon: '✦' }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: '⚙' }];
 
@@ -48,8 +49,11 @@ export default function Workspace() {
   }, [slug, rev]);
   // brand tools on the client's own site (e.g. a generative art page), kept in the brand kit, shown in the sidebar
   const [tools, setTools] = useState<{ title: string; url: string }[]>([]);
+  const [hasMerch, setHasMerch] = useState(false);
   useEffect(() => {
-    api<{ data: { links?: { title: string; url: string }[] } } | null>(`/w/${slug}/research/brand_kit`).then((r) => setTools(r?.data?.links || [])).catch(() => setTools([]));
+    api<{ data: any } | null>(`/w/${slug}/research/brand_kit`)
+      .then((r) => { setTools(r?.data?.links || []); setHasMerch(!!merchOf(r?.data)?.slides?.length); })
+      .catch(() => { setTools([]); setHasMerch(false); });
   }, [slug, rev, tab === 'assets']);
 
   if (err) return <div className="p-10 text-muted">{err}</div>;
@@ -72,7 +76,7 @@ export default function Workspace() {
         </Link>
         <nav className="flex-1 space-y-5 overflow-y-auto px-2">
           {GROUPS.map((g, gi) => {
-            const tabs = g.tabs.filter((t) => !hidden.includes(t.id) && (info.access.isAgency || !t.soon));
+            const tabs = g.tabs.filter((t) => !hidden.includes(t.id) && (info.access.isAgency || !t.soon) && (t.id !== 'merch' || hasMerch));
             if (!tabs.length) return null;
             return (
               <div key={gi}>
@@ -138,6 +142,7 @@ export default function Workspace() {
           {tab === 'monitor' && <Monitor info={info} />}
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
+          {tab === 'merch' && <Merch info={info} />}
           {tab === 'generate' && <Generate info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}
         </div>

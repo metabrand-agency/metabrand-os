@@ -18,6 +18,7 @@ const CLIENT_TABS = [
   ['monitor', 'PR Monitor'],
   ['assets', 'Assets (shared items only)'],
   ['guide', 'Online guide'],
+  ['merch', 'Merch'],
   ['generate', 'Generate (banners)'],
 ] as const;
 

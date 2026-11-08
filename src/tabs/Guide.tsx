@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { MERCH_ID } from './Merch';
 import type { WsInfo } from '../pages/Workspace';
 import { Guide as GuideT, GuideSection, Kit, dataUri, iconSvg, isLight, logoSvg, useGoogleFonts } from './BrandKit';
 
@@ -27,7 +28,8 @@ export default function Guide({ info, section }: { info: WsInfo; section?: strin
   const [kit, setKit] = useState<Kit | null | undefined>(undefined);
   useEffect(() => { api<{ data: Kit } | null>(`/w/${info.slug}/research/brand_kit`).then((r) => setKit(r?.data || null)).catch(() => setKit(null)); }, [info.slug]);
   useGoogleFonts(kit?.fonts || []);
-  const guide = useMemo(() => (kit ? kit.guide || fromKit(kit) : null), [kit]);
+  // merch has its own page in Brand OS, so it is not a guide section
+  const guide = useMemo(() => { const g = kit ? kit.guide || fromKit(kit) : null; return g ? { ...g, sections: g.sections.filter((x) => x.id !== MERCH_ID) } : null; }, [kit]);
   useEffect(() => { document.querySelector('main')?.scrollTo({ top: 0 }); }, [section]);
 
   if (kit === undefined) return <div className="px-8 py-8 text-muted">Loading…</div>;
