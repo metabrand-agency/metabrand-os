@@ -1,7 +1,7 @@
 // Data enrichments for the SuperPlane demo project, collected outside the app (Ahrefs, company data).
 // Applied once per version to workspaces with settings.demo = true; never overwrites edited fields except metrics.
 export const DEMO_PATCH: { version: number; client: Record<string, any>; companies: Record<string, Record<string, any>> } = {
-  "version": 2,
+  "version": 3,
   "client": {
     "founded": 2025,
     "employees": "13",
@@ -42,7 +42,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Matan Grinberg"
     },
     "devin": {
       "ahrefs": {
@@ -56,7 +57,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       },
       "data_sources": [
         "Ahrefs"
-      ]
+      ],
+      "founder": "Scott Wu"
     },
     "openhands": {
       "employees": "34",
@@ -75,7 +77,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Robert Brennan"
     },
     "warp": {
       "founded": 2020,
@@ -95,7 +98,12 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Zach Lloyd",
+      "socials": {
+        "x": "https://twitter.com/warpdotdev",
+        "github": "https://github.com/warpdotdev"
+      }
     },
     "tembo": {
       "founded": 2024,
@@ -115,7 +123,11 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Ry Walker",
+      "socials": {
+        "x": "https://twitter.com/tembo_io"
+      }
     },
     "augment": {
       "founded": 2022,
@@ -135,7 +147,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Matt McClernan"
     },
     "port": {
       "founded": 2022,
@@ -155,7 +168,11 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Zohar Einy",
+      "socials": {
+        "x": "https://twitter.com/tweetsbyport"
+      }
     },
     "harness": {
       "founded": 2017,
@@ -176,7 +193,10 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "facebook": "https://facebook.com/harnessinc"
+      }
     },
     "copilot": {
       "founded": 2008,
@@ -197,7 +217,11 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "x": "https://twitter.com/github",
+        "github": "https://github.com/github"
+      }
     },
     "cursor": {
       "founded": 2022,
@@ -217,7 +241,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Michael Truell"
     },
     "claude-code": {
       "employees": "6200",
@@ -238,7 +263,10 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "x": "https://twitter.com/AnthropicAI"
+      }
     },
     "jules": {
       "founded": 1998,
@@ -272,7 +300,11 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       },
       "data_sources": [
         "Ahrefs"
-      ]
+      ],
+      "founder": "Sam Bhagwat",
+      "socials": {
+        "github": "https://github.com/mastra-ai"
+      }
     },
     "buildful": {
       "ahrefs": {
@@ -306,7 +338,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Jay Hack"
     },
     "resolve": {
       "founded": 2024,
@@ -326,7 +359,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Spiros Xanthos"
     },
     "incidentio": {
       "founded": 2021,
@@ -347,7 +381,10 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "x": "https://twitter.com/incident_io"
+      }
     },
     "neubird": {
       "founded": 2023,
@@ -367,7 +404,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Gou Rao"
     },
     "ciroos": {
       "founded": 2025,
@@ -387,7 +425,8 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "founder": "Ronak Desai"
     },
     "humanitec": {
       "founded": 2017,
@@ -407,7 +446,10 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "x": "https://twitter.com/humanitec_com"
+      }
     },
     "spacelift": {
       "founded": 2020,
@@ -415,7 +457,7 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "hq": "Redwood City, United States",
       "linkedin": "https://www.linkedin.com/company/spacelift-io",
       "last_round": "$51M Series C (Inovo.vc, Five Elms Capital), Jul 2025",
-      "founder": "Marcin Wyszynski",
+      "founder": "Pawel Hytry",
       "ahrefs": {
         "dr": 75,
         "traffic": 53230,
@@ -428,7 +470,10 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "x": "https://twitter.com/spaceliftio"
+      }
     },
     "temporal": {
       "founded": 2019,
@@ -436,7 +481,7 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "hq": "Bellevue, United States",
       "linkedin": "https://www.linkedin.com/company/temporal-technologies",
       "last_round": "$550M Series E (Index Ventures, Lightspeed Venture Partners), Sep 2026",
-      "founder": "Maxim Fateev",
+      "founder": "Samar Abbas",
       "ahrefs": {
         "dr": 79,
         "traffic": 39719,
@@ -449,12 +494,16 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
       "data_sources": [
         "Apollo",
         "Ahrefs"
-      ]
+      ],
+      "socials": {
+        "x": "https://twitter.com/temporalio",
+        "github": "https://github.com/temporalio"
+      }
     }
   }
 };
 
-const OVERWRITE = new Set(['ahrefs', 'employees', 'last_round', 'linkedin', 'data_sources']);
+const OVERWRITE = new Set(['ahrefs', 'employees', 'last_round', 'linkedin', 'data_sources', 'socials', 'founder']);
 const fill = (base: any, patch: Record<string, any>) => {
   const out = { ...base };
   for (const [k, v] of Object.entries(patch)) if (OVERWRITE.has(k) || out[k] == null || out[k] === '') out[k] = v;

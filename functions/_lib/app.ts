@@ -5,6 +5,7 @@ import { Env, SessionUser, Access, makeSession, readSession, loadUser, accessFor
 import { chat } from './chat';
 import { aiLenses } from './lenses';
 import { researchCompany } from './companies';
+import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import superplaneMarket from '../../data/superplane/market.json';
 
@@ -398,6 +399,19 @@ app.post('/w/:slug/competitors/research', async (c) => {
   if (!b.query && !b.name && !b.url) return c.json({ error: 'Enter a name or a website' }, 400);
   try {
     return c.json({ company: await researchCompany(c.env, c.get('ws').id, b, c.get('ws').name) });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 502);
+  }
+});
+
+// competitors vs project memory: who the client names, and how our list holds up (agency only; nothing is saved here)
+app.post('/w/:slug/competitors/from-memory', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const ws = c.get('ws');
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
+  try {
+    return c.json(await reviewAgainstMemory(c.env, ws.id, ws.name, row ? JSON.parse(row.data_json) : { companies: [] }));
   } catch (e: any) {
     return c.json({ error: e.message }, 502);
   }

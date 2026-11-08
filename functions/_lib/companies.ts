@@ -19,6 +19,9 @@ const FIELDS = {
   founder: { type: 'string', description: 'Founder / CEO name' },
   founder_linkedin: { type: 'string', description: 'Founder LinkedIn URL' },
   open_source: { type: 'boolean' },
+  x_url: { type: 'string', description: 'Official X / Twitter profile URL' },
+  github_url: { type: 'string', description: 'Official GitHub organization URL' },
+  youtube_url: { type: 'string', description: 'Official YouTube channel URL' },
   sources: { type: 'array', items: { type: 'string' }, description: 'URLs used' },
 };
 const SAVE = { name: 'save_company', description: 'Save what you found. Leave unknown fields out.', input_schema: { type: 'object', properties: FIELDS, required: ['name'] } };
@@ -82,6 +85,10 @@ async function apollo(env: Env, url: string) {
       employees: o.estimated_num_employees ? String(o.estimated_num_employees) : undefined,
       hq: [o.city, o.country].filter(Boolean).join(', ') || undefined,
       linkedin: o.linkedin_url ? String(o.linkedin_url).replace(/^http:/, 'https:') : undefined,
+      socials: {
+        ...(o.twitter_url ? { x: String(o.twitter_url).replace(/^http:/, 'https:') } : {}),
+        ...(o.facebook_url ? { facebook: String(o.facebook_url) } : {}),
+      },
       last_round: last,
       data_sources: ['Apollo'],
     };
@@ -108,7 +115,7 @@ export async function researchCompany(env: Env, wsId: string, input: { query?: s
 Company: ${input.name || input.query || url}${url ? ` (${url})` : ''}
 ${page ? `Homepage text (verbatim, truncated):\nTITLE: ${page.title}\nDESCRIPTION: ${page.description}\nH1: ${page.h1}\nTEXT: ${page.text}` : 'No homepage text: find the official website first.'}
 
-Take hero, sub, claims and proof only from the homepage text when given.${ap ? ' Company facts (founded, team, round, HQ, company LinkedIn) are already known from Apollo; focus web search on the founder or CEO and their LinkedIn URL.' : ''} Use web search for facts: year founded, employee count, most recent funding round (amount, stage, lead investor, month and year), HQ city and country, company LinkedIn URL, founder or CEO name and their LinkedIn URL.
+Take hero, sub, claims and proof only from the homepage text when given.${ap ? ' Company facts (founded, team, round, HQ, company LinkedIn) are already known from Apollo; focus web search on the founder or CEO and their LinkedIn URL.' : ''} Use web search for facts: year founded, employee count, most recent funding round (amount, stage, lead investor, month and year), HQ city and country, company LinkedIn URL, founder or CEO full name and their LinkedIn URL, official X, GitHub and YouTube profiles.
 Never guess. Leave a field out if you cannot confirm it. Then call save_company.`;
 
   const system = 'You are a precise research assistant. Facts must come from sources you saw. Write in English.';
@@ -133,8 +140,10 @@ Never guess. Leave a field out if you cannot confirm it. Then call save_company.
     if (save) {
       await env.DB.prepare('INSERT INTO usage (id, workspace_id, provider, units, created_at) VALUES (?, ?, ?, ?, ?)').bind(crypto.randomUUID(), wsId, 'anthropic', tokens, Date.now()).run();
       const c = save.input || {};
-      const ai = Object.fromEntries(Object.entries(c).filter(([, v]) => v !== '' && v != null));
-      const apFacts = Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name'));
+      const { x_url, github_url, youtube_url, ...rest } = c;
+      const ai: any = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== '' && v != null));
+      ai.socials = { ...(x_url ? { x: x_url } : {}), ...(github_url ? { github: github_url } : {}), ...(youtube_url ? { youtube: youtube_url } : {}), ...(ap?.socials || {}) };
+      const apFacts = Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name' && k !== 'socials'));
       return {
         ...fallback, ...ai, ...apFacts, // company facts: Apollo first, then AI web research
         sources: [...new Set([...(fallback.sources || []), ...(c.sources || [])])],

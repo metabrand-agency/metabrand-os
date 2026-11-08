@@ -11,6 +11,8 @@ export type Company = {
   employees?: string; last_round?: string; linkedin?: string; founder?: string; founder_linkedin?: string;
   ahrefs?: { dr?: number; traffic?: number; refdomains?: number; brand_query?: string; brand_us?: number; brand_global?: number; as_of?: string; note?: string };
   data_sources?: string[];
+  socials?: { x?: string; github?: string; youtube?: string; facebook?: string };
+  client_pick?: { quote?: string; doc?: string };
   selected?: boolean;
 };
 export type Finding = { lens?: string; title: string; what: string; so_what: string; now_what: string; confidence?: string };
@@ -44,7 +46,7 @@ export function lensesOf(d: MarketData): Lens[] {
 /** Competitors in focus: explicit flags, or the first five by priority when nobody has chosen yet. */
 export function selectedIds(d: MarketData): Set<string> {
   if (d.companies.some((c) => typeof c.selected === 'boolean')) return new Set(d.companies.filter((c) => c.selected).map((c) => c.id));
-  return new Set([...d.companies].sort((a, b) => (a.tier || 9) - (b.tier || 9)).slice(0, 5).map((c) => c.id));
+  return new Set([...d.companies].sort((a, b) => Number(!!b.client_pick) - Number(!!a.client_pick) || (a.tier || 9) - (b.tier || 9)).slice(0, 5).map((c) => c.id));
 }
 
 export const fmtNum = (n?: number) => (n == null ? '—' : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
@@ -83,6 +85,23 @@ export function RefreshButton({ hasNew, onClick }: { hasNew: boolean; onClick: (
     : <Btn onClick={onClick}>Refresh</Btn>;
 }
 
+const SOCIAL: [keyof NonNullable<Company['socials']> | 'linkedin', string, string][] = [
+  ['linkedin', 'LinkedIn', 'https://linkedin.com'], ['x', 'X', 'https://x.com'], ['github', 'GitHub', 'https://github.com'], ['youtube', 'YouTube', 'https://youtube.com'], ['facebook', 'Facebook', 'https://facebook.com'],
+];
+/** Company social profiles as small platform icons (the platforms' own favicons). */
+export function Socials({ c }: { c: Company }) {
+  const links = SOCIAL.map(([k, label, site]) => [k === 'linkedin' ? c.linkedin : c.socials?.[k], label, site] as const).filter(([href]) => href);
+  if (!links.length) return <span className="text-muted">—</span>;
+  return (
+    <span className="flex items-center gap-1.5">
+      {links.map(([href, label, site]) => (
+        <a key={label} href={href!} target="_blank" title={label} onClick={(e) => e.stopPropagation()} className="opacity-80 hover:opacity-100"><Favicon url={site} name={label} size={14} /></a>
+      ))}
+    </span>
+  );
+}
+export const siteName = (u?: string) => (u ? domain(u) : '');
+
 export function Swatch({ k }: { k: string }) {
   if (k === 'may_enter') return <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-muted" />;
   return <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: OVERLAP[k]?.color }} />;
@@ -96,7 +115,7 @@ export function Dossier({ c, isClient, onClose, extra }: { c: Company; isClient:
     ['Last round', c.last_round || c.funding],
     ['Location', c.hq],
     ['Founder', c.founder_linkedin ? <a href={c.founder_linkedin} target="_blank" className="underline decoration-line underline-offset-2 hover:decoration-text">{c.founder || c.founders || 'LinkedIn'}</a> : c.founder || c.founders],
-    ['LinkedIn', c.linkedin ? <a href={c.linkedin} target="_blank" className="underline decoration-line underline-offset-2 hover:decoration-text">Company page ↗</a> : null],
+    ['Social', c.linkedin || c.socials ? <Socials c={c} /> : null],
     ['Ahrefs DR', c.ahrefs?.dr],
     ['Search traffic', c.ahrefs?.traffic != null ? `${fmtNum(c.ahrefs.traffic)}/mo` : null],
     ['Brand searches', c.ahrefs?.brand_global != null ? `${fmtNum(c.ahrefs.brand_global)}/mo · “${c.ahrefs.brand_query}”` : null],
@@ -114,6 +133,7 @@ export function Dossier({ c, isClient, onClose, extra }: { c: Company; isClient:
       </div>
       <div className="mt-2 flex items-center gap-2 text-lg font-semibold tracking-tight"><Favicon url={c.url} name={c.name} size={20} />{c.name}</div>
       {c.url && <a href={c.url} target="_blank" className="text-[12px] text-muted hover:text-text">{domain(c.url)} ↗</a>}
+      {c.client_pick && <div className="mt-3 rounded-md bg-panel-2 px-3 py-2 text-[12px]"><span className="font-medium">Named by the client</span>{c.client_pick.quote && <span className="text-muted"> · “{c.client_pick.quote}”</span>}{c.client_pick.doc && <span className="text-muted"> ({c.client_pick.doc})</span>}</div>}
       {c.hero && <div className="mt-4 text-[17px] leading-snug">“{c.hero}”</div>}
       {c.sub && <div className="mt-1 text-[13px] text-muted">{c.sub}</div>}
       {!!c.claims?.length && (
