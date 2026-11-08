@@ -103,9 +103,9 @@ export default function SeoLens({ info, data, setRow }: { info: WsInfo; data: Ma
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="border-b border-line text-left text-[11px] text-muted">
-                    <th className="sticky left-0 z-[1] bg-panel px-4 py-2 font-medium">Keyword</th>
-                    <th className="px-3 py-2 text-right font-medium" title="Monthly searches">Volume</th>
-                    <th className="px-3 py-2 text-right font-medium" title="Ahrefs keyword difficulty, 0–100">KD</th>
+                    <th className="sticky left-0 z-[2] w-[240px] min-w-[240px] max-w-[240px] bg-panel px-4 py-2 font-medium">Keyword</th>
+                    <th className="sticky left-[240px] z-[2] w-[76px] min-w-[76px] max-w-[76px] bg-panel px-3 py-2 text-right font-medium" title="Monthly searches">Volume</th>
+                    <th className="sticky left-[316px] z-[2] w-[56px] min-w-[56px] max-w-[56px] bg-panel px-3 py-2 text-right font-medium shadow-[1px_0_0_var(--mb-line)]" title="Ahrefs keyword difficulty, 0–100">KD</th>
                     {ids.map((id) => {
                       const c = byId(id)!;
                       return <th key={id} title={loaded(id) ? undefined : 'Not loaded'} className={`px-3 py-2 text-center font-medium whitespace-nowrap ${loaded(id) ? '' : 'opacity-40'}`}><span className="inline-flex items-center gap-1.5"><Favicon url={c.url} name={c.name} size={14} />{id === '__client' ? c.name : shortName(c)}</span></th>;
@@ -117,11 +117,11 @@ export default function SeoLens({ info, data, setRow }: { info: WsInfo; data: Ma
                     const row = seo.gap.positions[k.keyword] || {};
                     return (
                       <tr key={k.keyword} className="group border-b border-line last:border-0 hover:bg-panel-2">
-                        <td className="sticky left-0 z-[1] bg-panel px-4 py-2 whitespace-nowrap group-hover:bg-panel-2">
+                        <td title={k.keyword} className="sticky left-0 z-[1] w-[240px] min-w-[240px] max-w-[240px] truncate bg-panel px-4 py-2 whitespace-nowrap group-hover:bg-panel-2">
                           {k.keyword}
                         </td>
-                        <td className="num px-3 py-2 text-right text-muted">{fmtNum(k.volume)}</td>
-                        <td className="num px-3 py-2 text-right text-muted">{k.kd ?? '—'}</td>
+                        <td className="num sticky left-[240px] z-[1] w-[76px] min-w-[76px] max-w-[76px] bg-panel px-3 py-2 text-right text-muted group-hover:bg-panel-2">{fmtNum(k.volume)}</td>
+                        <td className="num sticky left-[316px] z-[1] w-[56px] min-w-[56px] max-w-[56px] bg-panel px-3 py-2 text-right text-muted shadow-[1px_0_0_var(--mb-line)] group-hover:bg-panel-2">{k.kd ?? '—'}</td>
                         {ids.map((id) => (
                           <td key={id} className="px-3 py-2 text-center" title={row[id] ? `${fmtNum(row[id].traffic)} visits/mo` : undefined}>
                             {row[id] ? <Pos p={row[id].position} /> : <span className="text-muted">{loaded(id) ? '—' : ''}</span>}
@@ -133,9 +133,6 @@ export default function SeoLens({ info, data, setRow }: { info: WsInfo; data: Ma
                 </tbody>
               </table>
             </Card>
-            <div className="mt-2 text-[11px] text-muted">
-              Ahrefs, organic search, {NAMES[country] || country}, {seo.as_of}. Rows are the keywords that bring each competitor the most traffic to content pages (homepage and own brand excluded). Organic positions only, AI Overview citations not counted. #1–3 filled, #4–10 outlined, dash means not in the top 100.
-            </div>
           </div>
         </>
       )}
