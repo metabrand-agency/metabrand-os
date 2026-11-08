@@ -24,7 +24,7 @@ const fmtDay = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('en-GB'
 const cleanSource = (s?: string) => (s || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
 const cleanTitle = (t: string, src?: string) => (src && t.endsWith(` - ${src}`) ? t.slice(0, -(src.length + 3)) : t);
 const KINDS = ['all', 'news', 'link', 'post'] as const;
-const KIND_LABEL: Record<Item['kind'], string> = { news: 'News', link: 'Link', post: 'Own post' };
+const KIND_LABEL: Record<Item['kind'], string> = { news: 'Mention', link: 'Backlink', post: 'Own news' };
 const PERIODS = ['30', '90', 'all'] as const;
 
 export default function Monitor({ info }: { info: WsInfo }) {
@@ -61,7 +61,7 @@ export default function Monitor({ info }: { info: WsInfo }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">PR Monitor</h1>
-          <div className="mt-1 text-[13px] text-muted">News, new links from articles and own posts, {data.client.name} and {ids.length - 1} competitors in focus</div>
+          <div className="mt-1 text-[13px] text-muted">Mentions in news, backlinks from articles and own news of {data.client.name} and {ids.length - 1} competitors in focus</div>
         </div>
         <div className="flex gap-2">
           {agency && <Btn disabled={busy} onClick={() => refresh(undefined, true)}>{label}</Btn>}
@@ -72,12 +72,12 @@ export default function Monitor({ info }: { info: WsInfo }) {
 
       <div className="grid gap-4 @3xl:grid-cols-2 @5xl:grid-cols-3">
         <Bars accent={accent} title="News mentions" hint="Google News, last 30 days" rows={bars((id) => activity[id]?.news?.count_30d, (id) => ((activity[id]?.news?.count_30d ?? 0) >= 100 ? '100+' : undefined))} format={(n) => String(n)} />
-        <Bars accent={accent} title="Posts in the last 30 days" hint="Own blog and changelog" rows={bars((id) => activity[id]?.posts_30d, (id) => (activity[id]?.posts_30d_more ? `${activity[id].posts_30d}+` : undefined))} format={(n) => String(n)} />
-        <Bars accent={accent} title="New links from articles" hint="Ahrefs, last 30 days" rows={bars((id) => activity[id]?.links?.count_30d, (id) => (activity[id]?.links?.capped ? `${activity[id].links!.count_30d}+` : undefined))} format={(n) => String(n)} />
+        <Bars accent={accent} title="Own news" hint="Blog and changelog, last 30 days" rows={bars((id) => activity[id]?.posts_30d, (id) => (activity[id]?.posts_30d_more ? `${activity[id].posts_30d}+` : undefined))} format={(n) => String(n)} />
+        <Bars accent={accent} title="New backlinks from articles" hint="Ahrefs, last 30 days" rows={bars((id) => activity[id]?.links?.count_30d, (id) => (activity[id]?.links?.capped ? `${activity[id].links!.count_30d}+` : undefined))} format={(n) => String(n)} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={kind} onChange={(v) => setKind(v as typeof kind)} options={KINDS} labels={{ all: 'All types', news: 'News', link: 'New links (Ahrefs)', post: 'Own posts' }} />
+        <Select value={kind} onChange={(v) => setKind(v as typeof kind)} options={KINDS} labels={{ all: 'All types', news: 'Mentions in news', link: 'Backlinks from articles', post: 'Own news' }} />
         <Select value={period} onChange={(v) => setPeriod(v as typeof period)} options={PERIODS} labels={{ 30: 'Last 30 days', 90: 'Last 90 days', all: 'Any time' }} />
       </div>
 
@@ -100,17 +100,19 @@ function CompanyFeed({ data, id, items, working, busy }: { data: MarketData; id:
   const c = companyById(data, id);
   const a = data.activity?.[id];
   const shown = all ? items : items.slice(0, 6);
-  const stat = (n: number | undefined, more: boolean | undefined, word: string) => (n == null ? null : <span><span className="num text-text">{n}{more ? '+' : ''}</span> {word}</span>);
+  const stat = (n: number | undefined, more: boolean | undefined, word: string, hint: string) => (
+    <span title={`${hint}, last 30 days`} className="rounded border border-line px-1.5 py-0.5"><span className="num text-text">{n == null ? '—' : `${n}${more ? '+' : ''}`}</span> {n === 1 ? word.replace(/s$/, '') : word}</span>
+  );
   return (
     <Card className={`overflow-hidden ${working ? 'opacity-70' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
         <span className={`flex min-w-0 items-center gap-2 text-[13px] ${id === '__client' ? 'font-semibold' : 'font-medium'}`}><Favicon url={c.url} name={c.name} />{displayName(data, id)}</span>
-        <span className="flex gap-3 text-[11px] text-muted">
+        <span className="flex flex-wrap gap-1.5 text-[11px] text-muted">
           {working ? 'Checking…' : (
             <>
-              {stat(a?.news ? Math.min(a.news.count_30d, 100) : undefined, (a?.news?.count_30d ?? 0) >= 100, 'news')}
-              {stat(a?.links?.count_30d, a?.links?.capped, 'links')}
-              {stat(a?.posts_30d, a?.posts_30d_more, 'posts')}
+              {stat(a?.news ? Math.min(a.news.count_30d, 100) : undefined, (a?.news?.count_30d ?? 0) >= 100, 'mentions', 'Google News')}
+              {stat(a?.links?.count_30d, a?.links?.capped, 'backlinks', 'New links from articles, Ahrefs')}
+              {stat(a?.posts_30d, a?.posts_30d_more, 'own news', 'Blog and changelog')}
             </>
           )}
         </span>
