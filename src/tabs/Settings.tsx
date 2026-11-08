@@ -174,7 +174,7 @@ function VisibilityCard({ info, reload }: { info: WsInfo; reload: () => void }) 
 }
 
 function SourcesCard({ info }: { info: WsInfo }) {
-  const [health, setHealth] = useState<{ ai: boolean } | null>(null);
+  const [health, setHealth] = useState<{ ai: boolean; apollo?: boolean; ahrefs?: boolean } | null>(null);
   const [usage, setUsage] = useState<{ provider: string; units: number; calls: number }[]>([]);
   useEffect(() => {
     api('/health').then(setHealth);
@@ -182,10 +182,9 @@ function SourcesCard({ info }: { info: WsInfo }) {
   }, [info.slug]);
   const ai = usage.find((u) => u.provider === 'anthropic');
   const rows: [string, string, boolean][] = [
-    ['AI chat and document reading', health?.ai ? 'Anthropic API · connected' : 'Anthropic API · key not set', Boolean(health?.ai)],
-    ['Web research', 'Run from Claude with connectors, imported as JSON', false],
-    ['SEO and AI visibility', 'Ahrefs · trial later', false],
-    ['Company data', 'Apollo / startup databases · trial later', false],
+    ['AI chat, research and documents', health?.ai ? 'Anthropic API · connected' : 'Anthropic API · key not set', Boolean(health?.ai)],
+    ['Company facts (team, rounds, LinkedIn)', health?.apollo ? 'Apollo API · connected' : 'Apollo API · key not set (APOLLO_API_KEY)', Boolean(health?.apollo)],
+    ['DR, search traffic, brand searches', health?.ahrefs ? 'Ahrefs API · connected' : 'Ahrefs API · key not set (AHREFS_API_KEY)', Boolean(health?.ahrefs)],
     ['Design files', 'Figma · links now, sync later', false],
   ];
   return (

@@ -99,6 +99,7 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
     const out: any = { ...c };
     const changed: string[] = [];
     for (const k of FACTS) if (found[k] != null && found[k] !== '' && String(found[k]) !== String(out[k] ?? '')) { out[k] = found[k]; changed.push(FACT_LABEL[k]); }
+    if (found.ahrefs && JSON.stringify(found.ahrefs) !== JSON.stringify(c.ahrefs || {})) { out.ahrefs = { ...(c.ahrefs || {}), ...found.ahrefs }; changed.push('Ahrefs'); }
     const socials = { ...(c.socials || {}), ...(found.socials || {}) };
     if (JSON.stringify(socials) !== JSON.stringify(c.socials || {})) { out.socials = socials; changed.push('socials'); }
     out.sources = [...new Set([...(c.sources || []), ...(found.sources || [])])];
@@ -299,14 +300,14 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
                           {c.client_pick && <span title="Named by the client" className="brand-dot h-2 w-2 rounded-full" />}
                           {isWorking && <span className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-line border-t-text" />}
                         </div>
-                        {isWorking && <div className="mt-0.5 pl-6 text-[11px] text-muted"><span className="animate-pulse">Enriching: Apollo, then AI web search…</span></div>}
+                        {isWorking && <div className="mt-0.5 pl-6 text-[11px] text-muted"><span className="animate-pulse">Enriching: Apollo, Ahrefs, AI web search…</span></div>}
                         {notes[c.id] && <div className="mt-0.5 pl-6 text-[11px] text-muted">{notes[c.id]}</div>}
                       </td>
                       {shown.map((col) => cell(c, col, !on))}
                       {agency && (
                         <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <span className={isWorking ? '' : 'invisible group-hover:visible'}>
-                            {c.url && <button title="Enrich facts (Apollo + AI)" disabled={!!busy} onClick={() => enrich([c])} className="px-1 text-muted hover:text-text disabled:opacity-40">↻</button>}
+                            {c.url && <button title="Enrich: Apollo, Ahrefs, AI web search" disabled={!!busy} onClick={() => enrich([c])} className="px-1 text-muted hover:text-text disabled:opacity-40">↻</button>}
                             <button title="Remove" disabled={!!busy} onClick={() => remove(c)} className="px-1 text-muted hover:text-text disabled:opacity-40">✕</button>
                           </span>
                         </td>

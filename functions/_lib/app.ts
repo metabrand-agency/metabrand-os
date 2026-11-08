@@ -21,7 +21,7 @@ app.onError((err, c) => c.json({ error: err.message }, 500));
 
 // ---------- setup & auth ----------
 
-app.get('/health', (c) => c.json({ ok: true, ai: Boolean(c.env.ANTHROPIC_API_KEY) }));
+app.get('/health', (c) => c.json({ ok: true, ai: Boolean(c.env.ANTHROPIC_API_KEY), apollo: Boolean(c.env.APOLLO_API_KEY), ahrefs: Boolean(c.env.AHREFS_API_KEY) }));
 
 app.post('/setup', async (c) => {
   const { email, code } = await c.req.json<{ email: string; code: string }>();

@@ -98,10 +98,38 @@ async function apollo(env: Env, url: string) {
   }
 }
 
+/** Ahrefs API v3 (uses the account's API units): DR, organic traffic, linking sites, brand searches. */
+export async function ahrefs(env: Env, url: string | undefined, name: string) {
+  if (!env.AHREFS_API_KEY || !url) return null;
+  const h = { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json', 'content-type': 'application/json' };
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const [site, kw] = await Promise.all([
+      fetch('https://api.ahrefs.com/v3/batch-analysis/batch-analysis', {
+        method: 'POST', headers: h, signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ select: ['url', 'domain_rating', 'org_traffic', 'refdomains'], targets: [{ url: `https://${host}`, mode: 'subdomains', protocol: 'both' }] }),
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`https://api.ahrefs.com/v3/keywords-explorer/overview?select=keyword,volume,global_volume&country=us&keywords=${encodeURIComponent(name.toLowerCase())}`, { headers: h, signal: AbortSignal.timeout(15000) })
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
+    const t: any = (site as any)?.targets?.[0];
+    const k: any = (kw as any)?.keywords?.[0];
+    if (!t && !k) return null;
+    return {
+      dr: t?.domain_rating, traffic: t?.org_traffic, refdomains: t?.refdomains,
+      ...(k ? { brand_query: k.keyword, brand_us: k.volume, brand_global: k.global_volume } : {}),
+      as_of: new Date().toISOString().slice(0, 7),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function researchCompany(env: Env, wsId: string, input: { query?: string; name?: string; url?: string }, clientName: string) {
   const url = input.url || (input.query ? normalizeUrl(input.query) : null);
   const page = url ? await readHomepage(url) : null;
   const ap = url ? await apollo(env, page?.final_url || url) : null;
+  const ah = await ahrefs(env, page?.final_url || url || undefined, input.name || ap?.name || input.query || '');
   const fallback: any = {
     name: input.name || ap?.name || page?.site_name || page?.title?.split(/[|–—-]/)[0]?.trim() || input.query || 'Unknown',
     url: page?.final_url || url || undefined,
@@ -109,6 +137,7 @@ export async function researchCompany(env: Env, wsId: string, input: { query?: s
     sub: page?.description || undefined,
     sources: url ? [url] : [],
     ...Object.fromEntries(Object.entries(ap || {}).filter(([k, v]) => v != null && k !== 'name')),
+    ...(ah ? { ahrefs: ah } : {}),
   };
   if (!env.ANTHROPIC_API_KEY) return fallback;
 
@@ -133,6 +162,7 @@ Never guess. Leave a field out if you cannot confirm it. Then call save_company.
   return {
     ...fallback, ...ai, ...apFacts, // company facts: Apollo first, then AI web research
     sources: [...new Set([...(fallback.sources || []), ...(c.sources || [])])],
-    data_sources: [...new Set([...(ap ? ['Apollo'] : []), 'AI web research'])],
+    ...(ah ? { ahrefs: ah } : {}),
+    data_sources: [...new Set([...(ap ? ['Apollo'] : []), 'AI web research', ...(ah ? ['Ahrefs'] : [])])],
   };
 }

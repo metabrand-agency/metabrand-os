@@ -79,10 +79,21 @@ export function useResearch(slug: string) {
   return { row, setRow, reload, hasNew, save };
 }
 
-export function RefreshButton({ hasNew, onClick }: { hasNew: boolean; onClick: () => void }) {
-  return hasNew
-    ? <Btn kind="brand" onClick={onClick}>New data · Refresh</Btn>
-    : <Btn onClick={onClick}>Refresh</Btn>;
+/** Reloads the research from the database (changes made elsewhere: another tab, the chat, an import). */
+export function RefreshButton({ hasNew, onClick }: { hasNew: boolean; onClick: () => Promise<void> | void }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'done'>('idle');
+  const run = async () => {
+    setState('busy');
+    await Promise.all([onClick(), new Promise((r) => setTimeout(r, 400))]);
+    setState('done');
+    setTimeout(() => setState('idle'), 1800);
+  };
+  if (hasNew && state === 'idle') return <Btn kind="brand" onClick={run}>New data · Refresh</Btn>;
+  return (
+    <span title="Reload the latest data saved for this project">
+      <Btn onClick={run} disabled={state === 'busy'}>{state === 'busy' ? 'Refreshing…' : state === 'done' ? 'Up to date ✓' : 'Refresh'}</Btn>
+    </span>
+  );
 }
 
 const SOCIAL: [keyof NonNullable<Company['socials']> | 'linkedin', string, string][] = [
