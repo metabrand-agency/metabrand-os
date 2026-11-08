@@ -1,3 +1,4 @@
+import { prContext } from './ideas';
 import type { Env, Access } from './auth';
 
 type Msg = { role: 'user' | 'assistant'; content: any };
@@ -20,13 +21,18 @@ const TOOLS = [
     input_schema: { type: 'object', properties: { overlap: { type: 'string' }, tier: { type: 'number' } } },
   },
   {
+    name: 'get_pr_coverage',
+    description: 'Get press coverage for the client and each competitor: recent backlinks from articles (Ahrefs: title, site, DR, type, URL), own blog and changelog posts, plus the article ideas already generated for the client. Use it to suggest article ideas, PR angles or sites to pitch.',
+    input_schema: { type: 'object', properties: {} },
+  },
+  {
     name: 'get_overview',
     description: 'Get the project overview: client, description, contacts, recent timeline.',
     input_schema: { type: 'object', properties: {} },
   },
   {
     name: 'navigate',
-    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: overview = the client at a glance (DR, linking sites, search traffic, brand searches, AI citations, new articles, each ranked against competitors; new backlinks from articles and AI citations charts; articles about the client; logos and brand tools); competitors = competitor table with company facts (founded, team, last round, location, LinkedIn, Ahrefs metrics); lenses = perceptual matrices and findings; visibility = Brand Visibility, charts comparing AI citations (Ahrefs, per AI platform), brand searches, search traffic, DR, linking sites, team, last round, and an HQ map; monitor = PR Monitor, per company: new backlinks from articles (Ahrefs) and own news from the blog or changelog, with charts; guide = the online brand guide (film, sections: foundations, logo, colour, typography, layout, illustrations, applications; focus = a section id); assets = brand kit (logos, colours, fonts, icons to download) plus Figma files and videos (Brand OS); merch = merch mockups gallery (t-shirts, hoodies, badge, stickers); generate = banner generator (pick a format, write or generate a headline, get on-brand banner variants to download as PNG/SVG); memory also lists project links (site, GitHub, Webflow). focus: for competitors, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id, a company id, the word seo to open the SEO content-gap lens (top keywords per company, keyword gap by country), the word branding to open the competitor branding lens (hue wheel of accent colours, palettes, fonts, homepage screenshots), or the word methods to open Methodologies (BAV, vision × execution, Dunford positioning canvas, Blue Ocean strategy canvas, category claims, jobs to be done, category entry points, archetypes, Kapferer prism, Aaker personality, distinctive assets); for memory, a search phrase.',
+    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: overview = the client at a glance (DR, linking sites, search traffic, brand searches, AI citations, new articles, each ranked against competitors; new backlinks from articles and AI citations charts; articles about the client; logos and brand tools); competitors = competitor table with company facts (founded, team, last round, location, LinkedIn, Ahrefs metrics); lenses = perceptual matrices and findings; visibility = Brand Visibility, charts comparing AI citations (Ahrefs, per AI platform), brand searches, search traffic, DR, linking sites, team, last round, and an HQ map; monitor = PR Monitor, per company: new backlinks from articles (Ahrefs) and own news from the blog or changelog, with charts, and article ideas for the client at the bottom; guide = the online brand guide (film, sections: foundations, logo, colour, typography, layout, illustrations, applications; focus = a section id); assets = brand kit (logos, colours, fonts, icons to download) plus Figma files and videos (Brand OS); merch = merch mockups gallery (t-shirts, hoodies, badge, stickers); generate = banner generator (pick a format, write or generate a headline, get on-brand banner variants to download as PNG/SVG); memory also lists project links (site, GitHub, Webflow). focus: for competitors, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id, a company id, the word seo to open the SEO content-gap lens (top keywords per company, keyword gap by country), the word branding to open the competitor branding lens (hue wheel of accent colours, palettes, fonts, homepage screenshots), or the word methods to open Methodologies (BAV, vision × execution, Dunford positioning canvas, Blue Ocean strategy canvas, category claims, jobs to be done, category entry points, archetypes, Kapferer prism, Aaker personality, distinctive assets); for memory, a search phrase.',
     input_schema: {
       type: 'object',
       properties: { tab: { type: 'string', enum: ['overview', 'memory', 'competitors', 'lenses', 'visibility', 'monitor', 'assets', 'guide', 'merch', 'generate', 'settings'] }, focus: { type: 'string' } },
@@ -69,6 +75,12 @@ async function runTool(env: Env, ws: { id: string; name: string }, access: Acces
     if (input.tier) companies = companies.filter((c: any) => c.tier === input.tier);
     const lenses = (data.lenses || []).map((l: any) => ({ id: l.id, title: l.title, why: l.why, axes: l.axes, positions: l.positions }));
     return JSON.stringify({ client: data.client, axes: data.axes, companies, findings: data.findings, lenses });
+  }
+  if (name === 'get_pr_coverage') {
+    const row = await db.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
+    if (!row || (clientOnly && row.status !== 'published')) return 'No coverage data yet.';
+    const data = JSON.parse(row.data_json);
+    return JSON.stringify({ ...prContext(data), ideas: data.pr_ideas || null });
   }
   if (name === 'get_overview') {
     const w = await db.prepare('SELECT name, client_url, category_description FROM workspaces WHERE id = ?').bind(ws.id).first();

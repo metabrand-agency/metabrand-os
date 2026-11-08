@@ -38,7 +38,10 @@ export type MarketData = {
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
   seo?: Record<string, SeoCountry>;
   activity?: Record<string, Activity>;
+  pr_ideas?: PrIdeas;
 };
+export type PrIdea = { title: string; format?: string; angle?: string; gap?: string; pitch_to: string[]; inspired_by: string[] };
+export type PrIdeas = { summary?: string; focus?: string; ideas: PrIdea[]; generated_at: number };
 export type Row = { data: MarketData; status: string; updated_at: number };
 
 // Three validated hues + a neutral hollow mark for "may enter" (not in the market yet).

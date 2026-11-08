@@ -12,6 +12,7 @@ import { refreshOne, focusIds, ogImage } from './radar';
 import { SUPERPLANE_KIT, patchKit } from './kits/superplane';
 import { brandingFor } from './branding';
 import { suggestHeadlines } from './headlines';
+import { articleIdeas } from './ideas';
 import { METHODS, runMethod } from './methods';
 import superplaneMarket from '../../data/superplane/market.json';
 
@@ -519,6 +520,22 @@ app.post('/w/:slug/branding/refresh', async (c) => {
   }
   const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
   if (!b) return c.json({ error: `Couldn't read ${company.url}` }, 502);
+  return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
+});
+
+// PR Monitor: article ideas from the competitors' press coverage and the client's own (agency), saved with the research
+app.post('/w/:slug/monitor/ideas', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const ws = c.get('ws');
+  const body = await c.req.json<{ focus?: string }>().catch(() => ({} as { focus?: string }));
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
+  if (!row) return c.json({ error: 'No competitors yet' }, 400);
+  let ideas: any;
+  try { ideas = await articleIdeas(c.env, ws.id, JSON.parse(row.data_json), String(body.focus || '').slice(0, 400)); } catch (e: any) { return c.json({ error: e.message }, 502); }
+  const now = Date.now();
+  await c.env.DB.prepare(`UPDATE research SET data_json = json_set(data_json, '$.pr_ideas', json(?)), updated_at = ? WHERE workspace_id = ? AND kind = 'market_map'`).bind(JSON.stringify(ideas), now, ws.id).run();
+  const fresh = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
   return c.json({ data: JSON.parse(fresh!.data_json), status: fresh!.status, updated_at: now });
 });
 
