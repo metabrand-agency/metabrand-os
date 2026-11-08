@@ -177,25 +177,6 @@ export async function activityFor(url: string) {
   };
 }
 
-export async function newsFor(query: string) {
-  const r = await getText(`https://news.google.com/rss/search?${new URLSearchParams({ q: `${query} when:30d`, hl: 'en-US', gl: 'US', ceid: 'US:en' })}`, 7000);
-  if (!r || !/<rss/i.test(r.text)) return null;
-  const items = (r.text.match(/<item[\s>][\s\S]*?<\/item>/gi) || []).map((it) => {
-    const source = decode(tag(it, 'source') || '');
-    const title = decode(tag(it, 'title') || '');
-    const site = it.match(/<source[^>]+url=["']([^"']+)["']/i)?.[1];
-    return {
-      title: source && title.endsWith(` - ${source}`) ? title.slice(0, -(source.length + 3)) : title, // Google adds " - Source"
-      url: decode(tag(it, 'link') || ''),
-      date: isoDate(tag(it, 'pubDate')),
-      source: source.replace(/^https?:\/\//, '').replace(/\/$/, ''),
-      site: site ? site.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : undefined,
-    };
-  }).filter((x) => x.title && x.url);
-  items.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  return { query, count_30d: items.length, latest: items.slice(0, 10), checked_at: Date.now() };
-}
-
 /** City → coordinates. Open-Meteo geocoding first (free, no key), OpenStreetMap Nominatim as fallback. */
 async function geocode(q: string): Promise<{ lat: number; lng: number } | null> {
   const [city, ...rest] = q.split(',').map((x) => x.trim());
@@ -219,25 +200,6 @@ export function focusIds(data: any): string[] {
   const cs = data.companies || [];
   if (cs.some((c: any) => typeof c.selected === 'boolean')) return cs.filter((c: any) => c.selected).map((c: any) => c.id);
   return [...cs].sort((a: any, b: any) => Number(!!b.client_pick) - Number(!!a.client_pick) || (a.tier || 9) - (b.tier || 9)).slice(0, 5).map((c: any) => c.id);
-}
-
-/**
- * Google News query. Distinctive names ("SuperPlane", "HumanLayer") as they are. Common words ("Factory", "Warp")
- * are paired with the founder's surname, which is precise; otherwise the Ahrefs brand query or a context filter.
- * A query set by hand on the company (news_query) always wins.
- */
-export function newsQuery(c: any) {
-  if (c.news_query?.trim()) return String(c.news_query).trim();
-  const name = String(c.name || c.short || '').replace(/\s*\(.*\)/, '').replace(/"/g, '').trim();
-  const CONTEXT = '(AI OR software OR developer OR startup OR agent OR agents OR "open source")';
-  if (name.split(/\s+/).length > 1) return `"${name}"`;
-  // one-word names, even coined ones, collide with other things ("SuperPlane" aircraft): add a tech context
-  if (/[a-z][A-Z]|\d|\./.test(name)) return `"${name}" AND ${CONTEXT}`;
-  const surname = String(c.founder || '').split(/[,;&]| and /)[0].trim().split(/\s+/).pop()?.replace(/"/g, '');
-  if (surname && surname.length > 2) return `"${name}" "${surname}"`;
-  const bq = String(c.ahrefs?.brand_query || '').replace(/"/g, '').trim();
-  if (bq.split(/\s+/).length > 1) return `"${bq}"`;
-  return `"${name}" AND ${CONTEXT}`;
 }
 
 /**
@@ -290,16 +252,16 @@ export async function refreshOne(env: Env, c: any, prev?: any, forceLinks = fals
   const hq = c?.hq?.split('/')[0]?.trim();
   // Ahrefs links cost units: reuse them for a week unless someone asks for an update
   const linksFresh = !forceLinks && prev?.links && Date.now() - prev.links.checked_at < 7 * 864e5;
-  const [act, news, ah, geo, links] = await Promise.all([
+  // No Google News: it blocks requests from Cloudflare's servers. Press coverage comes from Ahrefs backlinks.
+  const [act, ah, geo, links] = await Promise.all([
     c.url ? activityFor(c.url).catch(() => null) : null,
-    newsFor(newsQuery(c)).catch(() => null),
     c.url ? ahrefs(env, c.url, c.short || c.name) : null,
     hq && c.geo?.q !== hq ? geocode(hq) : null,
     linksFresh ? prev.links : c.url ? newLinksFor(env, c.url).catch(() => null) : null,
   ]);
-  const extra = { news, links: links || prev?.links || null };
+  const extra = { links: links || prev?.links || null };
   return {
-    activity: act ? { ...act, ...extra } : news || links ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), ...extra } : null,
+    activity: act ? { ...act, ...extra } : links ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), ...extra } : null,
     ahrefs: ah ? { ...(c.ahrefs || {}), ...ah } : undefined,
     geo: geo ? { ...geo, q: hq } : undefined,
   };

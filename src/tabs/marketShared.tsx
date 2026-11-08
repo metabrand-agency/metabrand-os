@@ -153,7 +153,7 @@ export function useCompanyQueue(opts: { slug: string; data: MarketData | null | 
 export function useActivityRefresh(slug: string, data: MarketData | null | undefined, accept: (r: Row) => void, agency: boolean) {
   return useCompanyQueue({
     slug, data, accept, agency, path: 'radar/refresh', idle: 'Update data',
-    stale: (d, id) => { const a = d.activity?.[id]; const c = companyById(d, id); return !a || a.v !== ACTIVITY_V || a.news === undefined || Date.now() - a.checked_at > 864e5 || (!!c?.hq && !c.geo); },
+    stale: (d, id) => { const a = d.activity?.[id]; const c = companyById(d, id); return !a || a.v !== ACTIVITY_V || Date.now() - a.checked_at > 864e5 || (!!c?.hq && !c.geo); },
   });
 }
 
