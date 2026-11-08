@@ -1,7 +1,7 @@
 // Data enrichments for the SuperPlane demo project, collected outside the app (Ahrefs, company data).
 // Applied once per version to workspaces with settings.demo = true; never overwrites edited fields except metrics.
-export const DEMO_PATCH: { version: number; client: Record<string, any>; companies: Record<string, Record<string, any>> } = {
-  "version": 3,
+export const DEMO_PATCH: { version: number; client: Record<string, any>; companies: Record<string, Record<string, any>>; seo?: Record<string, any> } = {
+  "version": 4,
   "client": {
     "founded": 2025,
     "employees": "13",
@@ -500,6 +500,729 @@ export const DEMO_PATCH: { version: number; client: Record<string, any>; compani
         "github": "https://github.com/temporalio"
       }
     }
+  },
+  "seo": {
+    "US": {
+      "as_of": "2026-11",
+      "ids": [
+        "__client",
+        "factory",
+        "devin",
+        "openhands",
+        "warp",
+        "tembo"
+      ],
+      "top": {
+        "__client": {
+          "all": [
+            {
+              "keyword": "superplane",
+              "position": 1,
+              "traffic": 21,
+              "volume": 20,
+              "url": "https://superplane.com/"
+            },
+            {
+              "keyword": "super plane",
+              "position": 6,
+              "traffic": 0,
+              "volume": 80,
+              "url": "https://superplane.com/"
+            }
+          ],
+          "content": []
+        },
+        "factory": {
+          "all": [
+            {
+              "keyword": "factory",
+              "position": 2,
+              "traffic": 3653,
+              "volume": 38000,
+              "url": "https://factory.com/"
+            },
+            {
+              "keyword": "factory ai",
+              "position": 1,
+              "traffic": 1320,
+              "volume": 5500,
+              "url": "https://factory.com/"
+            },
+            {
+              "keyword": "factort",
+              "position": 2,
+              "traffic": 137,
+              "volume": 150,
+              "url": "https://factory.com/"
+            },
+            {
+              "keyword": "fatory",
+              "position": 2,
+              "traffic": 131,
+              "volume": 150,
+              "url": "https://factory.com/"
+            },
+            {
+              "keyword": "factory company",
+              "position": 1,
+              "traffic": 130,
+              "volume": 600,
+              "url": "https://factory.com/"
+            }
+          ],
+          "content": [
+            {
+              "keyword": "software factory model",
+              "position": 2,
+              "traffic": 35,
+              "volume": 150,
+              "url": "https://factory.com/articles/what-is-a-software-factory"
+            },
+            {
+              "keyword": "factory valuation",
+              "position": 1,
+              "traffic": 32,
+              "volume": 200,
+              "url": "https://factory.com/news/series-c"
+            },
+            {
+              "keyword": "agent effectiveness",
+              "position": 1,
+              "traffic": 27,
+              "volume": 80,
+              "url": "https://factory.com/news/agent-effectiveness"
+            },
+            {
+              "keyword": "news factory",
+              "position": 3,
+              "traffic": 25,
+              "volume": 200,
+              "url": "https://factory.com/news"
+            },
+            {
+              "keyword": "funding factory",
+              "position": 2,
+              "traffic": 20,
+              "volume": 70,
+              "url": "https://factory.com/news/5-billion-valuation"
+            }
+          ]
+        },
+        "devin": {
+          "all": [
+            {
+              "keyword": "devin ai",
+              "position": 1,
+              "traffic": 2556,
+              "volume": 11000,
+              "url": "https://devin.ai/"
+            },
+            {
+              "keyword": "devin",
+              "position": 1,
+              "traffic": 1422,
+              "volume": 7600,
+              "url": "https://devin.ai/"
+            },
+            {
+              "keyword": "windsurf pricing",
+              "position": 1,
+              "traffic": 271,
+              "volume": 1200,
+              "url": "https://devin.ai/pricing"
+            },
+            {
+              "keyword": "deepwiki",
+              "position": 2,
+              "traffic": 264,
+              "volume": 3700,
+              "url": "https://docs.devin.ai/work-with-devin/deepwiki"
+            },
+            {
+              "keyword": "winsurf",
+              "position": 2,
+              "traffic": 155,
+              "volume": 250,
+              "url": "https://devin.ai/desktop"
+            }
+          ],
+          "content": [
+            {
+              "keyword": "deepwiki",
+              "position": 2,
+              "traffic": 264,
+              "volume": 3700,
+              "url": "https://docs.devin.ai/work-with-devin/deepwiki"
+            },
+            {
+              "keyword": "winsurf",
+              "position": 2,
+              "traffic": 155,
+              "volume": 250,
+              "url": "https://devin.ai/desktop"
+            },
+            {
+              "keyword": "deepwiki mcp",
+              "position": 1,
+              "traffic": 54,
+              "volume": 200,
+              "url": "https://docs.devin.ai/work-with-devin/deepwiki-mcp"
+            },
+            {
+              "keyword": "tavrn",
+              "position": 4,
+              "traffic": 38,
+              "volume": 900,
+              "url": "https://devin.ai/customers/tavrn"
+            },
+            {
+              "keyword": "devdesktop",
+              "position": 1,
+              "traffic": 27,
+              "volume": 30,
+              "url": "https://devin.ai/desktop"
+            }
+          ]
+        },
+        "openhands": {
+          "all": [
+            {
+              "keyword": "openhands",
+              "position": 1,
+              "traffic": 5992,
+              "volume": 9100,
+              "url": "https://www.openhands.dev/"
+            },
+            {
+              "keyword": "open hands",
+              "position": 1,
+              "traffic": 244,
+              "volume": 1900,
+              "url": "https://www.openhands.dev/"
+            },
+            {
+              "keyword": "openhands github",
+              "position": 2,
+              "traffic": 235,
+              "volume": 700,
+              "url": "https://www.openhands.dev/"
+            },
+            {
+              "keyword": "self hosted ai agents",
+              "position": 4,
+              "traffic": 155,
+              "volume": 1800,
+              "url": "https://www.openhands.dev/blog/open-source-ai-coding-agents"
+            },
+            {
+              "keyword": "linear project management",
+              "position": 2,
+              "traffic": 76,
+              "volume": 1600,
+              "url": "https://www.openhands.dev/blog/linear-for-project-management"
+            }
+          ],
+          "content": [
+            {
+              "keyword": "self hosted ai agents",
+              "position": 4,
+              "traffic": 155,
+              "volume": 1800,
+              "url": "https://www.openhands.dev/blog/open-source-ai-coding-agents"
+            },
+            {
+              "keyword": "linear project management",
+              "position": 2,
+              "traffic": 76,
+              "volume": 1600,
+              "url": "https://www.openhands.dev/blog/linear-for-project-management"
+            },
+            {
+              "keyword": "github copilot free alternative",
+              "position": 3,
+              "traffic": 20,
+              "volume": 200,
+              "url": "https://www.openhands.dev/blog/copilot-alternatives-free-unlimited"
+            },
+            {
+              "keyword": "linear task management",
+              "position": 3,
+              "traffic": 20,
+              "volume": 500,
+              "url": "https://www.openhands.dev/blog/linear-for-project-management"
+            },
+            {
+              "keyword": "local llm model",
+              "position": 1,
+              "traffic": 9,
+              "volume": 600,
+              "url": "https://www.openhands.dev/blog/local-llm"
+            }
+          ]
+        },
+        "warp": {
+          "all": [
+            {
+              "keyword": "warp terminal",
+              "position": 1,
+              "traffic": 1353,
+              "volume": 9500,
+              "url": "https://www.warp.dev/"
+            },
+            {
+              "keyword": "warp",
+              "position": 1,
+              "traffic": 688,
+              "volume": 22000,
+              "url": "https://www.warp.dev/"
+            },
+            {
+              "keyword": "powerlevel10k",
+              "position": 3,
+              "traffic": 336,
+              "volume": 6100,
+              "url": "https://www.warp.dev/blog/how-to-set-up-powerlevel10k-on-warp"
+            },
+            {
+              "keyword": "vim select all",
+              "position": 1,
+              "traffic": 306,
+              "volume": 450,
+              "url": "https://www.warp.dev/terminus/select-all-in-vim-vi"
+            },
+            {
+              "keyword": "warp login",
+              "position": 1,
+              "traffic": 269,
+              "volume": 450,
+              "url": "https://docs.warp.dev/"
+            }
+          ],
+          "content": [
+            {
+              "keyword": "powerlevel10k",
+              "position": 3,
+              "traffic": 336,
+              "volume": 6100,
+              "url": "https://www.warp.dev/blog/how-to-set-up-powerlevel10k-on-warp"
+            },
+            {
+              "keyword": "vim select all",
+              "position": 1,
+              "traffic": 306,
+              "volume": 450,
+              "url": "https://www.warp.dev/terminus/select-all-in-vim-vi"
+            },
+            {
+              "keyword": "git undo last commit",
+              "position": 1,
+              "traffic": 259,
+              "volume": 3400,
+              "url": "https://www.warp.dev/terminus/git-undo-commit"
+            },
+            {
+              "keyword": "docker compose ports",
+              "position": 1,
+              "traffic": 235,
+              "volume": 700,
+              "url": "https://www.warp.dev/terminus/docker-compose-port-mapping"
+            },
+            {
+              "keyword": "delete directory linux",
+              "position": 1,
+              "traffic": 202,
+              "volume": 2100,
+              "url": "https://www.warp.dev/terminus/removing-directories-in-linux"
+            }
+          ]
+        },
+        "tembo": {
+          "all": [
+            {
+              "keyword": "tembo",
+              "position": 1,
+              "traffic": 271,
+              "volume": 900,
+              "url": "https://www.tembo.io/"
+            },
+            {
+              "keyword": "ai python code generator",
+              "position": 9,
+              "traffic": 33,
+              "volume": 1500,
+              "url": "https://www.tembo.io/blog/ai-code-generators"
+            },
+            {
+              "keyword": "cursor vs copilot",
+              "position": 1,
+              "traffic": 28,
+              "volume": 600,
+              "url": "https://www.tembo.io/blog/cursor-vs-copilot"
+            },
+            {
+              "keyword": "copilot vs cursor",
+              "position": 1,
+              "traffic": 15,
+              "volume": 300,
+              "url": "https://www.tembo.io/blog/cursor-vs-copilot"
+            },
+            {
+              "keyword": "github copilot vs cursor",
+              "position": 1,
+              "traffic": 14,
+              "volume": 250,
+              "url": "https://www.tembo.io/blog/cursor-vs-copilot"
+            }
+          ],
+          "content": [
+            {
+              "keyword": "ai python code generator",
+              "position": 9,
+              "traffic": 33,
+              "volume": 1500,
+              "url": "https://www.tembo.io/blog/ai-code-generators"
+            },
+            {
+              "keyword": "cursor vs copilot",
+              "position": 1,
+              "traffic": 28,
+              "volume": 600,
+              "url": "https://www.tembo.io/blog/cursor-vs-copilot"
+            },
+            {
+              "keyword": "copilot vs cursor",
+              "position": 1,
+              "traffic": 15,
+              "volume": 300,
+              "url": "https://www.tembo.io/blog/cursor-vs-copilot"
+            },
+            {
+              "keyword": "github copilot vs cursor",
+              "position": 1,
+              "traffic": 14,
+              "volume": 250,
+              "url": "https://www.tembo.io/blog/cursor-vs-copilot"
+            },
+            {
+              "keyword": "open source ai agents",
+              "position": 11,
+              "traffic": 7,
+              "volume": 500,
+              "url": "https://www.tembo.io/blog/ai-coding-agents-revolutionizing-development"
+            }
+          ]
+        }
+      },
+      "gap": {
+        "keywords": [
+          {
+            "keyword": "powerlevel10k",
+            "volume": 6100
+          },
+          {
+            "keyword": "deepwiki",
+            "volume": 3700
+          },
+          {
+            "keyword": "git undo last commit",
+            "volume": 3400
+          },
+          {
+            "keyword": "delete directory linux",
+            "volume": 2100
+          },
+          {
+            "keyword": "self hosted ai agents",
+            "volume": 1800,
+            "category": true
+          },
+          {
+            "keyword": "linear project management",
+            "volume": 1600
+          },
+          {
+            "keyword": "ai python code generator",
+            "volume": 1500
+          },
+          {
+            "keyword": "coding agent",
+            "volume": 1100,
+            "category": true
+          },
+          {
+            "keyword": "tavrn",
+            "volume": 900
+          },
+          {
+            "keyword": "docker compose ports",
+            "volume": 700
+          },
+          {
+            "keyword": "local llm model",
+            "volume": 600
+          },
+          {
+            "keyword": "cursor vs copilot",
+            "volume": 600
+          },
+          {
+            "keyword": "linear task management",
+            "volume": 500
+          },
+          {
+            "keyword": "open source ai agents",
+            "volume": 500,
+            "category": true
+          },
+          {
+            "keyword": "software factory",
+            "volume": 500,
+            "category": true
+          },
+          {
+            "keyword": "vim select all",
+            "volume": 450
+          },
+          {
+            "keyword": "copilot vs cursor",
+            "volume": 300
+          },
+          {
+            "keyword": "winsurf",
+            "volume": 250
+          },
+          {
+            "keyword": "github copilot vs cursor",
+            "volume": 250
+          },
+          {
+            "keyword": "factory valuation",
+            "volume": 200
+          },
+          {
+            "keyword": "news factory",
+            "volume": 200
+          },
+          {
+            "keyword": "deepwiki mcp",
+            "volume": 200
+          },
+          {
+            "keyword": "github copilot free alternative",
+            "volume": 200
+          },
+          {
+            "keyword": "software factory model",
+            "volume": 150,
+            "category": true
+          },
+          {
+            "keyword": "agent effectiveness",
+            "volume": 80
+          },
+          {
+            "keyword": "funding factory",
+            "volume": 70
+          },
+          {
+            "keyword": "what is a software factory",
+            "volume": 70,
+            "category": true
+          },
+          {
+            "keyword": "devdesktop",
+            "volume": 30
+          }
+        ],
+        "positions": {
+          "software factory model": {
+            "factory": {
+              "position": 2,
+              "traffic": 35
+            }
+          },
+          "agent effectiveness": {
+            "factory": {
+              "position": 1,
+              "traffic": 27
+            }
+          },
+          "news factory": {
+            "factory": {
+              "position": 3,
+              "traffic": 25
+            }
+          },
+          "what is a software factory": {
+            "factory": {
+              "position": 1,
+              "traffic": 12
+            },
+            "warp": {
+              "position": 10,
+              "traffic": 1
+            }
+          },
+          "software factory": {
+            "factory": {
+              "position": 1,
+              "traffic": 3
+            },
+            "warp": {
+              "position": 1,
+              "traffic": 52
+            }
+          },
+          "funding factory": {
+            "factory": {
+              "position": 2,
+              "traffic": 20
+            }
+          },
+          "factory valuation": {
+            "factory": {
+              "position": 1,
+              "traffic": 32
+            }
+          },
+          "winsurf": {
+            "devin": {
+              "position": 2,
+              "traffic": 155
+            }
+          },
+          "deepwiki": {
+            "devin": {
+              "position": 2,
+              "traffic": 264
+            }
+          },
+          "deepwiki mcp": {
+            "devin": {
+              "position": 1,
+              "traffic": 54
+            }
+          },
+          "devdesktop": {
+            "devin": {
+              "position": 1,
+              "traffic": 27
+            }
+          },
+          "tavrn": {
+            "devin": {
+              "position": 4,
+              "traffic": 38
+            }
+          },
+          "self hosted ai agents": {
+            "openhands": {
+              "position": 4,
+              "traffic": 155
+            }
+          },
+          "linear project management": {
+            "openhands": {
+              "position": 2,
+              "traffic": 76
+            }
+          },
+          "github copilot free alternative": {
+            "openhands": {
+              "position": 3,
+              "traffic": 20
+            }
+          },
+          "linear task management": {
+            "openhands": {
+              "position": 3,
+              "traffic": 20
+            }
+          },
+          "local llm model": {
+            "openhands": {
+              "position": 1,
+              "traffic": 9
+            }
+          },
+          "coding agent": {
+            "openhands": {
+              "position": 1,
+              "traffic": 8
+            }
+          },
+          "vim select all": {
+            "warp": {
+              "position": 1,
+              "traffic": 306
+            }
+          },
+          "docker compose ports": {
+            "warp": {
+              "position": 1,
+              "traffic": 235
+            }
+          },
+          "delete directory linux": {
+            "warp": {
+              "position": 1,
+              "traffic": 202
+            }
+          },
+          "git undo last commit": {
+            "warp": {
+              "position": 1,
+              "traffic": 259
+            }
+          },
+          "powerlevel10k": {
+            "warp": {
+              "position": 3,
+              "traffic": 336
+            }
+          },
+          "ai python code generator": {
+            "tembo": {
+              "position": 9,
+              "traffic": 33
+            }
+          },
+          "cursor vs copilot": {
+            "tembo": {
+              "position": 1,
+              "traffic": 28
+            }
+          },
+          "copilot vs cursor": {
+            "tembo": {
+              "position": 1,
+              "traffic": 15
+            }
+          },
+          "github copilot vs cursor": {
+            "tembo": {
+              "position": 1,
+              "traffic": 14
+            }
+          },
+          "open source ai agents": {
+            "tembo": {
+              "position": 11,
+              "traffic": 7
+            }
+          }
+        },
+        "checked": [
+          "__client",
+          "factory",
+          "devin",
+          "openhands",
+          "warp",
+          "tembo"
+        ]
+      },
+      "source": "Ahrefs"
+    }
   }
 };
 
@@ -517,6 +1240,7 @@ export function applyDemoPatch(data: any): any | null {
     ...data,
     demo_patch: DEMO_PATCH.version,
     client: fill(data.client, DEMO_PATCH.client),
+    seo: { ...(DEMO_PATCH.seo || {}), ...(data.seo || {}) },
     companies: (data.companies || []).map((c: any) => (DEMO_PATCH.companies[c.id] ? fill(c, DEMO_PATCH.companies[c.id]) : c)),
   };
 }

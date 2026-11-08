@@ -20,8 +20,15 @@ export type Finding = { lens?: string; title: string; what: string; so_what: str
 export type Axes = { x: { left: string; right: string }; y: { bottom: string; top: string }; note?: string };
 export type Pos = { x: number; y: number; ai_x?: number; ai_y?: number; adjusted?: boolean; note?: string };
 export type Lens = { id: string; kind: 'matrix'; title: string; why?: string; source: 'ai' | 'manual'; axes: Axes; positions: Record<string, Pos>; created_at?: number };
+export type SeoKw = { keyword: string; position: number; traffic: number; volume: number; url?: string };
+export type SeoCountry = {
+  as_of: string; ids: string[]; source?: string;
+  top: Record<string, { all: SeoKw[]; content: SeoKw[] }>;
+  gap: { keywords: { keyword: string; volume: number; category?: boolean }[]; positions: Record<string, Record<string, { position: number; traffic: number }>>; checked: string[] };
+};
 export type MarketData = {
   client: Company; axes: Axes; companies: Company[]; findings: Finding[]; lenses?: Lens[]; research_log_stats?: Record<string, number>;
+  seo?: Record<string, SeoCountry>;
 };
 export type Row = { data: MarketData; status: string; updated_at: number };
 

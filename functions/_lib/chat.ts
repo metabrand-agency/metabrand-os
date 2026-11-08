@@ -26,7 +26,7 @@ const TOOLS = [
   },
   {
     name: 'navigate',
-    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: competitors = competitor table with company facts (founded, team, last round, location, LinkedIn, Ahrefs metrics); lenses = perceptual matrices and findings; assets = brand assets (Brand OS). focus: for competitors, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id or company id; for memory, a search phrase.',
+    description: 'Open a tab in the interface for the user so they see the relevant view. Use after answering when a view helps. Tabs: competitors = competitor table with company facts (founded, team, last round, location, LinkedIn, Ahrefs metrics); lenses = perceptual matrices and findings; assets = brand assets (Brand OS). focus: for competitors, a company id or an overlap type (direct, angle, substitute, may_enter); for lenses, a lens id, a company id, or the word seo to open the SEO content-gap lens (top keywords per company, keyword gap by country); for memory, a search phrase.',
     input_schema: {
       type: 'object',
       properties: { tab: { type: 'string', enum: ['overview', 'memory', 'competitors', 'lenses', 'assets', 'settings'] }, focus: { type: 'string' } },

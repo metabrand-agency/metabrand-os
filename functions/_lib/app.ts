@@ -7,6 +7,7 @@ import { aiLenses } from './lenses';
 import { researchCompany } from './companies';
 import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
+import { loadSeo } from './seo';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -412,6 +413,26 @@ app.post('/w/:slug/competitors/from-memory', async (c) => {
   const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
   try {
     return c.json(await reviewAgainstMemory(c.env, ws.id, ws.name, row ? JSON.parse(row.data_json) : { companies: [] }));
+  } catch (e: any) {
+    return c.json({ error: e.message }, 502);
+  }
+});
+
+// SEO lens: load top keywords + content gap for a country from Ahrefs, save into the research (agency only)
+app.post('/w/:slug/seo', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const ws = c.get('ws');
+  const country = String((await c.req.json<{ country?: string }>()).country || 'US').toUpperCase().slice(0, 2);
+  const row = await c.env.DB.prepare(`SELECT data_json, status FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string; status: string }>();
+  if (!row) return c.json({ error: 'No competitors yet' }, 400);
+  try {
+    const data = JSON.parse(row.data_json);
+    const seo = await loadSeo(c.env, data, country);
+    const next = { ...data, seo: { ...(data.seo || {}), [country]: seo } };
+    const now = Date.now();
+    await c.env.DB.prepare('UPDATE research SET data_json = ?, updated_at = ? WHERE workspace_id = ? AND kind = ?').bind(JSON.stringify(next), now, ws.id, 'market_map').run();
+    return c.json({ data: next, status: row.status, updated_at: now });
   } catch (e: any) {
     return c.json({ error: e.message }, 502);
   }

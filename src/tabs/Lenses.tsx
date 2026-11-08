@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { Btn, Card, Input, Label } from '../components/ui';
 import type { WsInfo } from '../pages/Workspace';
+import SeoLens from './SeoLens';
 import { Company, Dossier, EmptyResearch, Lens, MarketData, OVERLAP, RefreshButton, Swatch, lensesOf, selectedIds, shortName, useResearch } from './marketShared';
 
 const LENS_LABEL: Record<string, string> = { promise_clusters: 'Promise clusters', perceptual_map: 'Perceptual map', proof: 'Proof audit' };
@@ -71,6 +72,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
   useEffect(() => {
     if (!data || !focus) return;
     const f = focus.toLowerCase();
+    if (['seo', 'content gap', 'keywords', '__seo'].includes(f)) { setLensId('__seo'); return; }
     const l = lenses.find((x) => x.id === focus || x.title.toLowerCase().includes(f));
     if (l) { setLensId(l.id); return; }
     if (OVERLAP[f]) { setFilter(f); return; }
@@ -171,11 +173,14 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
       {/* lens switcher */}
       <div className="flex flex-wrap items-center gap-2">
         {lenses.map((l) => (
-          <button key={l.id} onClick={() => { setLensId(l.id); setAdding(false); }} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-[13px] ${l.id === lens.id && !adding ? 'border-text bg-panel' : 'border-line text-muted hover:text-text'}`}>
+          <button key={l.id} onClick={() => { setLensId(l.id); setAdding(false); }} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-[13px] ${l.id === lens.id && !adding && lensId !== '__seo' ? 'border-text bg-panel' : 'border-line text-muted hover:text-text'}`}>
             {l.title}
             <span className="rounded border border-line px-1 text-[10px] text-muted">{l.source === 'ai' ? 'AI' : 'Custom'}</span>
           </button>
         ))}
+        <button onClick={() => { setLensId('__seo'); setAdding(false); }} className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] ${lensId === '__seo' && !adding ? 'border-text bg-panel' : 'border-line text-muted hover:text-text'}`}>
+          SEO · content gap <span className="rounded border border-line px-1 text-[10px] text-muted">Ahrefs</span>
+        </button>
         {agency && (
           <button onClick={() => setAdding(!adding)} className={`rounded-lg border border-dashed px-3 py-1.5 text-[13px] ${adding ? 'border-text' : 'border-line text-muted hover:text-text'}`}>+ New lens</button>
         )}
@@ -185,6 +190,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
         <NewLens slug={info.slug} existing={lenses} onAdd={(ls) => { saveLenses([...lenses, ...ls]); setLensId(ls[0]?.id || null); setAdding(false); }} />
       )}
 
+      {lensId === '__seo' && !adding ? <SeoLens info={info} data={data} setRow={setRow} /> : (<>
       {/* legend = filter */}
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={() => setFilter(null)} className={`rounded-full border px-3 py-1 text-[12px] ${!filter ? 'border-text' : 'border-line text-muted hover:text-text'}`}>All types</button>
@@ -337,6 +343,7 @@ export default function Lenses({ info, focus }: { info: WsInfo; focus?: string }
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }
