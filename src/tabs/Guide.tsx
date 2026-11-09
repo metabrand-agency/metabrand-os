@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { MERCH_ID } from './Merch';
+import { useCovers } from './guideCover';
 import Lightbox, { type LightItem } from '../components/Lightbox';
 import type { WsInfo } from '../pages/Workspace';
 import { Guide as GuideT, GuideSection, GuideSlide, Kit, dataUri, iconSvg, isLight, logoSvg, useGoogleFonts } from './BrandKit';
@@ -124,9 +125,22 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
   const nav = useNavigate();
   const i = guide.sections.indexOf(s);
   const prev = guide.sections[i - 1], next = guide.sections[i + 1];
-  // the viewer pages through every picture of the guide, section by section
-  const all = useMemo(() => guide.sections.flatMap((x) => x.slides.filter((sl) => sl.img).map((sl) => ({
-    sl,
+  const covers = useCovers(kit, guide.title, guide.sections);
+  // the viewer pages through every picture of the guide, section by section, each opened by its cover
+  const all = useMemo(() => guide.sections.flatMap((x) => [{
+    sl: null as GuideSlide | null, cover: x.id,
+    item: {
+      src: covers[x.id], label: `${x.num ? `${x.num} ` : ''}${x.title}`, bg: undefined,
+      aside: x.summary ? (
+        <div>
+          <div className="text-[11px] uppercase tracking-[.1em] text-white/40">Section {x.num}</div>
+          <div className="mt-2 text-[17px] leading-snug text-white" style={{ fontFamily: display(kit) }}>{x.title}</div>
+          <Body text={x.summary} className="mt-3 text-[12.5px] text-white/60" />
+        </div>
+      ) : undefined,
+    } as LightItem,
+  }, ...x.slides.filter((sl) => sl.img).map((sl) => ({
+    sl, cover: '',
     item: {
       src: sl.img!, title: sl.title, label: `${x.num ? `${x.num} ` : ''}${x.title}`, bg: sl.bg,
       aside: sl.title || sl.text ? (
@@ -137,9 +151,10 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
         </div>
       ) : undefined,
     } as LightItem,
-  }))), [guide, kit]);
+  }))]), [guide, kit, covers]);
   const [open, setOpen] = useState<number | null>(null);
   const show = (sl: GuideSlide) => { const k = all.findIndex((a) => a.sl === sl); if (k >= 0) setOpen(k); };
+  const showCover = () => { const k = all.findIndex((a) => a.cover === s.id); if (k >= 0) setOpen(k); };
   return (
     <div>
       <Lightbox items={all.map((a) => a.item)} index={open} onIndex={setOpen} onClose={() => setOpen(null)} />
@@ -152,10 +167,13 @@ function SectionPage({ info, kit, guide, s }: { info: WsInfo; kit: Kit; guide: G
         ))}
       </div>
 
-      <header className="px-10 pb-10 pt-14">
-        <div className="num text-[13px] text-muted">{s.num}</div>
-        <h1 className="mt-2 text-[clamp(40px,5.5vw,76px)] leading-[0.95] tracking-[-0.02em]" style={{ fontFamily: display(kit) }}>{s.title}</h1>
-        {s.summary && <p className="mt-4 max-w-[640px] text-[16px] text-muted">{s.summary}</p>}
+      {/* the section cover, like the dividers in the Figma guidelines */}
+      <header className="px-10 pb-10 pt-8">
+        <h1 className="sr-only">{s.title}</h1>
+        <button onClick={showCover} title="Open full screen" className="block w-full cursor-zoom-in overflow-hidden rounded-lg border border-line">
+          {covers[s.id] && <img src={covers[s.id]} alt={`Section ${s.num}: ${s.title}`} className="block aspect-video w-full" />}
+        </button>
+        {s.summary && <p className="mt-5 max-w-[640px] text-[16px] text-muted">{s.summary}</p>}
       </header>
 
       <div className="space-y-16 px-10 pb-16">
