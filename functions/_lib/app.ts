@@ -5,6 +5,7 @@ import { Env, SessionUser, Access, makeSession, readSession, loadUser, accessFor
 import { chat } from './chat';
 import { aiLenses } from './lenses';
 import { researchCompany, suggestCompanies } from './companies';
+import { linkFor, revokeLink, rotateLink } from './mcp';
 import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
@@ -463,6 +464,26 @@ app.post('/w/:slug/competitors/research', async (c) => {
   } catch (e: any) {
     return c.json({ error: e.message }, 502);
   }
+});
+
+// AI connector (MCP): one secret link per project, made and revoked by the agency
+app.get('/w/:slug/mcp-link', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const l = await linkFor(c.env, c.get('ws').id);
+  return c.json(l ? { url: `${new URL(c.req.url).origin}/mcp/${l.token}`, created_at: l.created_at, last_used_at: l.last_used_at } : null);
+});
+app.post('/w/:slug/mcp-link', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  const token = await rotateLink(c.env, c.get('ws').id);
+  return c.json({ url: `${new URL(c.req.url).origin}/mcp/${token}`, created_at: Date.now(), last_used_at: null });
+});
+app.delete('/w/:slug/mcp-link', async (c) => {
+  const deny = agencyOnly(c);
+  if (deny) return deny;
+  await revokeLink(c.env, c.get('ws').id);
+  return c.json(null);
 });
 
 // competitors: name suggestions while typing (agency only; free public autocomplete, cached a day)

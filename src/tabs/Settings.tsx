@@ -46,6 +46,7 @@ export default function Settings({ info, reload }: { info: WsInfo; reload: () =>
       <ProjectCard info={info} reload={reload} />
       <AccessCard info={info} />
       <VisibilityCard info={info} reload={reload} />
+      <ConnectorCard info={info} />
       <SourcesCard info={info} />
       <div className="flex items-center justify-between border-t border-line pt-4 text-[13px] text-muted">
         <span>Signed in as {me?.user.email} (agency)</span>
@@ -174,6 +175,43 @@ function VisibilityCard({ info, reload }: { info: WsInfo; reload: () => void }) 
           </label>
         ))}
       </div>
+    </Section>
+  );
+}
+
+type McpLink = { url: string; created_at: number; last_used_at: number | null } | null;
+/** One secret link per project that plugs the brand into the client's AI assistant (MCP connector). */
+function ConnectorCard({ info }: { info: WsInfo }) {
+  const [link, setLink] = useState<McpLink | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { api<McpLink>(`/w/${info.slug}/mcp-link`).then(setLink).catch(() => setLink(null)); }, [info.slug]);
+  const make = async () => { setBusy(true); try { setLink(await api<McpLink>(`/w/${info.slug}/mcp-link`, { method: 'POST' })); } finally { setBusy(false); } };
+  const revoke = async () => { if (!confirm('Revoke the link? Assistants connected with it stop working.')) return; setBusy(true); try { await api(`/w/${info.slug}/mcp-link`, { method: 'DELETE' }); setLink(null); } finally { setBusy(false); } };
+  const copy = () => { if (!link) return; navigator.clipboard.writeText(link.url); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  const day = (t?: number | null) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
+  return (
+    <Section title="AI assistant connector" note="A secret link that puts this brand into the client's Claude, ChatGPT or Cursor (MCP). In their chat they ask for the logo or a post cover and get the image with downloads; they can also ask about colours, fonts, the guide, shared documents and the published competitor research. Anyone with the link gets that, so send it only to the client.">
+      {link === undefined ? <div className="text-[13px] text-muted">Loading…</div> : !link ? (
+        <Btn onClick={make} disabled={busy}>{busy ? 'Creating…' : 'Create connector link'}</Btn>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input readOnly value={link.url} onFocus={(e) => e.currentTarget.select()} className="mono text-[12px]" />
+            <Btn onClick={copy}>{copied ? 'Copied' : 'Copy'}</Btn>
+          </div>
+          <div className="text-[12px] text-muted">Created {day(link.created_at)}{link.last_used_at ? `, last used ${day(link.last_used_at)}` : ', not used yet'}.</div>
+          <div className="grid gap-3 text-[12.5px] leading-relaxed @2xl:grid-cols-3">
+            <div><div className="font-medium">Claude</div><div className="text-muted">Settings → Connectors → Add custom connector, paste the link. Then turn it on in the chat's tools menu.</div></div>
+            <div><div className="font-medium">ChatGPT</div><div className="text-muted">Settings → Apps &amp; Connectors → Advanced: turn on developer mode, then Create with this link, no authentication.</div></div>
+            <div><div className="font-medium">Cursor, Claude Code</div><div className="text-muted">Add an MCP server of type http with this URL, e.g. claude mcp add --transport http {info.slug} &lt;link&gt;.</div></div>
+          </div>
+          <div className="flex gap-2">
+            <Btn onClick={make} disabled={busy}>New link</Btn>
+            <Btn onClick={revoke} disabled={busy}>Revoke</Btn>
+          </div>
+        </div>
+      )}
     </Section>
   );
 }

@@ -41,7 +41,7 @@ const TOOLS = [
   },
 ];
 
-async function runTool(env: Env, ws: { id: string; name: string }, access: Access, name: string, input: any, actions: ChatAction[]): Promise<string> {
+export async function runTool(env: Env, ws: { id: string; name: string }, access: Access, name: string, input: any, actions: ChatAction[]): Promise<string> {
   const db = env.DB;
   const clientOnly = !access.isAgency;
   if (name === 'search_memory') {

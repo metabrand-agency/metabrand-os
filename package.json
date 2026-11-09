@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node mcp-app/build.mjs && vite build",
     "preview": "wrangler pages dev dist",
     "typecheck": "tsc",
-    "gen:schema": "node scripts/gen-schema.mjs"
+    "gen:schema": "node scripts/gen-schema.mjs",
+    "build:mcp": "node mcp-app/build.mjs"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261108.1",
+    "@modelcontextprotocol/ext-apps": "^2.0.4",
     "@tailwindcss/vite": "^4.3.5",
     "@types/d3-geo": "^3.1.1",
     "@types/react": "^19.3.0",

@@ -53,7 +53,12 @@ async function readImage(file: File): Promise<string> {
 
 export default function Generate({ info }: { info: WsInfo }) {
   const key = `mb-banner-${info.slug}`;
-  const saved = useMemo(() => store.get(key), [key]);
+  // a link from the AI connector (?h=headline&f=format) fills the form
+  const saved = useMemo(() => {
+    const s = store.get(key), q = new URLSearchParams(location.search);
+    const h = q.get('h'), f = q.get('f');
+    return h || f ? { ...(s || {}), ...(h ? { copy: { headline: h } } : {}), ...(f && FORMATS.some((x) => x.id === f) ? { fmt: f } : {}) } : s;
+  }, [key]);
   const [kit, setKit] = useState<Kit | null | undefined>(undefined);
   const [fromSite, setFromSite] = useState(false);
   const [fmtId, setFmtId] = useState(saved?.fmt || 'square');
