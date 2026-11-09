@@ -19,6 +19,7 @@ const CLIENT_TABS = [
   ['assets', 'Assets (shared items only)'],
   ['guide', 'Online guide'],
   ['merch', 'Merch'],
+  ['deck', 'Pitch deck'],
   ['generate', 'Generate Covers'],
 ] as const;
 

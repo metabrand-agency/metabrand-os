@@ -6,6 +6,7 @@ import { chat } from './chat';
 import { aiLenses } from './lenses';
 import { researchCompany, suggestCompanies } from './companies';
 import { linkFor, revokeLink, rotateLink } from './mcp';
+import { generateDeck } from './deck';
 import { reviewAgainstMemory } from './brief';
 import { applyDemoPatch } from './demo';
 import { loadSeo } from './seo';
@@ -464,6 +465,59 @@ app.post('/w/:slug/competitors/research', async (c) => {
   } catch (e: any) {
     return c.json({ error: e.message }, 502);
   }
+});
+
+// Pitch deck: one deck per project, edited by the agency and the client alike
+const DECK_IMAGES = 'CREATE TABLE IF NOT EXISTS deck_images (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, mime TEXT NOT NULL, data BLOB NOT NULL, created_at INTEGER NOT NULL)';
+app.get('/w/:slug/deck', async (c) => {
+  const row = await c.env.DB.prepare(`SELECT data_json, updated_at FROM research WHERE workspace_id = ? AND kind = 'pitch_deck'`).bind(c.get('ws').id).first<{ data_json: string; updated_at: number }>();
+  return c.json(row ? { deck: JSON.parse(row.data_json), updated_at: row.updated_at } : null);
+});
+app.put('/w/:slug/deck', async (c) => {
+  const b = await c.req.json<{ deck: any }>();
+  if (!b?.deck || !Array.isArray(b.deck.slides)) return c.json({ error: 'No deck' }, 400);
+  const json = JSON.stringify(b.deck);
+  if (json.length > 900_000) return c.json({ error: 'The deck is too big to save' }, 413);
+  const now = Date.now();
+  await c.env.DB.prepare(
+    `INSERT INTO research (workspace_id, kind, data_json, status, updated_at) VALUES (?, 'pitch_deck', ?, 'published', ?)
+     ON CONFLICT(workspace_id, kind) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at`
+  ).bind(c.get('ws').id, json, now).run();
+  return c.json({ ok: true, updated_at: now });
+});
+app.post('/w/:slug/deck/generate', async (c) => {
+  const ws = c.get('ws');
+  const b = await c.req.json<{ text?: string; pdf_base64?: string; doc_id?: string; slides?: number }>().catch(() => ({} as any));
+  let text = (b.text || '').trim();
+  if (b.doc_id) {
+    const d = await c.env.DB.prepare(`SELECT title, text_content FROM documents WHERE id = ? AND workspace_id = ?${vis(c)}`).bind(b.doc_id, ws.id).first<{ title: string; text_content: string }>();
+    if (d?.text_content) text = `${d.title}\n\n${d.text_content}${text ? `\n\n${text}` : ''}`;
+  }
+  if (!text && !b.pdf_base64) return c.json({ error: 'Add some content first' }, 400);
+  const row = await c.env.DB.prepare(`SELECT data_json FROM research WHERE workspace_id = ? AND kind = 'market_map'`).bind(ws.id).first<{ data_json: string }>();
+  const cl = row ? JSON.parse(row.data_json).client || {} : {};
+  const about = { name: cl.name, calls_itself: cl.category_label, hero: cl.hero, sub: cl.sub, claims: (cl.claims || []).slice(0, 6), proof: (cl.proof || []).slice(0, 5) };
+  try {
+    return c.json(await generateDeck(c.env, ws.id, { brand: cl.name || ws.name, about, text, pdf_base64: b.pdf_base64, slides: b.slides }));
+  } catch (e: any) {
+    return c.json({ error: e.message || 'Generation failed' }, 502);
+  }
+});
+app.post('/w/:slug/deck/image', async (c) => {
+  const mime = (c.req.header('content-type') || '').split(';')[0];
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(mime)) return c.json({ error: 'PNG, JPEG or WebP only' }, 400);
+  const buf = await c.req.arrayBuffer();
+  if (buf.byteLength > 1_500_000) return c.json({ error: 'The picture is too big (1.5 MB max after resizing)' }, 413);
+  await c.env.DB.prepare(DECK_IMAGES).run();
+  const id = uid('img_');
+  await c.env.DB.prepare('INSERT INTO deck_images (id, workspace_id, mime, data, created_at) VALUES (?, ?, ?, ?, ?)').bind(id, c.get('ws').id, mime, buf, Date.now()).run();
+  return c.json({ url: `/api/w/${c.get('ws').slug}/deck/image/${id}` });
+});
+app.get('/w/:slug/deck/image/:id', async (c) => {
+  const r = await c.env.DB.prepare('SELECT mime, data FROM deck_images WHERE id = ? AND workspace_id = ?').bind(c.req.param('id'), c.get('ws').id).first<{ mime: string; data: ArrayBuffer | number[] }>().catch(() => null);
+  if (!r) return c.body(null, 404);
+  const bytes = r.data instanceof ArrayBuffer ? new Uint8Array(r.data) : new Uint8Array(r.data as number[]);
+  return new Response(bytes, { headers: { 'content-type': r.mime, 'cache-control': 'private, max-age=31536000, immutable' } });
 });
 
 // AI connector (MCP): one secret link per project, made and revoked by the agency

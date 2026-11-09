@@ -10,6 +10,7 @@ import Assets from '../tabs/Assets';
 import Guide from '../tabs/Guide';
 import Generate from '../tabs/Generate';
 import Merch, { merchOf } from '../tabs/Merch';
+import DeckTab from '../tabs/Deck';
 import Competitors from '../tabs/Competitors';
 import Lenses from '../tabs/Lenses';
 import Visibility from '../tabs/Visibility';
@@ -26,7 +27,7 @@ const GROUPS: { title?: string; tabs: Tab[] }[] = [
   { tabs: [{ id: 'overview', label: 'Overview', icon: 'overview' }] },
   { title: 'Project', tabs: [{ id: 'memory', label: 'Memory', icon: 'memory' }, { id: 'competitors', label: 'Competitors', icon: 'competitors' }] },
   { title: 'Intelligence', tabs: [{ id: 'lenses', label: 'Lenses', icon: 'lenses', children: [{ id: 'maps', label: 'Market maps' }, { id: 'seo', label: 'SEO content gap' }, { id: 'branding', label: 'Competitor branding' }, { id: 'methods', label: 'Methodologies' }] }, { id: 'visibility', label: 'Brand Visibility', icon: 'visibility' }, { id: 'monitor', label: 'PR Monitor', icon: 'monitor' }] },
-  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: 'assets' }, { id: 'guide', label: 'Online guide', icon: 'guide' }, { id: 'merch', label: 'Merch', icon: 'merch' }, { id: 'generate', label: 'Generate Covers', icon: 'generate' }] },
+  { title: 'Brand OS', tabs: [{ id: 'assets', label: 'Assets', icon: 'assets' }, { id: 'guide', label: 'Online guide', icon: 'guide' }, { id: 'merch', label: 'Merch', icon: 'merch' }, { id: 'deck', label: 'Pitch deck', icon: 'deck' }, { id: 'generate', label: 'Generate Covers', icon: 'generate' }] },
 ];
 const TABS: Tab[] = [...GROUPS.flatMap((g) => g.tabs), { id: 'settings', label: 'Settings', icon: 'settings' }];
 
@@ -147,6 +148,7 @@ export default function Workspace() {
           {tab === 'memory' && <Memory info={info} focus={focus} />}
           {tab === 'assets' && <Assets info={info} />}
           {tab === 'merch' && <Merch info={info} />}
+          {tab === 'deck' && <DeckTab info={info} />}
           {tab === 'generate' && <Generate info={info} />}
           {tab === 'settings' && <Settings info={info} reload={reload} />}
         </div>

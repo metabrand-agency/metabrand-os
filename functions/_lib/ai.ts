@@ -4,9 +4,11 @@ import type { Env } from './auth';
 
 type Tool = { name: string; description: string; input_schema: any };
 
-export async function askForTool(env: Env, wsId: string, o: { system: string; prompt: string; tool: Tool; max_tokens?: number; extraTools?: any[] }): Promise<any> {
+export async function askForTool(env: Env, wsId: string, o: { system: string; prompt: string; tool: Tool; max_tokens?: number; extraTools?: any[]; attachments?: any[] }): Promise<any> {
   if (!env.ANTHROPIC_API_KEY) throw new Error('AI is not configured: add ANTHROPIC_API_KEY');
-  const messages: any[] = [{ role: 'user', content: `${o.prompt}\n\nWhen done, call the ${o.tool.name} tool with the result.` }];
+  const ask = `${o.prompt}\n\nWhen done, call the ${o.tool.name} tool with the result.`;
+  // attachments (e.g. a PDF as a document block) go before the instructions
+  const messages: any[] = [{ role: 'user', content: o.attachments?.length ? [...o.attachments, { type: 'text', text: ask }] : ask }];
   let tools: any[] = [...(o.extraTools || []), o.tool];
   let tokens = 0;
   const log = () =>
