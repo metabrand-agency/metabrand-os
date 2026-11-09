@@ -36,11 +36,19 @@ export default function Merch({ info }: { info: WsInfo }) {
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {s.slides.map((sl, i) => (
-          <button key={sl.img} onClick={() => setOpen(i)}
-            className="group block aspect-[1600/1133] overflow-hidden rounded-md border border-line" style={{ background: sl.bg || '#FFFFFF' }}>
-            <img src={sl.img} alt={sl.title || `Merch ${i + 1}`} loading={i < 3 ? 'eager' : 'lazy'}
-              className={`h-full w-full transition duration-500 group-hover:scale-[1.02] ${sl.fit === 'contain' ? 'object-contain' : 'object-cover'}`} />
-          </button>
+          <div key={sl.img} className="group relative aspect-[1600/1133] overflow-hidden rounded-md border border-line" style={{ background: sl.bg || '#FFFFFF' }}>
+            <button onClick={() => setOpen(i)} className="block h-full w-full" title="Open full screen">
+              <img src={sl.img} alt={sl.title || `Merch ${i + 1}`} loading={i < 3 ? 'eager' : 'lazy'}
+                className={`h-full w-full transition duration-500 group-hover:scale-[1.02] ${sl.fit === 'contain' ? 'object-contain' : 'object-cover'}`} />
+            </button>
+            {sl.file && (
+              <a href={sl.file} download className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-black/75 px-3 py-1.5 text-[12px] font-medium text-white backdrop-blur transition hover:bg-black"
+                title="Vector artwork for each placement at print size, with a spec sheet (PDF)">
+                <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" /></svg>
+                Download print files
+              </a>
+            )}
+          </div>
         ))}
       </div>
 
