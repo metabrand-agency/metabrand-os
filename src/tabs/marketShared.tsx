@@ -10,7 +10,7 @@ export type Company = { news_query?: string;
   hero?: string; sub?: string; claims?: string[]; proof?: string[]; funding?: string | null; hq?: string; founded?: number;
   open_source?: boolean | null; x: number; y: number; sources?: string[]; founders?: string;
   employees?: string; last_round?: string; linkedin?: string; founder?: string; founder_linkedin?: string;
-  ahrefs?: { dr?: number; traffic?: number; refdomains?: number; brand_query?: string; brand_us?: number; brand_global?: number; as_of?: string; note?: string };
+  ahrefs?: { dr?: number; traffic?: number; refdomains?: number; brand_query?: string; brand_us?: number; brand_global?: number; as_of?: string; checked_at?: number; note?: string };
   data_sources?: string[];
   socials?: { x?: string; github?: string; youtube?: string; facebook?: string };
   client_pick?: { quote?: string; doc?: string };

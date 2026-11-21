@@ -108,7 +108,7 @@ export default function Competitors({ info, focus }: { info: WsInfo; focus?: str
     const out: any = { ...c };
     const changed: string[] = [];
     for (const k of FACTS) if (found[k] != null && found[k] !== '' && String(found[k]) !== String(out[k] ?? '')) { out[k] = found[k]; changed.push(FACT_LABEL[k]); }
-    if (found.ahrefs && JSON.stringify(found.ahrefs) !== JSON.stringify(c.ahrefs || {})) { out.ahrefs = { ...(c.ahrefs || {}), ...found.ahrefs }; changed.push('Ahrefs'); }
+    if (found.ahrefs && JSON.stringify(found.ahrefs) !== JSON.stringify(c.ahrefs || {})) { out.ahrefs = { ...(c.ahrefs || {}), ...Object.fromEntries(Object.entries(found.ahrefs).filter(([, v]) => v != null)) }; changed.push('Ahrefs'); }
     const socials = { ...(c.socials || {}), ...(found.socials || {}) };
     if (JSON.stringify(socials) !== JSON.stringify(c.socials || {})) { out.socials = socials; changed.push('socials'); }
     out.sources = [...new Set([...(c.sources || []), ...(found.sources || [])])];

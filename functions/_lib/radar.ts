@@ -1,7 +1,7 @@
 // Brand Visibility and PR Monitor data: recent publishing activity (RSS/Atom feeds, or the sitemap plus the
 // articles' own publish dates), Google News mentions, HQ coordinates, fresh Ahrefs metrics. Any project.
 import type { Env } from './auth';
-import { ahrefs } from './companies';
+import { ahrefs, mergeAhrefs } from './companies';
 
 type Post = { title: string; url: string; date?: string };
 // Many sites refuse bot-looking requests; a regular browser UA gets the public HTML/RSS.
@@ -273,10 +273,12 @@ export async function refreshOne(env: Env, c: any, prev?: any, forceLinks = fals
   // Ahrefs links cost units: reuse them for a week unless someone asks for an update
   const linksFresh = !forceLinks && prev?.links && Date.now() - prev.links.checked_at < 7 * 864e5;
   const aiFresh = !forceLinks && prev?.ai && Date.now() - prev.ai.checked_at < 7 * 864e5;
+  // DR, traffic and linking sites move slowly and cost ~200 units per company: also once a week unless asked
+  const ahFresh = !forceLinks && c?.ahrefs?.dr != null && c.ahrefs.checked_at && Date.now() - c.ahrefs.checked_at < 7 * 864e5;
   // No Google News: it blocks requests from Cloudflare's servers. Press coverage comes from Ahrefs backlinks.
   const [act, ah, geo, links, ai] = await Promise.all([
     c.url ? activityFor(c.url).catch(() => null) : null,
-    c.url ? ahrefs(env, c.url, c.short || c.name) : null,
+    c.url && !ahFresh ? ahrefs(env, c.url, c.short || c.name) : null,
     hq && c.geo?.q !== hq ? geocode(hq) : null,
     linksFresh ? prev.links : c.url ? newLinksFor(env, c.url).catch(() => null) : null,
     aiFresh ? prev.ai : c.url ? aiFor(env, c.url).catch(() => null) : null,
@@ -284,7 +286,7 @@ export async function refreshOne(env: Env, c: any, prev?: any, forceLinks = fals
   const extra = { links: links || prev?.links || null, ai: ai || prev?.ai || null };
   return {
     activity: act ? { ...act, ...extra } : links ? { v: ACTIVITY_V, source: '', posts_30d: 0, latest: [], checked_at: Date.now(), ...extra } : null,
-    ahrefs: ah ? { ...(c.ahrefs || {}), ...ah } : undefined,
+    ahrefs: ah ? mergeAhrefs(c.ahrefs, ah) : undefined,
     geo: geo ? { ...geo, q: hq } : undefined,
   };
 }

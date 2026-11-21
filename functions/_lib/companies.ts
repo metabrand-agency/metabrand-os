@@ -98,28 +98,42 @@ async function apollo(env: Env, url: string) {
   }
 }
 
-/** Ahrefs API v3 (uses the account's API units): DR, organic traffic, linking sites, brand searches. */
+/** Drops null/undefined fields, so a failed lookup never wipes a value we already have. */
+export const defined = <T extends Record<string, any>>(o: T): Partial<T> =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null)) as Partial<T>;
+
+/** Merges fresh Ahrefs numbers over stored ones; fields the fresh lookup lacks keep their old value. */
+export const mergeAhrefs = (prev: any, next: any) => ({ ...(prev || {}), ...defined(next || {}) });
+
+/**
+ * Ahrefs API v3 (uses the account's API units): DR, organic traffic, linking sites, brand searches.
+ * Site Explorer endpoints, not Batch Analysis: Batch Analysis is not in the Lite plan and answers 400,
+ * which used to come back as DR, traffic and linking sites all empty.
+ */
 export async function ahrefs(env: Env, url: string | undefined, name: string) {
   if (!env.AHREFS_API_KEY || !url) return null;
-  const h = { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json', 'content-type': 'application/json' };
+  const h = { authorization: `Bearer ${env.AHREFS_API_KEY}`, accept: 'application/json' };
+  const get = (path: string, q: Record<string, string>) =>
+    fetch(`https://api.ahrefs.com/v3/${path}?${new URLSearchParams(q)}`, { headers: h, signal: AbortSignal.timeout(15000) })
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null) as Promise<any>;
   try {
     const host = new URL(url).hostname.replace(/^www\./, '');
-    const [site, kw] = await Promise.all([
-      fetch('https://api.ahrefs.com/v3/batch-analysis/batch-analysis', {
-        method: 'POST', headers: h, signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({ select: ['url', 'domain_rating', 'org_traffic', 'refdomains'], targets: [{ url: `https://${host}`, mode: 'subdomains', protocol: 'both' }] }),
-      }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`https://api.ahrefs.com/v3/keywords-explorer/overview?select=keyword,volume,global_volume&country=us&keywords=${encodeURIComponent(name.toLowerCase())}`, { headers: h, signal: AbortSignal.timeout(15000) })
-        .then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    const date = new Date().toISOString().slice(0, 10);
+    const [dr, metrics, links, kw] = await Promise.all([
+      get('site-explorer/domain-rating', { target: host, date }),
+      get('site-explorer/metrics', { target: host, date, mode: 'subdomains' }),
+      get('site-explorer/backlinks-stats', { target: host, date, mode: 'subdomains' }),
+      name ? get('keywords-explorer/overview', { select: 'keyword,volume,global_volume', country: 'us', keywords: name.toLowerCase() }) : null,
     ]);
-    const t: any = (site as any)?.targets?.[0];
-    const k: any = (kw as any)?.keywords?.[0];
-    if (!t && !k) return null;
-    return {
-      dr: t?.domain_rating, traffic: t?.org_traffic, refdomains: t?.refdomains,
+    const k: any = kw?.keywords?.[0];
+    const out = defined({
+      dr: dr?.domain_rating?.domain_rating,
+      traffic: metrics?.metrics?.org_traffic,
+      refdomains: links?.metrics?.live_refdomains,
       ...(k ? { brand_query: k.keyword, brand_us: k.volume, brand_global: k.global_volume } : {}),
-      as_of: new Date().toISOString().slice(0, 7),
-    };
+    });
+    if (!Object.keys(out).length) return null;
+    return { ...out, as_of: date.slice(0, 7), checked_at: Date.now() };
   } catch {
     return null;
   }
