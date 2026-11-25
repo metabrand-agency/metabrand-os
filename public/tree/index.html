@@ -145,6 +145,8 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .msel{width:auto;border-color:transparent;font-size:12.5px;color:var(--mute);padding:4px 2px;cursor:pointer}
 .go{width:30px;height:30px;padding:0;border-radius:50%;background:var(--ink);color:var(--paper);border-color:var(--ink);font-size:15px;line-height:1}
 .nf:empty{display:none}
+.gen1{font-size:12px;padding:4px 10px;background:var(--ink);color:var(--paper);border-color:var(--ink);border-radius:6px}
+.gen1:disabled{background:none;color:var(--faint);border-color:var(--line);cursor:default}
 .docv{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:2px auto 4px;border-radius:6px;cursor:zoom-in}
 .doca{display:block;width:100%;height:36px;margin:4px 0}
 .ftiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:2px 0 4px}
@@ -429,7 +431,7 @@ const isImgUrl=u=>/\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(u);
 function prevOf(n){if(!okUrl(n.url))return '';if(!window.CT_SHOT)return '';if(service(n.url)==='Notion')return '';if(n.meta&&n.meta.figma&&window.CT_FIGMA)return window.CT_FIGMA+'img?u='+encodeURIComponent(n.url)+(n.meta.v?'&v='+n.meta.v:'');if(isImgUrl(n.url))return n.url;if(n.meta&&okUrl(n.meta.image))return n.meta.image;return window.CT_SHOT+encodeURIComponent(n.url);}
 function lab(n){
  const pre=n.run?n.run+' · ':'';
- if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card'&&(x.run||'')===(n.run||'')).indexOf(n);return pre+'Idea '+(i+1);}
+ if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card'&&(x.run||'')===(n.run||'')).indexOf(n);const by=n.genBy&&(RUNS.find(r=>r[0]===n.genBy)||[])[1];return pre+'Idea '+(i+1)+(by?' · '+by:'');}
  if(n.kind==='read')return pre+'Reading of the brief';
  if(n.doc)return docKind(n.items[0]||{});
  if(n.t==='folder')return 'Folder';
@@ -508,11 +510,14 @@ function body(n){
  if(n.t==='task'){const ins=P.nodes.filter(x=>x.f==='brief'&&x.t!=='task'&&!x.run);const src=sources();
   return `<textarea class="tk" data-f="text" placeholder="One clear prompt: what, for whom, which formats, by which brief and guide, what to avoid">${esc(n.text)}</textarea><div class="lbl">From ${ins.length} input${ins.length===1?'':'s'}</div><div class="srcs">${ins.map(x=>`<button data-a="goto" data-i="${esc(x.id)}" title="${esc(x.title)}">${esc(x.title||lab(x))}</button>`).join('')}${src.map(([t,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join('')}</div>`;}
  if(n.t==='brief')return `<textarea class="bt" data-f="text" placeholder="What are we making? One or two lines" aria-label="Task">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')
-  +`<div class="cmp"><button class="ci" data-a="addfile" aria-label="Attach documents" title="Attach documents">+</button>${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sp"></span><select class="msel" data-f="model" aria-label="Model">${RUNS.map(([t,nm])=>`<option value="${t}"${(n.model||'default')===t?' selected':''}>${esc(nm)}</option>`).join('')}<option value="all"${n.model==='all'?' selected':''}>All models</option></select><button class="go" data-a="go" aria-label="Run a pass with this model" title="Run a pass with this model">↑</button></div>`;
+  +`<div class="cmp"><button class="ci" data-a="addfile" aria-label="Attach documents" title="Attach documents">+</button>${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sp"></span></div>`;
  if(n.doc){const it=n.items[0];if(!it)return '';const k=it.kind||'image',u=k==='image'?imgSrc(it):blob(it),ext=(String(it.name||'').match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();
   if(docKind(it)==='PDF'){if(it.thumb)return `<img class="docv" data-a="look" alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}">`;if(window.CT_PDF&&AS)setTimeout(()=>pdfThumb(n),0);if(window.CT_SHOT)return `<div class="docf" data-a="look" role="button" tabindex="0"><b>PDF</b>${esc(it.name||'file')}</div>`;}
   return k==='image'&&u?`<img class="docv" data-a="look" alt="" src="${esc(u)}">`:k==='video'&&u?`<video class="docv" data-a="look" src="${esc(u)}" muted loop autoplay playsinline></video>`:docKind(it)==='Audio'&&u?`<audio class="doca" controls preload="none" src="${esc(u)}"></audio>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
- if(n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.t==='brief'?thumbs(n):'');
+ if(n.t==='card'&&n.f==='research'){const ups=upstream(n).length;
+  return `<textarea data-f="text" placeholder="Details, or a direction for the model">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
+  +`<div class="cmp">${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<select class="msel" data-f="model" aria-label="Model">${RUNS.map(([t,nm])=>`<option value="${t}"${(n.model||'default')===t?' selected':''}>${esc(nm)}</option>`).join('')}</select><span class="sp"></span><button class="gen1" data-a="gen1"${ups&&!n.busy?'':' disabled'} title="${ups?'Write this idea from the connected blocks':'Connect blocks to this idea first'}">${n.busy?'Generating…':n.genBy?'Regenerate':'Generate'}</button></div>`;}
+ if(n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(DICT?`<div class="cmp">${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}</div>`:'');
  if(n.t==='board')return thumbs(n);
  if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea>`;
  if(n.t==='folder'){const fs=n.files||[];if(!fs.length)return `<button class="pickf" data-a="pickdir">Choose a folder…</button>`;
@@ -542,12 +547,11 @@ function foot(n){
  const a=[];
  if(n.t==='task')a.push(['task','Rewrite from inputs',1]);
  if(n.t==='brief'||n.doc)return '';
- if(n.t==='card'&&DICT)a.push(['dict',dictFor===n.id?'Stop dictation':'Dictate']);
  if(n.t==='files'||n.t==='brief')a.push(['addfile','+ files']);
  if(n.t==='table'){a.push(['rowadd','+ row']);a.push(['aifind','Find with AI']);}
  if(n.t==='board'||n.t==='source'){a.push(['addimg','+ images']);if(n.items.length&&LIM&&LIM.images)a.push(['readrefs','Read the refs']);}
  if(n.t==='gen'||n.t==='check')a.push(['run',n.busy?'Running…':'Run',1]);
- if(n.f==='research'&&n.t==='card')a.push(['up','Develop →']);
+
  let h=a.map(([k,v,p])=>`<button data-a="${k}"${p?' class="pri"':''}${k==='run'&&n.busy?' disabled':''}>${v}</button>`).join('');
  if(n.t==='source'){const l=libOf(n.lib);h+=`<a class="lnk" href="${esc(srcUrl(n))}" target="_blank" rel="noopener">${l[5]&&n.q?'Search':'Open'} ${esc(l[1])} ↗</a>`;}
  return h;
@@ -633,7 +637,7 @@ function placeCut(){
  b.style.left=(pt.x*V.z+V.x)+'px';b.style.top=(pt.y*V.z+V.y)+'px';b.hidden=false;
 }
 function cutEdge(id){const e=P.edges.find(x=>x.id===id);if(!e)return;snap();P.edges=P.edges.filter(x=>x.id!==id);sel=null;const g=byId(e.b);if(g&&(g.t==='gen'||g.t==='check'))renderNode(g);drawEdges();save();flash('Connection cut');}
-function drawEdges(){
+function drawEdges(){refreshIdeas();
  let h='';
  for(const e of P.edges){const A=byId(e.a),B=byId(e.b);if(!A||!B)continue;const ra=rect(A),rb=rect(B),d=curve(ra,rb);
   const c=(A.pick&&B.pick?' on':'')+(ra.hid||rb.hid?' off':'')+(sel&&sel.k==='e'&&sel.id===e.id?' sel':'');
@@ -644,7 +648,7 @@ function drawEdges(){
 function placeRail(){
  rail.innerHTML=ORDER.slice().reverse().map(k=>{const g=geo[k];if(!g)return '';const top=P.open[k]?V.y+g.top*V.z+12:V.y+(g.top+g.h/2)*V.z-11;
   const pk=P.nodes.filter(n=>n.f==='research'&&n.t==='card'&&n.pick).length;
-  return `<div class="fl${P.open[k]?'':' closed'}" style="top:${top}px"><button class="fn" data-fl="${k}" aria-expanded="${P.open[k]}">${NAMES[k]}</button><span class="fc">${k==='research'&&g.c?`${g.c} · ${pk} shortlisted`:(g.c||'')}</span><button class="fa" data-add="${k}" aria-label="Add to ${NAMES[k]}">+</button></div>`;}).join('');
+  return `<div class="fl${P.open[k]?'':' closed'}" style="top:${top}px"><button class="fn" data-fl="${k}" aria-expanded="${P.open[k]}">${NAMES[k]}</button><span class="fc">${k==='research'&&g.c&&pk?`${g.c} · ${pk} shortlisted`:(g.c||'')}</span><button class="fa" data-add="${k}" aria-label="Add to ${NAMES[k]}">+</button></div>`;}).join('');
 }
 function applyView(){world.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.z})`;placeCut();$('#zl').textContent=Math.round(V.z*100)+'%';placeRail();placePop();}
 function zoomAt(cx,cy,f){const r=cv.getBoundingClientRect(),px=cx-r.left,py=cy-r.top,z=clamp(V.z*f,.2,2);V.x=px-(px-V.x)*(z/V.z);V.y=py-(py-V.y)*(z/V.z);V.z=z;applyView();saveView();}
@@ -960,6 +964,27 @@ Reply with only JSON: {"task":"...","gaps":["..."],"ideas":[{"title":"...","text
  }));
  flash('Auto pass done');
 }
+async function genIdea(n){
+ if(!S){n.err='AI is not available in this view';renderNode(n);return;}
+ const ups=upstream(n).map(byId).filter(Boolean);if(!ups.length){flash('Connect blocks to this idea first');return;}
+ const others=P.nodes.filter(x=>x!==n&&x.f==='research'&&x.t==='card'&&x.title).map(x=>'- '+x.title).join('\n');
+ const nogo=ups.filter(x=>x.nogo).map(x=>`- ${x.title}${x.text?': '+x.text:''}`).join('\n');
+ const dir=[n.genBy?'':n.title,n.genBy?'':n.text].filter(Boolean).join('. ');
+ n.busy=true;n.err='';renderNode(n);
+ try{
+  const f=await filesOf(ups);
+  const prompt=`You are the creative director of a branding studio. Propose ONE idea for the task, using only the connected inputs below. Go past what the category, or any AI, would make by default; make it specific enough to picture. Do not invent facts about the company. ${LANG}
+${dir?`\nThe designer's direction for this idea: ${dir}\n`:''}
+Connected inputs:
+${ups.map(nodeText).join('\n\n')}${f.text}${f.note}
+${nogo?`\nAvoid:\n${nogo}\n`:''}${others?`\nOther ideas already on the board (do not repeat them or their mechanism):\n${others}\n`:''}
+Reply with only JSON: {"title":"the idea as a one-line prompt, max 14 words: format, subject, action","text":"2-4 sentences: what we see, why it answers the task, what makes it not obvious"}`;
+  const r=await S.json(prompt,withFiles(f,{modelTier:n.model||'default',cache:false}));
+  if(!r||typeof r.title!=='string')throw {code:'invalid_json'};
+  snap();n.title=r.title.slice(0,200);n.text=String(r.text||'').slice(0,1200);n.genBy=n.model||'default';n.basis=basisOf(n);
+ }catch(e){n.err=errTxt(e);}
+ delete n.busy;renderNode(n);save();
+}
 async function rewriteTask(n){
  if(!S)return flash('AI is not available in this view');n.busy=true;flash('Rewriting the task…');
  try{const f=await filesOf(briefNodes());const{text}=await S(`Write the task as one clear prompt of 1-3 sentences, like: "Need a video banner for Avride, 1200×627 and 9:16, on the theme X, following the brief and the brand guide; avoid Y." Use only facts from the inputs; where a fact is missing write [TBD: what]. Refer to sources by their titles. No preamble. ${LANG}\n\nInputs:\n${briefText()}${f.text}\n\nDo not repeat:\n${bans()||'-'}${f.note}`,withFiles(f,{modelTier:'default',cache:false}));
@@ -1053,6 +1078,7 @@ world.addEventListener('click',e=>{
  if(a==='rescan')return void (async()=>{if(await reconnect(n)){const s=FSM.get(n.id);const list=[];if(s&&s.h){await walk(s.h,'',list,0);useFolder(n,s.h.name,list);}}})();
  if(a==='remeta')return void linkMeta(n);
  if(a==='frames')return void pullFrames(n);
+ if(a==='gen1')return void genIdea(n);
  if(a==='go'){const m=n.model||'default',rs=m==='all'?RUNS:RUNS.filter(r=>r[0]===m);return void autoPass(n,rs.length?rs:[RUNS[1]||RUNS[0]]);}
  if(a==='auto'){const r=b.getBoundingClientRect();openMenu(r.left,r.bottom+4,[...RUNS.map(([t,name])=>[t,name,0,()=>autoPass(n,[[t,name]])]),['all','All of them, side by side',0,()=>autoPass(n,RUNS)]]);return;}
  if(a==='goto'){const t=byId(b.dataset.i);if(t){select('n',t.id);reveal(t);}return;}
@@ -1086,6 +1112,7 @@ document.addEventListener('keydown',e=>{
 
 let pickFor=null,pickAt=null;
 // add a node of a kind to a floor; the double-click and the + next to a floor both come here
+function refreshIdeas(){P.nodes.filter(x=>x.f==='research'&&x.t==='card').forEach(x=>{const b=els[x.id]&&els[x.id].querySelector('[data-a="gen1"]');if(b&&!x.busy){const ok=upstream(x).length>0;b.disabled=!ok;b.title=ok?'Write this idea from the connected blocks':'Connect blocks to this idea first';}});}
 function linkEdge(m,lk){const a=lk.port==='t'?lk.id:m.id,b=lk.port==='t'?m.id:lk.id;if(!byId(lk.id))return;P.edges.push({id:uid(),a,b});const g=byId(b);if(g){g.basis=basisOf(g);renderNode(g);}schedule();}
 let pickLink=null;
 function addOf(t,k,at,lk){
