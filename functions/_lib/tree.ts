@@ -17,7 +17,8 @@ async function ensure(db: D1Database) {
 
 const MAX_PROJECT = 1_800_000; // D1 keeps a value up to ~2 MB
 const MAX_FILE = 1_900_000;
-const FILE_TYPES = /^(image\/(png|jpeg|webp|gif|svg\+xml|avif)|video\/(mp4|webm|quicktime)|application\/pdf|text\/(plain|markdown|csv)|application\/json|font\/(woff2?|ttf|otf))$/;
+const FILE_TYPES = /^(image\/(png|jpeg|webp|gif|svg\+xml|avif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp4|wav|x-wav|wave|ogg|webm|aac|x-m4a|flac)|application\/pdf|text\/(plain|markdown|csv)|application\/json|font\/(woff2?|ttf|otf)|model\/[a-z0-9.+-]+|application\/(octet-stream|zip|x-zip-compressed|msword|vnd\.[a-z0-9.+-]+))$/;
+const INLINE = /^(image\/(png|jpeg|webp|gif|avif)|video\/|audio\/|application\/pdf|text\/(plain|markdown|csv)|application\/json)/;
 const MODELS: Record<string, string> = { quick: 'claude-haiku-5-5', complex: 'claude-opus-5-5', fable: 'claude-fable-5-2' };
 
 type Vars = { user: SessionUser };
@@ -77,7 +78,38 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
     const r = await c.env.DB.prepare('SELECT type, data FROM tree_files WHERE id = ? AND org_id = ?').bind(c.req.param('id'), c.get('orgId')).first<{ type: string; data: ArrayBuffer | number[] }>();
     if (!r) return c.body(null, 404);
     const bytes = r.data instanceof ArrayBuffer ? new Uint8Array(r.data) : new Uint8Array(r.data as number[]);
-    return new Response(bytes, { headers: { 'content-type': r.type, 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'" } });
+    const h: Record<string, string> = { 'content-type': r.type, 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' };
+    // SVG can carry script: lock it down; anything not viewable inline downloads instead
+    if (r.type === 'image/svg+xml') h['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'";
+    else if (!INLINE.test(r.type)) h['content-disposition'] = 'attachment';
+    return new Response(bytes, { headers: h });
+  });
+
+  // Title, preview image and icon of a page, for link nodes. Cached at the edge for a day.
+  app.get('/tree/meta', async (c) => {
+    let url: URL;
+    try { url = new URL(c.req.query('u') || ''); if (url.protocol !== 'https:') throw new Error(); } catch { return c.json({ error: 'Bad link' }, 400); }
+    const cache = (globalThis as any).caches?.default as Cache | undefined;
+    const key = new Request(`https://meta.metabrand-os/${encodeURIComponent(url.toString())}`);
+    const hit = await cache?.match(key).catch(() => undefined);
+    if (hit) return hit;
+    const out: { title: string; image: string; icon: string } = { title: '', image: '', icon: '' };
+    const r = await fetch(url.toString(), { redirect: 'follow', headers: { 'user-agent': 'Mozilla/5.0 (compatible; MetabrandOS/1.0; +https://metabrand.digital)', accept: 'text/html' }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+    if (r && r.ok && /html/i.test(r.headers.get('content-type') || '')) {
+      const html = (await r.text()).slice(0, 300000);
+      const attr = (tag: string, name: string) => (tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, 'i')) || [])[1] || '';
+      const metaOf = (k: string) => { for (const t of html.match(/<meta\b[^>]*>/gi) || []) { const p = (attr(t, 'property') || attr(t, 'name')).toLowerCase(); if (p === k) return attr(t, 'content'); } return ''; };
+      const dec = (x: string) => x.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+      const abs = (x: string) => { try { const v = new URL(dec(x), r.url || url); return v.protocol === 'https:' ? v.toString() : ''; } catch { return ''; } };
+      out.title = dec(metaOf('og:title') || metaOf('twitter:title') || (html.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1] || '').slice(0, 200);
+      const img = metaOf('og:image') || metaOf('twitter:image');
+      if (img) out.image = abs(img);
+      for (const t of html.match(/<link\b[^>]*>/gi) || []) { const rel = attr(t, 'rel').toLowerCase(); if (/(^|\s)(icon|apple-touch-icon)(\s|$)/.test(rel) && attr(t, 'href')) { out.icon = abs(attr(t, 'href')); if (/apple/.test(rel)) break; } }
+      if (!out.icon) out.icon = `${url.origin}/favicon.ico`;
+    }
+    const res = c.json(out, 200, { 'cache-control': 'private, max-age=86400' });
+    if (cache && out.title) { const put = cache.put(key, res.clone()).catch(() => {}); try { c.executionCtx.waitUntil(put); } catch { await put; } }
+    return res;
   });
 
   // One turn of the Messages API. The page runs the tool loop itself, so tools act on the canvas in the browser.
