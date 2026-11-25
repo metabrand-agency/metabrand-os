@@ -90,6 +90,7 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .tile small{color:var(--faint);font-size:11px;line-height:1.25}
 .node{position:absolute;left:0;top:0;width:264px;background:var(--paper);border:1px solid var(--line);border-radius:9px;will-change:transform;cursor:grab;user-select:none}
 .node input,.node textarea,.node select{user-select:text;cursor:auto}
+.node img,.node video{-webkit-user-drag:none;user-drag:none}
 .node .nt{cursor:grab}
 .node .nt:focus{cursor:text}
 body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!important}
@@ -691,7 +692,7 @@ function kitSel(){const n=sel&&sel.k==='n'&&byId(sel.id);const t=n&&(n.title||la
 $('#kq').oninput=renderKit;
 function kitClick(e){const b=e.target.closest('[data-k]');if(!b)return;const src=sel&&sel.k==='n'&&byId(sel.id);useKit(kitAt(b.dataset.k),src);closeDock();if(innerWidth<760)sidePanel(null);}
 $('#kl').onclick=kitClick;
-document.addEventListener('dragstart',e=>{const b=e.target.closest&&e.target.closest('[data-k]');if(b){e.dataTransfer.setData('text/plain','kit:'+b.dataset.k);e.dataTransfer.effectAllowed='copy';}});
+document.addEventListener('dragstart',e=>{if(e.target.closest&&e.target.closest('.node,.lbx')&&!e.target.closest('[data-k]')){e.preventDefault();return;}const b=e.target.closest&&e.target.closest('[data-k]');if(b){e.dataTransfer.setData('text/plain','kit:'+b.dataset.k);e.dataTransfer.effectAllowed='copy';}});
 
 /* dock */
 let dockPop=null;
@@ -1119,7 +1120,7 @@ cv.addEventListener('drop',e=>{e.preventDefault();
  if(k.startsWith('kit:')){const it=kitAt(k.slice(4)),t=e.target.closest('.node'),src=t&&byId(t.dataset.id);closeDock();
   if(src)useKit(it,src);else{const w=toWorld(e.clientX,e.clientY);useKit(it,null,{x:w.x-132});}return;}
  const files=[...(e.dataTransfer.files||[])];
- if(!files.length){const u=(e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain')||'').split('\n')[0].trim();if(okUrl(u)){const w=toWorld(e.clientX,e.clientY);addLink(u,floorAt(w.y)==='brief'?{x:w.x-132,y:Math.max(40,w.y-geo.brief.top-20)}:undefined);}return;}
+ if(!files.length){const u=(e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain')||'').split('\n')[0].trim();if(okUrl(u)&&!u.startsWith(location.origin+'/')){const w=toWorld(e.clientX,e.clientY);addLink(u,floorAt(w.y)==='brief'?{x:w.x-132,y:Math.max(40,w.y-geo.brief.top-20)}:undefined);}return;}
  const t=e.target.closest('.node');let n=t&&byId(t.dataset.id);
  const w0=toWorld(e.clientX,e.clientY);
  if(n&&(n.t==='brief'||n.doc))return void addDocs(briefOf(n),files);
