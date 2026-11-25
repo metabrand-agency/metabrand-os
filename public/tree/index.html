@@ -290,7 +290,7 @@ const ORDER=['brief','research','prod'];
 const NAMES={brief:'Inputs',research:'Ideas',prod:'Production'};
 const CARDL={brief:'Input',research:'Idea',prod:'Branch'};
 const TL={brief:'Brief',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
-const ADDS={brief:[['brief','Brief'],['files','Files: guides, models, videos'],['table','Competitors'],['card','Input or no-go zone'],['link','Link'],['gen','Input analysis']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
+const ADDS={brief:[['brief','Brief'],['doc','Document…'],['table','Competitors'],['nogo','No-go zone'],['card','Note'],['link','Link'],['gen','Input analysis']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
 const MODES={insights:'Input analysis',ideas:'Ideas',collide:'Collisions',prompts:'Prompts for a model',sketch:'Composition sketches'};
 const BRAINS={quick:'Fast',default:'Balanced',complex:'Deep'};
 const OPS={none:['No method',''],ban:['Anti-cliché','First list what anyone and any AI would make for this, then go somewhere else entirely.'],invert:['TRIZ: inversion','Do the opposite of the category habit: remove the main object, show its trace, swap cause and effect.'],contra:['TRIZ: contradiction','State the core contradiction (it must be X and not X) and resolve it with separation in time, space or scale.'],morph:['Morphological box','Split the task into axes (medium, motion, metaphor, material, angle, time) and combine unexpected values.'],analogy:['Distant analogy','Find how nature, navigation, architecture, science, crafts or other industries solve the same job. Transfer the principle, not the picture.'],bisoc:['Collide two inputs','Collide inputs in pairs: an element of one plus an element of another makes a new image.'],scamper:['SCAMPER','Substitute, combine, adapt, modify, put to other use, eliminate, reverse.'],scale:['Scale and viewpoint','Change scale and viewpoint: macro, top-down, from inside, years later, through the object itself.'],random:['Random stimulus','Pick an unrelated random word or object and force a connection to the task.'],oblique:['Oblique strategy','Use oblique strategies: honor the error as a hidden intention; remove the most important thing; make one thing huge.']};
@@ -788,7 +788,7 @@ cv.addEventListener('pointerdown',e=>{
  closeMenu();closeDock();if(e.button!==0)return;
  const fl=e.target.closest('[data-fl]'),ad=e.target.closest('[data-add]');
  if(fl){snap();P.open[fl.dataset.fl]=!P.open[fl.dataset.fl];layout();save();return;}
- if(ad){const k=ad.dataset.add,r=ad.getBoundingClientRect();openMenu(r.right+6,r.top,ADDS[k].map(([t,v])=>[t,v,0,()=>{const o=t==='gen'&&k==='prod'?{mode:'sketch',n:4}:t==='gen'&&k==='brief'?{mode:'insights',n:5,title:'Tensions, white space and gaps in the inputs'}:{};reveal(addNode(t,k,o));}]));return;}
+ if(ad){const k=ad.dataset.add,r=ad.getBoundingClientRect();openMenu(r.right+6,r.top,ADDS[k].map(([t,v])=>[t,v,0,()=>addOf(t,k)]));return;}
  if(e.target.closest('.zoom,.dock'))return;
  const port=e.target.closest('[data-port]'),nel=e.target.closest('.node'),hit=e.target.closest('[data-edge]');
  if(port&&nel){e.preventDefault();drag={k:'c',id:nel.dataset.id,port:port.dataset.port};cv.setPointerCapture(e.pointerId);return;}
@@ -821,7 +821,7 @@ cv.addEventListener('wheel',e=>{
  if(e.ctrlKey||e.metaKey)zoomAt(e.clientX,e.clientY,Math.exp(-clamp(e.deltaY,-50,50)*.01));
  else{V.x-=e.deltaX;V.y-=e.deltaY;applyView();saveView();}
 },{passive:false});
-cv.addEventListener('dblclick',e=>{const h=e.target.closest('.nh');if(h&&!e.target.closest('button')){const n=byId(h.closest('.node').dataset.id);if(n&&n.t!=='task'){n.open=!n.open;renderNode(n);save();}return;}if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;addNode('card',f,{},null,{x:w.x-132,y:w.y-geo[f].top-20});});
+cv.addEventListener('dblclick',e=>{const h=e.target.closest('.nh');if(h&&!e.target.closest('button')){const n=byId(h.closest('.node').dataset.id);if(n&&n.t!=='task'){n.open=!n.open;renderNode(n);save();}return;}if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;const at={x:w.x-132,y:Math.max(40,w.y-geo[f].top-20)};openMenu(e.clientX,e.clientY,ADDS[f].map(([t,v])=>[t,v,0,()=>addOf(t,f,at)]));});
 const ZS=[.25,.33,.5,.67,.75,1,1.25,1.5,2];
 function stepZoom(d){const z=V.z,t=d>0?ZS.find(s=>s>z+.005):[...ZS].reverse().find(s=>s<z-.005);if(!t)return;const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,t/z);}
 $('#zi').onclick=()=>stepZoom(1);
@@ -875,8 +875,15 @@ document.addEventListener('keydown',e=>{
  if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();if(sel.k==='n')delNode(sel.id);else{snap();P.edges=P.edges.filter(x=>x.id!==sel.id);sel=null;drawEdges();save();}}
 });
 
-let pickFor=null;
-$('#fi').onchange=e=>{const n=byId(pickFor);if(n)addImages(n,[...e.target.files]);e.target.value='';};
+let pickFor=null,pickAt=null;
+// add a node of a kind to a floor; the double-click and the + next to a floor both come here
+function addOf(t,k,at){
+ if(t==='doc'){pickFor=null;pickAt=at||null;$('#fi').accept='';$('#fi').click();return;}
+ const o=t==='gen'&&k==='prod'?{mode:'sketch',n:4}:t==='gen'&&k==='brief'?{mode:'insights',n:5,title:'Tensions, white space and gaps in the inputs'}:t==='nogo'?{nogo:true}:{};
+ const m=addNode(t==='nogo'?'card':t,k,o,null,at);if(!at)reveal(m);
+ const ta=els[m.id]&&els[m.id].querySelector(m.t==='brief'?'textarea.bt':'textarea.nt');if(ta)ta.focus();
+}
+$('#fi').onchange=e=>{const fs=[...e.target.files];const n=byId(pickFor);if(n)addImages(n,fs);else if(fs.length){const bs=P.nodes.filter(x=>x.t==='brief');addDocs(bs.length===1?bs[0]:null,fs,pickAt||undefined);}pickFor=null;pickAt=null;e.target.value='';};
 function docSpot(brief,at){
  if(at)return at;
  const y=brief?brief.y:56;let x=brief?brief.x+(brief.t==='brief'?440:264)+40:viewX();
