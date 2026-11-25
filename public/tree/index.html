@@ -55,7 +55,7 @@ textarea{resize:none;field-sizing:content;min-height:2.6em;overflow:hidden}
 .tb{white-space:nowrap}
 .tb.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 #refall{border-color:var(--acc);color:var(--acc)}
-.cv{position:relative;overflow:hidden;touch-action:none;background:var(--bg)}
+.cv{position:relative;overflow:hidden;touch-action:none;background:var(--bg);user-select:none}
 .cv.pan{cursor:grabbing}
 .world{position:absolute;left:0;top:0;transform-origin:0 0}
 .band{position:absolute;left:-8000px;width:20000px;border-top:1px solid var(--line)}
@@ -141,6 +141,16 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .nf:empty{display:none}
 .docv{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:2px auto 4px;border-radius:6px;cursor:zoom-in}
 .doca{display:block;width:100%;height:36px;margin:4px 0}
+.ftiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:2px 0 4px}
+.ft{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--paper2);display:grid;place-items:center;cursor:zoom-in;border:0;padding:0}
+.ft img{width:100%;height:100%;object-fit:cover;display:block}
+.ft b{font:500 10.5px/1 Inter,sans-serif;color:var(--mute)}
+.ft span{position:absolute;left:0;right:0;bottom:0;padding:10px 5px 4px;font-size:10px;line-height:1.2;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6));opacity:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.ft:hover span{opacity:1}
+.ft.nt0{align-content:center;gap:4px}
+.ft.nt0 span{position:static;opacity:1;background:none;color:var(--mute);padding:0 5px;text-align:center}
+.pickf{width:100%;padding:18px 8px;border:1px dashed var(--edge);border-radius:6px;color:var(--mute);margin:2px 0 4px}
+.nobig{color:#ddd;display:grid;place-items:center;height:100%;text-align:center;font-size:14px;line-height:1.6}
 .lpv{display:block;width:100%;aspect-ratio:16/10;border-radius:6px;overflow:hidden;background:var(--paper2);margin:2px 0 4px;cursor:zoom-in}
 .lpv img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
 .lurl{font-size:11.5px;color:var(--faint)}
@@ -311,8 +321,8 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ORDER=['brief','research','prod'];
 const NAMES={brief:'Inputs',research:'Ideas',prod:'Production'};
 const CARDL={brief:'Input',research:'Idea',prod:'Branch'};
-const TL={brief:'Task',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
-const ADDS={brief:[['doc','File…'],['link','Link'],['card','Note'],['table','Competitors']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
+const TL={folder:'Folder',brief:'Task',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
+const ADDS={brief:[['doc','File…'],['folder','Folder…'],['link','Link'],['card','Note'],['table','Competitors']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
 const MODES={insights:'Input analysis',ideas:'Ideas',collide:'Collisions',prompts:'Prompts for a model',sketch:'Composition sketches'};
 const BRAINS={quick:'Fast',default:'Balanced',complex:'Deep'};
 const OPS={none:['No method',''],ban:['Anti-cliché','First list what anyone and any AI would make for this, then go somewhere else entirely.'],invert:['TRIZ: inversion','Do the opposite of the category habit: remove the main object, show its trace, swap cause and effect.'],contra:['TRIZ: contradiction','State the core contradiction (it must be X and not X) and resolve it with separation in time, space or scale.'],morph:['Morphological box','Split the task into axes (medium, motion, metaphor, material, angle, time) and combine unexpected values.'],analogy:['Distant analogy','Find how nature, navigation, architecture, science, crafts or other industries solve the same job. Transfer the principle, not the picture.'],bisoc:['Collide two inputs','Collide inputs in pairs: an element of one plus an element of another makes a new image.'],scamper:['SCAMPER','Substitute, combine, adapt, modify, put to other use, eliminate, reverse.'],scale:['Scale and viewpoint','Change scale and viewpoint: macro, top-down, from inside, years later, through the object itself.'],random:['Random stimulus','Pick an unrelated random word or object and force a connection to the task.'],oblique:['Oblique strategy','Use oblique strategies: honor the error as a hidden intention; remove the most important thing; make one thing huge.']};
@@ -351,7 +361,7 @@ const TIC={sec:'1s',bad:'BD',swap:'LS',scale:'Sc',task:'TF',make:'Pr',cliche:'Cl
 const RIC={founder:'Fo',board:'IC',buyer:'By',cand:'Ca',lay:'ND',rival:'RC'};
 
 const mk=(t,f,o={})=>Object.assign({id:uid(),t,f,x:40,y:56,title:'',text:'',thread:[]},
- t==='board'?{items:[]}:t==='files'||t==='brief'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
+ t==='board'?{items:[]}:t==='folder'?{files:[],folder:''}:t==='files'||t==='brief'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
 
 function template(){
  const T=mk('task','brief',{id:'t0',x:40,y:56,title:'Task',text:'Need an animated banner for Avride\'s robotaxi launch in Miami (LinkedIn 1200×627 plus a 9:16 cut, [TBD: duration]) that answers why Avride when Waymo, Zoox and Tesla are already here. Follow the brand guide [TBD: awaiting], keep the voice confident and safety-first, use the real vehicle model, and avoid everything on the no-go list.',pick:true});
@@ -407,6 +417,7 @@ function lab(n){
  if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card'&&(x.run||'')===(n.run||'')).indexOf(n);return pre+'Idea '+(i+1);}
  if(n.kind==='read')return pre+'Reading of the brief';
  if(n.doc)return docKind(n.items[0]||{});
+ if(n.t==='folder')return 'Folder';
  if(n.t==='link')return okUrl(n.url)?service(n.url):'Link';
  if(n.run&&n.t==='card')return pre+CARDL[n.f];
  if(n.t==='card')return n.nogo?'No-go zone':CARDL[n.f];
@@ -434,6 +445,7 @@ function redo(){if(!R.length)return;U.push(JSON.stringify({nodes:P.nodes,edges:P
 const KIT=[
  ['Inputs','Everything the work starts from',[
   {name:'File',ic:'▤',desc:'Image, video, audio, PDF, 3D or any document',fl:'brief',fn:()=>void addOf('doc','brief')},
+  {name:'Folder',ic:'▣',desc:'A folder on this computer; files stay local',fl:'brief',fn:()=>addOf('folder','brief')},
   {name:'Link',ic:'↗',desc:'Notion, Figma, Pinterest, any page',fl:'brief',fn:()=>addOf('link','brief')},
   {name:'Competitors',ic:'⇄',desc:'A table with links; the AI can suggest more',fl:'brief',fn:(f,from,x)=>addNode('table','brief',{},null,{x})},
   {name:'Input analysis',ic:'⌕',desc:'Tensions, what rivals own, white space, gaps',fl:'brief',fn:(f,from,x)=>addNode('gen','brief',{title:'Tensions, white space and gaps in the inputs',mode:'insights',n:5},null,{x})}]],
@@ -488,6 +500,9 @@ function body(n){
  if(n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.t==='brief'?thumbs(n):'');
  if(n.t==='board')return thumbs(n);
  if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea>`;
+ if(n.t==='folder'){const fs=n.files||[];if(!fs.length)return `<button class="pickf" data-a="pickdir">Choose a folder…</button>`;
+  const order=fs.map((f,i)=>i).sort((a,b)=>(fs[b].thumb?1:0)-(fs[a].thumb?1:0));const lim=n.all?order.length:18,shown=order.slice(0,lim);
+  return `<div class="ftiles">${shown.map(i=>{const f=fs[i],t=thumbSrc(f),ext=(String(f.name).match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();return t?`<button class="ft" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><img alt="" loading="lazy" src="${esc(t)}"><span>${esc(f.name)}</span></button>`:`<button class="ft nt0" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><b>${esc(ext)}</b><span>${esc(f.name)}</span></button>`;}).join('')}${order.length>lim?`<button class="ft nt0" data-a="fall"><b>+${order.length-lim}</b></button>`:''}</div>`;}
  if(n.t==='link'){if(!okUrl(n.url))return `<input data-f="url" placeholder="Paste a link" value="${esc(n.url)}" aria-label="Link">`;const pv=prevOf(n);
   return (pv?`<div class="lpv" data-a="look"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'')+`<input class="lurl" data-f="url" value="${esc(n.url)}" aria-label="Link">`;}
  if(n.t==='source'){const l=libOf(n.lib);return `<div class="lbl">${l[5]?'Search query':'Search there for'} · ${esc(l[3])}</div><input data-f="q" placeholder="a few words" value="${esc(n.q)}">`+thumbs(n);}
@@ -530,6 +545,7 @@ function hovHTML(n){
 function meta(n){
  if(n.busy)return 'Running…';
  const k=(n.items||[]).length,pl=(c,w)=>c+' '+w+(c===1?'':'s');
+ if(n.t==='folder'){const fs=n.files||[];if(!fs.length)return '';const c={};fs.forEach(f=>{const k={'3d':'3D',pdf:'PDF',image:'image',video:'video'}[f.kind];if(k)c[k]=(c[k]||0)+1;});return [fs.length+' file'+(fs.length===1?'':'s'),...Object.entries(c).map(([k,v])=>v+' '+k+(v>1&&k!=='3D'?'s':''))].join(' · ');}
  if(n.doc){const it=n.items[0]||{};return it.pages?it.pages+' page'+(it.pages===1?'':'s'):'';}
  if(n.t==='link')return '';
  if(n.t==='brief'||n.t==='files'||n.t==='board')return k?pl(k,'file'):'';
@@ -542,7 +558,7 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
@@ -701,6 +717,65 @@ async function pdfThumb(n){
   it.thumb=up.id;it.pages=doc.numPages;if(byId(n.id))renderNode(n);save();
  }catch(_){}finally{thumbBusy.delete(it.id);}
 }
+// ---- local folders: files stay on this computer; only small previews are stored
+const FSM=new Map();
+const idb=(()=>{let p=null;return()=>p||(p=new Promise((res,rej)=>{try{const r=indexedDB.open('ctree',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}}));})();
+async function hset(k,v){try{const db=await idb();await new Promise((res,rej)=>{const t=db.transaction('h','readwrite');t.objectStore('h').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(_){}}
+async function hget(k){try{const db=await idb();return await new Promise((res,rej)=>{const r=db.transaction('h').objectStore('h').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}catch(_){return null;}}
+const thumbSrc=f=>f.thumb?f.thumb.asset?BLOBP+encodeURIComponent(f.thumb.asset):/^data:image\/jpeg/.test(f.thumb.src||'')?f.thumb.src:'':'';
+function kindOf(name,type){const nm=String(name).toLowerCase();if(/^image\//.test(type)||/\.(png|jpe?g|webp|gif|avif|heic)$/.test(nm))return 'image';if(/^video\//.test(type)||/\.(mp4|mov|webm|m4v)$/.test(nm))return 'video';if(/^audio\//.test(type)||/\.(mp3|wav|m4a|aac|ogg|flac)$/.test(nm))return 'audio';if(type==='application/pdf'||/\.pdf$/.test(nm))return 'pdf';if(/\.(glb|gltf|obj|fbx|c4d|usdz|blend|stl|3ds|abc|ma|mb)$/.test(nm))return '3d';if(/^text\//.test(type)||/\.(txt|md|csv|json)$/.test(nm))return 'text';return 'other';}
+function pickDir(n){
+ if(window.showDirectoryPicker){window.showDirectoryPicker({id:'ctree',mode:'read'}).then(async h=>{FSM.set(n.id,{h});hset('dir:'+n.id,h);const list=[];await walk(h,'',list,0);useFolder(n,h.name,list);}).catch(()=>{});return;}
+ const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.webkitdirectory=true;
+ inp.onchange=()=>{const fs=[...inp.files];if(!fs.length)return;const root=(fs[0].webkitRelativePath||'').split('/')[0]||'Folder';
+  useFolder(n,root,fs.filter(f=>!/(^|\/)\./.test(f.webkitRelativePath)).map(f=>({path:(f.webkitRelativePath||f.name).split('/').slice(1).join('/')||f.name,file:f})));};
+ inp.click();
+}
+async function walk(d,pre,out,depth){if(depth>6||out.length>=400)return;for await(const [name,h] of d.entries()){if(out.length>=400)return;if(name.startsWith('.'))continue;const path=pre?pre+'/'+name:name;if(h.kind==='directory')await walk(h,path,out,depth+1);else{try{out.push({path,file:await h.getFile()});}catch(_){}}}}
+async function useFolder(n,name,list){
+ if(!byId(n.id))return;snap();const old=new Map((n.files||[]).map(f=>[f.path,f]));
+ list.sort((a,b)=>a.path.localeCompare(b.path));
+ n.folder=name;if(!n.title)n.title=name;
+ n.files=list.slice(0,400).map(({path,file})=>{const o=old.get(path);return {path,name:file.name,size:file.size,type:file.type,kind:kindOf(file.name,file.type),thumb:o&&o.size===file.size?o.thumb||null:null};});
+ const s=FSM.get(n.id)||{};s.files=new Map(list.map(x=>[x.path,x.file]));FSM.set(n.id,s);
+ renderNode(n);save();flash(`${n.files.length} file${n.files.length===1?'':'s'} from ${name}`);
+ for(const f of n.files.filter(f=>!f.thumb&&['image','video','pdf'].includes(f.kind)).slice(0,80)){const file=s.files.get(f.path);if(!file)continue;const t=await thumbOf(file,f.kind);if(t&&byId(n.id)){f.thumb=t;renderNode(n);}}
+ save();
+}
+async function thumbOf(file,kind){
+ try{let c=null;
+  if(kind==='image'&&file.size<60e6){const bmp=await createImageBitmap(file);const sc=Math.min(1,480/Math.max(bmp.width,bmp.height));c=document.createElement('canvas');c.width=Math.max(1,Math.round(bmp.width*sc));c.height=Math.max(1,Math.round(bmp.height*sc));c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);}
+  else if(kind==='video'){const v=document.createElement('video');v.muted=true;v.playsInline=true;const u=URL.createObjectURL(file);v.src=u;
+   await new Promise((res,rej)=>{v.onloadeddata=res;v.onerror=rej;setTimeout(rej,8000);});v.currentTime=Math.min(1,(v.duration||2)/2);await new Promise(res=>{v.onseeked=res;setTimeout(res,3000);});
+   const sc=Math.min(1,480/Math.max(v.videoWidth,v.videoHeight));c=document.createElement('canvas');c.width=Math.max(1,Math.round(v.videoWidth*sc));c.height=Math.max(1,Math.round(v.videoHeight*sc));c.getContext('2d').drawImage(v,0,0,c.width,c.height);URL.revokeObjectURL(u);}
+  else if(kind==='pdf'&&window.CT_PDF){const lib=await import(window.CT_PDF+'pdf.min.mjs');lib.GlobalWorkerOptions.workerSrc=window.CT_PDF+'pdf.worker.min.mjs';const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;const pg=await doc.getPage(1);const w1=pg.getViewport({scale:1}).width,vp=pg.getViewport({scale:Math.min(1.5,480/w1)});c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);await pg.render({canvas:c,canvasContext:c.getContext('2d'),viewport:vp}).promise;}
+  if(!c)return null;const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.82));if(!b)return null;
+  if(AS){try{const up=await AS.upload(new File([b],'preview.jpg',{type:'image/jpeg'}));return {asset:up.id};}catch(_){}}
+  if(b.size<120000)return {src:await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b);})};
+ }catch(_){}
+ return null;
+}
+async function localFile(n,f){const s=FSM.get(n.id);if(s&&s.files&&s.files.get(f.path))return s.files.get(f.path);
+ if(s&&s.h){try{let d=s.h;const parts=f.path.split('/');for(const p of parts.slice(0,-1))d=await d.getDirectoryHandle(p);return await (await d.getFileHandle(parts[parts.length-1])).getFile();}catch(_){}}
+ return null;}
+async function reconnect(n){
+ if(window.showDirectoryPicker){const h=(FSM.get(n.id)||{}).h||await hget('dir:'+n.id);if(h){try{if(await h.requestPermission({mode:'read'})==='granted'){FSM.set(n.id,{h});return true;}}catch(_){}}}
+ flash(`Choose “${n.folder||'the folder'}” again to open its files`);pickDir(n);return false;
+}
+async function openLocal(n,i){
+ const f=(n.files||[])[i];if(!f)return;let file=await localFile(n,f);
+ if(!file){if(!await reconnect(n))return;file=await localFile(n,f);if(!file)return flash('That file is no longer in the folder');}
+ const u=URL.createObjectURL(file),k=f.kind;
+ const inner=k==='image'?`<img alt="" src="${esc(u)}">`:k==='video'?`<video src="${esc(u)}" controls autoplay loop playsinline></video>`:k==='pdf'?`<iframe src="${esc(u)}"></iframe>`:k==='audio'?`<div class="nobig"><audio controls autoplay src="${esc(u)}"></audio></div>`:`<div class="nobig">${esc(f.path)}<br>${(f.size/1048576).toFixed(1)} MB · open it from the folder on your computer</div>`;
+ bigView(inner,k==='other'||k==='3d'?'':u,()=>URL.revokeObjectURL(u));
+}
+function bigView(inner,open,onClose){
+ const d=document.createElement('div');d.className='lbx';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
+ d.innerHTML=`<div class="fr">${inner}<div class="ac">${open?`<a href="${esc(open)}" target="_blank" rel="noopener">Open ↗</a>`:''}<button data-x>Close</button></div></div>`;
+ const close=()=>{d.remove();document.removeEventListener('keydown',key,true);if(onClose)onClose();};const key=e=>{if(e.key==='Escape'){e.stopPropagation();close();}};
+ d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))close();});document.addEventListener('keydown',key,true);
+ document.body.appendChild(d);d.querySelector('[data-x]').focus({preventScroll:true});
+}
 function lightbox(n){
  let inner='',open='';
  if(n.t==='link'&&okUrl(n.url)){open=n.url;const em=window.CT_SHOT?embedOf(n.url):'';const pv=prevOf(n);
@@ -708,11 +783,7 @@ function lightbox(n){
  else if(n.doc&&n.items[0]){const it=n.items[0],u=it.kind==='image'?imgSrc(it):blob(it);if(!u)return;open=u;
   if(it.kind==='image')inner=`<img alt="" src="${esc(u)}">`;else if(it.kind==='video')inner=`<video src="${esc(u)}" controls autoplay loop playsinline></video>`;else if(window.CT_SHOT&&docKind(it)==='PDF')inner=`<iframe src="${esc(u)}"></iframe>`;else return void window.open(u,'_blank','noopener');}
  else return;
- const d=document.createElement('div');d.className='lbx';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
- d.innerHTML=`<div class="fr">${inner}<div class="ac"><a href="${esc(open)}" target="_blank" rel="noopener">Open ↗</a><button data-x>Close</button></div></div>`;
- const close=()=>{d.remove();document.removeEventListener('keydown',key,true);};const key=e=>{if(e.key==='Escape'){e.stopPropagation();close();}};
- d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))close();});document.addEventListener('keydown',key,true);
- document.body.appendChild(d);d.querySelector('[data-x]').focus({preventScroll:true});
+ bigView(inner,open);
 }
 let menuEl=null;
 function closeMenu(){if(menuEl){menuEl.remove();menuEl=null;}if(tmpPath&&!drag){tmpPath='';drawEdges();}}
@@ -924,6 +995,10 @@ world.addEventListener('click',e=>{
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
  if(a==='look')return void lightbox(n);
+ if(a==='pickdir')return void pickDir(n);
+ if(a==='ftile')return void openLocal(n,+b.dataset.i);
+ if(a==='fall'){n.all=true;renderNode(n);return;}
+ if(a==='rescan')return void (async()=>{if(await reconnect(n)){const s=FSM.get(n.id);const list=[];if(s&&s.h){await walk(s.h,'',list,0);useFolder(n,s.h.name,list);}}})();
  if(a==='remeta')return void linkMeta(n);
  if(a==='frames')return void pullFrames(n);
  if(a==='go'){const m=n.model||'default',rs=m==='all'?RUNS:RUNS.filter(r=>r[0]===m);return void autoPass(n,rs.length?rs:[RUNS[1]||RUNS[0]]);}
@@ -966,6 +1041,7 @@ function addOf(t,k,at,lk){
  const m=addNode(t==='nogo'?'card':t,k,o,null,at||(k==='brief'&&bs.length===1?docSpot(bs[0]):undefined));if(!at)reveal(m);
  if(lk){linkEdge(m,lk);save();}
  else if(k==='brief'&&t!=='brief'&&bs.length===1){P.edges.push({id:uid(),a:m.id,b:bs[0].id});schedule();save();}
+ if(t==='folder'){pickDir(m);return m;}
  const ta=els[m.id]&&els[m.id].querySelector(m.t==='link'?'input[data-f="url"]':m.t==='brief'?'textarea.bt':'textarea.nt');if(ta)ta.focus();
  return m;
 }
@@ -1070,6 +1146,9 @@ const LANG='Write in the same language as the brief.';
 async function filesOf(ns){
  const out={images:[],documents:[],text:'',note:''};const skipped=[];
  const maxDocs=LIM&&LIM.documents?Math.min(3,LIM.documents.maxCount||3):0;
+ for(const n of ns.filter(x=>x.t==='folder')){let any=false;for(const f of n.files||[]){if(f.kind!=='pdf'&&f.kind!=='text')continue;const file=await localFile(n,f);if(!file)continue;any=true;
+  if(f.kind==='pdf'){if(out.documents.length<maxDocs&&file.size<30e6)out.documents.push(file);else skipped.push(f.name);}else if(out.text.length<40000)out.text+=`\n\n--- File: ${f.path} ---\n`+(await file.text()).slice(0,20000);}
+  if(!any&&(n.files||[]).some(f=>f.kind==='pdf'||f.kind==='text'))out.note+=`\n\nThe folder “${n.folder}” is not connected in this session, so its documents were not read.`;}
  for(const n of ns)for(const it of (n.items||[])){
   const k=it.kind||'image';if(k==='video')continue;
   const s=k==='image'?imgSrc(it):blob(it);if(!s)continue;
