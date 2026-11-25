@@ -62,7 +62,8 @@ textarea{resize:none;field-sizing:content;min-height:2.6em;overflow:hidden}
 .band:nth-child(even){background:var(--band)}
 .band .hint{position:absolute;left:8040px;top:58px;color:var(--faint);font-size:13px;pointer-events:none}
 svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
-.edges .ln{fill:none;stroke:var(--edge);stroke-width:1.2}
+.edges .ln{fill:none;stroke:var(--edge);stroke-width:1.2;pointer-events:none}
+.edges .hit:hover+.ln{stroke:var(--mute)}
 .edges .ln.on{stroke:var(--acc);stroke-width:1.8}
 .edges .ln.off{stroke-dasharray:3 4;opacity:.6}
 .edges .ln.sel{stroke:var(--ink);stroke-width:2}
@@ -74,6 +75,9 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .fl.closed .fn{color:var(--mute);font-size:16px}
 .fc{color:var(--faint);font-size:12px}
 .fa{width:26px;height:26px;padding:0;border-radius:50%;line-height:1;font-size:16px;color:var(--mute)}
+.cut{position:absolute;z-index:3;transform:translate(-50%,-50%);width:30px;height:30px;padding:0;border-radius:50%;background:var(--paper);border:1px solid var(--edge);color:var(--ink);display:grid;place-items:center}
+.cut[hidden]{display:none}
+.cut:hover{border-color:var(--acc);color:var(--acc)}
 .zoom{position:absolute;left:14px;bottom:14px;display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:3px}
 .zoom button{border:0;min-width:30px;padding:4px 8px}
 #zl{min-width:48px;color:var(--mute);font-size:12px}
@@ -111,7 +115,8 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .node:hover .nc>*,.node.sel .nc>*,.nc .cm,.nc .star.on,.nc .stl{visibility:visible}
 .nc .stl[hidden]{display:none}
 .nc a{color:var(--mute);text-decoration:none;padding:2px 6px;font-size:13px}
-.fav{width:13px;height:13px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.fav{width:13px;height:13px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+.kic{width:13px;height:13px;vertical-align:-2px;margin-right:6px;color:var(--mute)}
 .nt{display:block;font:500 15px/1.3 Inter,sans-serif;padding:2px 9px 4px;margin:0 1px 2px;min-height:1.6em;width:calc(100% - 2px)}
 .nt::placeholder{color:var(--faint);font-weight:400}
 .task .nt{display:none}
@@ -303,6 +308,7 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 <div class="rail" id="rail"></div>
 <div class="zoom"><button id="zo" aria-label="Zoom out">−</button><button id="zl" aria-label="Reset zoom">100%</button><button id="zi" aria-label="Zoom in">+</button><button id="fit">Fit</button></div>
 <div class="dock" id="dock"></div>
+<button class="cut" id="cut" hidden aria-label="Cut this connection" title="Cut"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg></button>
 </main>
 <aside class="side" id="side">
 <div class="tabs" role="tablist"><button class="tab" role="tab" id="t-kit" aria-selected="true">Toolkit</button><button class="tab" role="tab" id="t-chat" aria-selected="false">Chat</button><span class="mut" id="aist">Connecting AI…</span><button class="x" id="sidex" aria-label="Close panel">×</button></div>
@@ -538,6 +544,15 @@ function foot(n){
  if(n.t==='source'){const l=libOf(n.lib);h+=`<a class="lnk" href="${esc(srcUrl(n))}" target="_blank" rel="noopener">${l[5]&&n.q?'Search':'Open'} ${esc(l[1])} ↗</a>`;}
  return h;
 }
+// a small mark left of the label: the site's own icon for links, a kind glyph for files
+const KIC={pdf:'<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',image:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/>',video:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3z"/>',audio:'<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',d3:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>',doc:'<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/>',folder:'<path d="M3 6h6l2 2h10v11H3z"/>',link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
+const kic=k=>`<svg class="kic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${KIC[k]||KIC.doc}</svg>`;
+function iconOf(n){
+ if(n.t==='link'){if(!okUrl(n.url))return kic('link');if(!window.CT_SHOT)return kic('link');const ic=n.meta&&okUrl(n.meta.icon)?n.meta.icon:'https://www.google.com/s2/favicons?sz=64&domain='+encodeURIComponent(hostOf(n.url));return `<img class="fav" alt="" src="${esc(ic)}">`;}
+ if(n.t==='folder')return kic('folder');
+ if(n.doc){const k=docKind(n.items[0]||{});return kic({PDF:'pdf',Image:'image',Video:'video',Audio:'audio','3D':'d3'}[k]||'doc');}
+ return '';
+}
 function hovHTML(n){
  if(n.t==='link'){const pv=prevOf(n);return pv?`<div class="hov"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'';}
  if(n.doc){const it=n.items[0];if(!it)return '';if(it.thumb)return `<div class="hov"><img alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}"></div>`;if(it.kind==='image'&&imgSrc(it))return `<div class="hov"><img alt="" src="${esc(imgSrc(it))}"></div>`;if(it.kind==='video'&&blob(it))return `<div class="hov"><video src="${esc(blob(it))}" muted loop autoplay playsinline></video></div>`;}
@@ -559,7 +574,7 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
@@ -604,19 +619,26 @@ function curve(A,B){
  return `M${a.x} ${a.y}C${a.x} ${a.y+k} ${b.x} ${b.y-k} ${b.x} ${b.y}`;
 }
 let tmpPath='';
+function placeCut(){
+ const b=$('#cut');if(!b)return;const p=sel&&sel.k==='e'&&edgesEl.querySelector('path.ln.sel');
+ if(!p){b.hidden=true;return;}const pt=p.getPointAtLength(p.getTotalLength()/2);
+ b.style.left=(pt.x*V.z+V.x)+'px';b.style.top=(pt.y*V.z+V.y)+'px';b.hidden=false;
+}
+function cutEdge(id){const e=P.edges.find(x=>x.id===id);if(!e)return;snap();P.edges=P.edges.filter(x=>x.id!==id);sel=null;const g=byId(e.b);if(g&&(g.t==='gen'||g.t==='check'))renderNode(g);drawEdges();save();flash('Connection cut');}
 function drawEdges(){
  let h='';
  for(const e of P.edges){const A=byId(e.a),B=byId(e.b);if(!A||!B)continue;const ra=rect(A),rb=rect(B),d=curve(ra,rb);
   const c=(A.pick&&B.pick?' on':'')+(ra.hid||rb.hid?' off':'')+(sel&&sel.k==='e'&&sel.id===e.id?' sel':'');
   h+=`<path class="hit" data-edge="${e.id}" d="${d}"/><path class="ln${c}" d="${d}"/>`;}
  edgesEl.innerHTML=h+(tmpPath?`<path class="tmp" d="${tmpPath}"/>`:'');
+ placeCut();
 }
 function placeRail(){
  rail.innerHTML=ORDER.slice().reverse().map(k=>{const g=geo[k];if(!g)return '';const top=P.open[k]?V.y+g.top*V.z+12:V.y+(g.top+g.h/2)*V.z-11;
   const pk=P.nodes.filter(n=>n.f==='research'&&n.t==='card'&&n.pick).length;
   return `<div class="fl${P.open[k]?'':' closed'}" style="top:${top}px"><button class="fn" data-fl="${k}" aria-expanded="${P.open[k]}">${NAMES[k]}</button><span class="fc">${k==='research'&&g.c?`${g.c} · ${pk} shortlisted`:(g.c||'')}</span><button class="fa" data-add="${k}" aria-label="Add to ${NAMES[k]}">+</button></div>`;}).join('');
 }
-function applyView(){world.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.z})`;$('#zl').textContent=Math.round(V.z*100)+'%';placeRail();placePop();}
+function applyView(){world.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.z})`;placeCut();$('#zl').textContent=Math.round(V.z*100)+'%';placeRail();placePop();}
 function zoomAt(cx,cy,f){const r=cv.getBoundingClientRect(),px=cx-r.left,py=cy-r.top,z=clamp(V.z*f,.2,2);V.x=px-(px-V.x)*(z/V.z);V.y=py-(py-V.y)*(z/V.z);V.z=z;applyView();saveView();}
 function fit(){
  const vis=P.nodes.filter(n=>P.open[n.f]);const r=cv.getBoundingClientRect();
@@ -927,14 +949,14 @@ cv.addEventListener('pointerdown',e=>{
  const fl=e.target.closest('[data-fl]'),ad=e.target.closest('[data-add]');
  if(fl){snap();P.open[fl.dataset.fl]=!P.open[fl.dataset.fl];layout();save();return;}
  if(ad){const k=ad.dataset.add,r=ad.getBoundingClientRect();openMenu(r.right+6,r.top,ADDS[k].map(([t,v])=>[t,v,0,()=>addOf(t,k)]));return;}
- if(e.target.closest('.zoom,.dock'))return;
+ if(e.target.closest('.zoom,.dock,.cut'))return;
  const port=e.target.closest('[data-port]'),nel=e.target.closest('.node'),hit=e.target.closest('[data-edge]');
  if(e.target.closest('[data-rz]')&&nel){e.preventDefault();const id=nel.dataset.id;select('n',id);drag={k:'r',id,sx:e.clientX,w0:nel.offsetWidth,moved:0};cv.setPointerCapture(e.pointerId);return;}
  if(port&&nel){e.preventDefault();drag={k:'c',id:nel.dataset.id,port:port.dataset.port};cv.setPointerCapture(e.pointerId);return;}
  if(nel){const id=nel.dataset.id;if(!(sel&&sel.id===id))select('n',id);
   if(!e.target.closest('input,button,select,textarea:not(.nt),a,audio,.port')){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};}
   return;}
- if(hit){select('e',hit.dataset.edge);return;}
+ if(hit){if(sel&&sel.k==='e'&&sel.id===hit.dataset.edge)return void cutEdge(sel.id);select('e',hit.dataset.edge);return;}
  select(null);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
  drag={k:'p',sx:e.clientX,sy:e.clientY,vx:V.x,vy:V.y};cv.classList.add('pan');cv.setPointerCapture(e.pointerId);
 });
@@ -967,13 +989,14 @@ cv.addEventListener('wheel',e=>{
  if(e.ctrlKey||e.metaKey)zoomAt(e.clientX,e.clientY,Math.exp(-clamp(e.deltaY,-50,50)*.01));
  else{V.x-=e.deltaX;V.y-=e.deltaY;applyView();saveView();}
 },{passive:false});
-cv.addEventListener('dblclick',e=>{if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;const at={x:w.x-132,y:Math.max(40,w.y-geo[f].top-20)};openMenu(e.clientX,e.clientY,ADDS[f].map(([t,v])=>[t,v,0,()=>addOf(t,f,at)]));});
+cv.addEventListener('dblclick',e=>{if(e.target.closest('.node,.rail,.zoom,.dock,.cut,[data-edge]'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;const at={x:w.x-132,y:Math.max(40,w.y-geo[f].top-20)};openMenu(e.clientX,e.clientY,ADDS[f].map(([t,v])=>[t,v,0,()=>addOf(t,f,at)]));});
 const ZS=[.25,.33,.5,.67,.75,1,1.25,1.5,2];
 function stepZoom(d){const z=V.z,t=d>0?ZS.find(s=>s>z+.005):[...ZS].reverse().find(s=>s<z-.005);if(!t)return;const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,t/z);}
 $('#zi').onclick=()=>stepZoom(1);
 $('#zo').onclick=()=>stepZoom(-1);
 $('#zl').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/V.z);};
 $('#fit').onclick=fit;
+$('#cut').onclick=()=>{if(sel&&sel.k==='e')cutEdge(sel.id);};
 
 let typed=false;
 world.addEventListener('focusin',e=>{if(e.target.dataset.f)typed=false;});
@@ -1307,9 +1330,9 @@ $('#pmenu').onclick=e=>{const r=$('#pname').getBoundingClientRect();const ps=pro
  ['dup','Duplicate',0,async()=>{await flush();const c=clean();c.id=uid();c.name=P.name+' copy';load(c);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
  ['trash',`Trash${(P.trash||[]).length?' ('+P.trash.length+')':''}`,0,()=>trashMenu(r.left,r.bottom+4)],
  ['del','Delete…',1,()=>openMenu(r.left,r.bottom+4,[['no','Keep it',0,()=>{}],['yes',`Delete “${P.name||'Untitled'}” for good`,1,delProject]])]]);};
-function restore(i){const t=(P.trash||[])[i];if(!t)return;snap();P.trash.splice(i,1);const n=t.n;if(byId(n.id))n.id=uid();P.open[n.f]=true;P.nodes.push(n);
+function restoreTrash(i){const t=(P.trash||[])[i];if(!t)return;snap();P.trash.splice(i,1);const n=t.n;if(byId(n.id))n.id=uid();P.open[n.f]=true;P.nodes.push(n);
  t.e.forEach(e=>{if(byId(e.a)&&byId(e.b)&&!P.edges.some(x=>x.a===e.a&&x.b===e.b))P.edges.push({id:uid(),a:e.a,b:e.b});});renderNode(n,1);select('n',n.id);reveal(n);save();}
-function trashMenu(x,y){const tr=P.trash||[];openMenu(x,y,tr.length?[...tr.slice(0,40).map((t,i)=>[String(i),`${lab(t.n)}${t.n.title?': '+t.n.title:''}`.slice(0,70),0,()=>restore(i)]),null,['empty','Empty the trash…',1,()=>openMenu(x,y,[['no','Keep it',0,()=>{}],['yes',`Delete ${tr.length} block${tr.length===1?'':'s'} for good`,1,()=>{snap();P.trash=[];save();}]])]]:[['none','Trash is empty',0,()=>{}]]);}
+function trashMenu(x,y){const tr=P.trash||[];openMenu(x,y,tr.length?[...tr.slice(0,40).map((t,i)=>[String(i),`${lab(t.n)}${t.n.title?': '+t.n.title:''}`.slice(0,70),0,()=>restoreTrash(i)]),null,['empty','Empty the trash…',1,()=>openMenu(x,y,[['no','Keep it',0,()=>{}],['yes',`Delete ${tr.length} block${tr.length===1?'':'s'} for good`,1,()=>{snap();P.trash=[];save();}]])]]:[['none','Trash is empty',0,()=>{}]]);}
 async function delProject(){
  const id=P.id;try{localStorage.removeItem('ctree:'+id);}catch(_){}
  if(DB){try{await DB.doc('projects/'+id).delete();}catch(_){flash('Could not delete');return;}}
