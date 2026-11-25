@@ -164,6 +164,9 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .gen1{font-size:12px;padding:4px 10px;background:var(--ink);color:var(--paper);border-color:var(--ink);border-radius:6px}
 .gen1:disabled{background:none;color:var(--faint);border-color:var(--line);cursor:default}
 .docv{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:2px auto 4px;border-radius:6px;cursor:zoom-in}
+.vbox{position:relative}
+.vpp{position:absolute;left:8px;bottom:12px;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:rgba(20,20,18,.62);color:#fff;display:grid;place-items:center;opacity:0;transition:opacity .15s}
+.node:hover .vpp,.vpp:focus-visible{opacity:1}
 .doca{display:block;width:100%;height:36px;margin:4px 0}
 .ftiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:2px 0 4px}
 .ft{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--paper2);display:grid;place-items:center;cursor:zoom-in;border:0;padding:0}
@@ -530,7 +533,7 @@ function body(n){
   +`<div class="cmp"><button class="ci" data-a="addfile" aria-label="Attach documents" title="Attach documents">+</button>${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sp"></span></div>`;
  if(n.doc){const it=n.items[0];if(!it)return '';const k=it.kind||'image',u=k==='image'?imgSrc(it):blob(it),ext=(String(it.name||'').match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();
   if(docKind(it)==='PDF'){if(it.thumb)return `<img class="docv" data-a="look" alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}">`;if(window.CT_PDF&&AS)setTimeout(()=>pdfThumb(n),0);if(window.CT_SHOT)return `<div class="docf" data-a="look" role="button" tabindex="0"><b>PDF</b>${esc(it.name||'file')}</div>`;}
-  return k==='image'&&u?`<img class="docv" data-a="look" alt="" src="${esc(u)}">`:k==='video'&&u?`<video class="docv" data-a="look" src="${esc(u)}" muted loop autoplay playsinline></video>`:docKind(it)==='Audio'&&u?`<audio class="doca" controls preload="none" src="${esc(u)}"></audio>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
+  return k==='image'&&u?`<img class="docv" data-a="look" alt="" src="${esc(u)}">`:k==='video'&&u?`<div class="vbox"><video class="docv" data-a="look" src="${esc(u)}" muted loop playsinline${n.paused?'':' autoplay'}></video><button class="vpp" data-a="vpause" aria-label="${n.paused?'Play':'Pause'}" title="${n.paused?'Play':'Pause'}">${n.paused?PLAY:PAUSE}</button></div>`:docKind(it)==='Audio'&&u?`<audio class="doca" controls preload="none" src="${esc(u)}"></audio>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
  if(n.t==='card'){const st=n.st||'p',ups=n.f==='research'?upstream(n).length:0;
   const ph=n.nogo?'What to avoid':n.f==='brief'?'Write an input: the task, a constraint, a thought':n.f==='research'?'An idea, or a direction for the model':'A note';
   return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea class="ct ${st}" data-f="text" placeholder="${ph}" aria-label="${esc(lab(n))}">${esc(n.text)}</textarea>`
@@ -583,6 +586,7 @@ function iconOf(n){
  if(n.doc){const k=docKind(n.items[0]||{});return kic({PDF:'pdf',Image:'image',Video:'video',Audio:'audio','3D':'d3'}[k]||'doc');}
  return '';
 }
+const PAUSE='<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="1.5" width="2.6" height="9" rx=".6" fill="currentColor"/><rect x="7.4" y="1.5" width="2.6" height="9" rx=".6" fill="currentColor"/></svg>',PLAY='<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.6v8.8L10.2 6z" fill="currentColor"/></svg>';
 function hovHTML(n){
  if(n.t==='link'){const pv=prevOf(n);return pv?`<div class="hov"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'';}
  if(n.doc){const it=n.items[0];if(!it)return '';if(it.thumb)return `<div class="hov"><img alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}"></div>`;if(it.kind==='image'&&imgSrc(it))return `<div class="hov"><img alt="" src="${esc(imgSrc(it))}"></div>`;if(it.kind==='video'&&blob(it))return `<div class="hov"><video src="${esc(blob(it))}" muted loop autoplay playsinline></video></div>`;}
@@ -1090,6 +1094,7 @@ world.addEventListener('click',e=>{
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
  if(a==='look')return void lightbox(n);
+ if(a==='vpause'){const v=b.parentNode.querySelector('video');if(!v)return;if(v.paused){v.play().catch(()=>{});n.paused=false;}else{v.pause();n.paused=true;}b.innerHTML=n.paused?PLAY:PAUSE;b.setAttribute('aria-label',n.paused?'Play':'Pause');b.title=n.paused?'Play':'Pause';save();return;}
  if(a==='sty'){snap();n.st=b.dataset.v;renderNode(n);save();return;}
  if(a==='airead'){snap();n.aiRead=!n.aiRead;renderNode(n);save();return;}
  if(a==='editurl'){n._edit=true;renderNode(n);const i=els[n.id]&&els[n.id].querySelector('input[data-f="url"]');if(i){i.focus();i.select();}return;}
