@@ -95,8 +95,6 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .node.sel{box-shadow:0 0 0 2px var(--ink)}
 .node.pick{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
 .node.pick.sel{box-shadow:inset 3px 0 0 var(--acc),0 0 0 2px var(--ink)}
-.node.drop{opacity:.5}
-.node.drop .nt{text-decoration:line-through}
 .node.hid{display:none}
 .node.new{animation:pop .35s ease-out}
 @keyframes pop{from{opacity:0}}
@@ -342,7 +340,7 @@ function template(){
  const i1=mk('card','research',{id:'c1',x:140,title:'Neon sign video: the car rolls in, the Art Deco sign lights up',text:'Night facade; the neon switches on: open. Hypothesis: no refs or composition yet.',pick:true,thread:[{role:'ai',kind:'warn',text:'Fits the task, but "open" alone repeats "we are here". Add what makes Avride different before it goes to design.'}]});
  const i3=mk('card','research',{id:'c4',x:440,title:'The car as a lighthouse: one steady beam guiding the night city',text:'Safety without showing danger.',pick:true});
  const i4=mk('card','research',{id:'c5',x:740,title:'Concierge, not chauffeur: a held door, a key tag, service that drives',text:'Built on Avride\'s own "At your service".',pick:true});
- const i2=mk('card','research',{id:'c2',x:1180,title:'One calm car amid nervous Miami traffic',drop:true,why:'Not a launch message; would need angry drivers on screen'});
+ const i2=mk('card','research',{id:'c2',x:1180,title:'One calm car amid nervous Miami traffic'});
  const ch=mk('check','research',{id:'c3',x:1100,y:330,title:'Gate before production: is it clear, safe and only ours?',tests:['sec','bad','swap','task'],rooms:['founder','board']});
  const d1=mk('source','prod',{id:'d1',x:140,title:'Art Deco neon hotel signs at night',lib:'pinterest',q:'art deco neon hotel sign miami night'});
  const d2=mk('source','prod',{id:'d2',x:440,title:'Lighthouse beams in long exposure',lib:'gimg',q:'lighthouse beam long exposure night'});
@@ -414,7 +412,7 @@ const kitByName=name=>{for(let g=0;g<KIT.length;g++){const i=KIT[g][2].findIndex
 const kitAt=k=>{const[g,i]=String(k).split(':').map(Number);return KIT[g]&&KIT[g][2][i];};
 const DOCK=[['Inputs','▤',['Inputs','Notes']],['Methods','≈',['Idea methods']],['Checks','✓',['Checks','Rooms']],['Libraries','Pi',[...new Set(LIBS.map(l=>l[2]))]],['Models','Kl',['Image models','Video models','3D models','Sketch tools','Production tools']]];
 function quick(n){
- if(n.t==='task'||n.drop)return [];
+ if(n.t==='task')return [];
  if(n.f==='brief')return (n.t==='files'&&!n.doc)||n.t==='table'?['Input analysis']:[];
  if(n.f==='research'&&n.t==='card')return ['Composition sketches','Pinterest','Mobbin','1-second test'];
  if(n.f==='prod'&&['card','source','board'].includes(n.t))return ['Composition sketches','Kling 4.0','Seedance 2.5','Krea 2'];
@@ -496,12 +494,12 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'||n.t==='brief'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}<div class="nb">${body(n)}</div>${n.drop?`<div class="why"><input data-f="why" placeholder="Why it was dropped" value="${esc(n.why||'')}"></div>`:''}<div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
 function grow(t){t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';}
-function cls(n){return 'node'+(n.t!=='task'&&n.t!=='brief'&&!n.open?' shut':'')+(n.t==='brief'?' brief':n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(n.drop?' drop':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
+function cls(n){return 'node'+(n.t!=='task'&&!n.open?' shut':'')+(n.t==='brief'?' brief':n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
 function renderNode(n,fresh){
  let el=els[n.id];
  if(!el){el=document.createElement('div');el.dataset.id=n.id;nodesEl.appendChild(el);els[n.id]=el;ro.observe(el);}
@@ -544,7 +542,7 @@ let tmpPath='';
 function drawEdges(){
  let h='';
  for(const e of P.edges){const A=byId(e.a),B=byId(e.b);if(!A||!B)continue;const ra=rect(A),rb=rect(B),d=curve(ra,rb);
-  const c=(A.pick&&B.pick?' on':'')+(A.drop||B.drop||ra.hid||rb.hid?' off':'')+(sel&&sel.k==='e'&&sel.id===e.id?' sel':'');
+  const c=(A.pick&&B.pick?' on':'')+(ra.hid||rb.hid?' off':'')+(sel&&sel.k==='e'&&sel.id===e.id?' sel':'');
   h+=`<path class="hit" data-edge="${e.id}" d="${d}"/><path class="ln${c}" d="${d}"/>`;}
  edgesEl.innerHTML=h+(tmpPath?`<path class="tmp" d="${tmpPath}"/>`:'');
 }
@@ -594,11 +592,10 @@ function nodeText(n){
  if(n.t==='files'&&n.links)s+=`\n${n.links}`;
  if(n.t==='gen'&&n.out.length)s+='\n'+n.out.slice(0,8).map(o=>`- ${o.title}: ${o.text}`).join('\n');
  if(n.t==='check'&&n.res.length)s+='\n'+n.res.map(r=>`- ${r.verdict}: ${r.title}: ${r.notes}`).join('\n');
- if(n.drop)s+=`\nDROPPED${n.why?': '+n.why:''}`;
  return s.slice(0,1600);
 }
 function summary(){return ORDER.map(k=>`## ${NAMES[k]} (${k})\n`+(P.nodes.filter(n=>n.f===k).map(n=>`id=${n.id} `+nodeText(n)).join('\n\n')||'empty')).join('\n\n').slice(0,24000);}
-function bans(){return P.nodes.filter(n=>n.drop||n.nogo).map(n=>`- ${n.title}${n.why?': '+n.why:''}${n.nogo&&n.text?': '+n.text:''}`).join('\n');}
+function bans(){return P.nodes.filter(n=>n.nogo).map(n=>`- ${n.title}${n.text?': '+n.text:''}`).join('\n');}
 const taskText=()=>P.nodes.filter(x=>x.t==='task').map(x=>x.text).join('\n')||'-';
 const briefText=()=>P.nodes.filter(x=>x.f==='brief'&&x.t!=='task'&&!x.run).map(nodeText).join('\n\n').slice(0,9000);
 function promote(n,o){
@@ -609,7 +606,7 @@ function promote(n,o){
 function useKit(it,src,at){
  if(!it)return;
  const f=it.fl||(src&&src.f!=='brief'?src.f:'research');
- const from=src&&it.fl!=='brief'&&!src.drop?src.id:null;
+ const from=src&&it.fl!=='brief'?src.id:null;
  const x=at&&at.x!=null?at.x:(src&&it.fl!=='brief'?src.x+300:viewX());
  const m=it.fn(f,from,x);
  if(m){reveal(m);if(m.t==='source'&&src)craftQuery(m,src);}
@@ -649,12 +646,7 @@ function openMenu(x,y,items){closeMenu();menuEl=document.createElement('div');me
  const w=menuEl.offsetWidth,h=menuEl.offsetHeight;menuEl.style.left=clamp(x,8,innerWidth-w-8)+'px';menuEl.style.top=clamp(y,8,innerHeight-h-8)+'px';
  menuEl.onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const it=items[+b.dataset.m];closeMenu();it[3]();};menuEl.querySelector('button').focus();}
 function nodeMenu(n,x,y){
- const sl=n.f==='research'&&n.t==='card';
- openMenu(x,y,[['pick',n.pick?(sl?'Remove from shortlist':'Remove from chosen path'):(sl?'Shortlist':'Add to chosen path'),0,()=>{snap();n.pick=!n.pick;renderNode(n);save();}],
-  ['drop',n.drop?'Bring back':'Drop, with a reason',0,()=>{snap();n.drop=!n.drop;renderNode(n);save();}],
-  ...(n.t==='brief'?[['bq','Questions for the client',0,()=>briefQ(n)]]:[]),
-  ...(n.f!=='prod'&&n.t!=='task'&&n.t!=='brief'&&!n.doc?[['up',n.f==='research'?'Develop in production':'Move up to Ideas',0,()=>promote(n)]]:[]),
-  ['dup','Duplicate',0,()=>{const c=JSON.parse(JSON.stringify(n));delete c.id;delete c.busy;delete c.basis;c.thread=[];addNode(n.t,n.f,c,null,{x:n.x+30,y:n.y+30});}],
+ openMenu(x,y,[['dup','Duplicate',0,()=>{const c=JSON.parse(JSON.stringify(n));delete c.id;delete c.busy;delete c.basis;c.thread=[];addNode(n.t,n.f,c,null,{x:n.x+30,y:n.y+30});}],
   ['del','Delete',1,()=>delNode(n.id)]]);
 }
 function delNode(id){snap();if(popFor===id)closePop();P.nodes=P.nodes.filter(n=>n.id!==id);P.edges=P.edges.filter(e=>e.a!==id&&e.b!==id);const el=els[id];if(el){ro.unobserve(el);el.remove();delete els[id];}sel=null;kitSel();schedule();save();}
@@ -770,7 +762,7 @@ Reply with only JSON: {"task":"...","gaps":["..."],"ideas":[{"title":"...","text
    rest.forEach((i,k)=>put(i,L.x+3*290+20,56+k*96));
    (Array.isArray(r.branches)?r.branches:[]).slice(0,4).forEach((o,j)=>{const src=ideaNode[+o.idea];if(!src)return;
     addNode('card','prod',{title:String(o.title||'').slice(0,200),text:String(o.text||'').slice(0,900),run:L.name,pick:true,open:false},src.id,{x:src.x,y:56});});
-  }catch(e){delete read.busy;read.title=`${L.name}: ${errTxt(e)}`;read.drop=true;renderNode(read);}
+  }catch(e){delete read.busy;read.title=`${L.name}: ${errTxt(e)}`;renderNode(read);}
   save();
  }));
  flash('Auto pass done');
@@ -1028,16 +1020,14 @@ async function readRefs(n){
  }catch(e){flash(errTxt(e));}
 }
 
-const RULES=`You assist a creative director inside "Creative Tree", a canvas where work grows upward in three floors: brief (Inputs: the task, the brief, files, competitors, no-go zone, and their analysis), research (Ideas: generation and a shortlist of about three), prod (Production: sketches, final refs and branches for different generation methods). Every node's title is a clear one-line prompt (e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up"); never a generic name like "Brief" or "Idea". Your job is to widen the search rather than grab the first idea: distant analogies, the no-go zone, and the gates (1-second test, bad-day test, logo-swap test, scale, task fit, producibility). Do not invent facts about companies; flag what needs checking. Reply in the language the user writes in, briefly and concretely. When asked to put something on the board, use the tools add_node, connect and drop_node; node ids are in the board description.`;
+const RULES=`You assist a creative director inside "Creative Tree", a canvas where work grows upward in three floors: brief (Inputs: the task, the brief, files, competitors, no-go zone, and their analysis), research (Ideas: generation and a shortlist of about three), prod (Production: sketches, final refs and branches for different generation methods). Every node's title is a clear one-line prompt (e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up"); never a generic name like "Brief" or "Idea". Your job is to widen the search rather than grab the first idea: distant analogies, the no-go zone, and the gates (1-second test, bad-day test, logo-swap test, scale, task fit, producibility). Do not invent facts about companies; flag what needs checking. Reply in the language the user writes in, briefly and concretely. When asked to put something on the board, use the tools add_node and connect; node ids are in the board description.`;
 let chatCtl=null;
 function renderChat(){const m=$('#msgs');m.innerHTML=P.chat.length?'':'<div class="empty">Ask about the whole board. For one node, press ✦ on it.</div>';for(const c of P.chat){const d=document.createElement('div');d.className='m '+(c.role==='user'?'u':'a');d.textContent=c.content;m.appendChild(d);}m.scrollTop=m.scrollHeight;}
 const ctools=()=>[
  {name:'add_node',description:'Adds a node to a floor of the board and returns its id. kind: card (note or idea), link (url card), gen (generator), check (gate), prod (production tracker). from: id of a source node to connect from.',inputSchema:{type:'object',properties:{floor:{type:'string',enum:ORDER},kind:{type:'string',enum:['card','link','gen','check','prod']},title:{type:'string',description:'one-line prompt, max 14 words'},text:{type:'string'},url:{type:'string'},from:{type:'string'}},required:['floor','title']},
   execute(i){const f=ORDER.includes(i.floor)?i.floor:'research',k=['card','link','gen','check','prod'].includes(i.kind)?i.kind:'card',src=i.from&&byId(String(i.from))?String(i.from):null,s=src&&byId(src);const o={title:String(i.title||'').slice(0,200),text:String(i.text||'').slice(0,1500)};if(k==='link')o.url=okUrl(i.url)?String(i.url):'';const n=addNode(k,f,o,src,{x:s?s.x+Math.round(Math.random()*300):viewX()+Math.round(Math.random()*200)});return {id:n.id};}},
  {name:'connect',description:'Connects two nodes: from is the input lower down, to is the consumer higher up. Returns ok.',inputSchema:{type:'object',properties:{from:{type:'string'},to:{type:'string'}},required:['from','to']},
-  execute(i){const a=String(i.from),b=String(i.to);if(!byId(a)||!byId(b))throw new Error('no such node');snap();P.edges.push({id:uid(),a,b});drawEdges();save();return 'ok';}},
- {name:'drop_node',description:'Marks a node as dropped, with a reason. Returns ok.',inputSchema:{type:'object',properties:{id:{type:'string'},why:{type:'string'}},required:['id']},
-  execute(i){const n=byId(String(i.id));if(!n)throw new Error('no such node');snap();n.drop=true;n.why=String(i.why||'');renderNode(n);save();return 'ok';}}];
+  execute(i){const a=String(i.from),b=String(i.to);if(!byId(a)||!byId(b))throw new Error('no such node');snap();P.edges.push({id:uid(),a,b});drawEdges();save();return 'ok';}}];
 $('#cf').onsubmit=async e=>{
  e.preventDefault();const q=$('#ci').value.trim();if(!q)return;
  if(!S){flash('AI is not available in this view');return;}
