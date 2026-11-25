@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/favicon.svg">
+<!-- Same file as the Claude artifact "Creative Tree"; shim.js maps its storage and AI calls onto /api/tree/* -->
+<title>Creative Tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* VOICE work tool for a creative director: quiet, exact, nothing shouts
+   IDEA a Swiss process map pinned to a warm grey studio wall; the tree grows from the inputs upward
+   PICTURE the canvas itself: three floors, paper nodes led by one-line prompts, thin threads, the chosen path in one signal colour
+   COLOUR warm grey ground, paper nodes, graphite ink, signal orange only for the chosen path, alerts and active state
+   TYPE Inter Tight light for floor names, Inter for everything else
+   LAYOUT canvas fills the screen, floor rail at left, tool dock at the bottom; side panel opens on demand; phone: it becomes a bottom sheet */
+:root{color-scheme:light dark;
+--bg:light-dark(#e6e3de,#1a1917);
+--band:light-dark(#e1ded8,#1e1d1b);
+--line:light-dark(#d2cec6,#33312d);
+--paper:light-dark(#f7f5f1,#262421);
+--paper2:light-dark(#efece6,#2d2b27);
+--ink:light-dark(#1c1b19,#ece8e1);
+--mute:light-dark(#6f6b63,#a19c93);
+--faint:light-dark(#a39e94,#68635b);
+--edge:light-dark(#b3ada3,#55524b);
+--acc:#e0522b;
+--ok:light-dark(#2f7a4b,#7cc79a);
+--risk:light-dark(#a86b00,#e0b25a)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:13.5px/1.45 Inter,system-ui,sans-serif;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px}
+button:hover{border-color:var(--edge)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+input,select,textarea{background:transparent;border:1px solid transparent;border-radius:5px;padding:3px 5px;width:100%}
+input:hover,textarea:hover,select:hover{border-color:var(--line)}
+input:focus,textarea:focus,select:focus{border-color:var(--edge);background:var(--paper2);outline:none}
+textarea{resize:none;field-sizing:content;min-height:2.6em;overflow:hidden}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:50px minmax(0,1fr);height:100%}
+.app.noside{grid-template-columns:minmax(0,1fr)}
+.app.noside .side{display:none}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--bg)}
+.logo{font:500 15px/1 'Inter Tight',Inter,sans-serif;letter-spacing:-.01em;white-space:nowrap}
+.top select{width:auto;max-width:180px;border-color:var(--line)}
+#pname{max-width:240px;font-weight:500}
+.st{color:var(--faint);font-size:12px;white-space:nowrap;margin-left:auto}
+.tb{white-space:nowrap}
+.tb.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+#refall{border-color:var(--acc);color:var(--acc)}
+.cv{position:relative;overflow:hidden;touch-action:none;background:var(--bg)}
+.cv.pan{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0}
+.band{position:absolute;left:-8000px;width:20000px;border-top:1px solid var(--line)}
+.band:nth-child(even){background:var(--band)}
+.band .hint{position:absolute;left:8040px;top:58px;color:var(--faint);font-size:13px;pointer-events:none}
+svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
+.edges .ln{fill:none;stroke:var(--edge);stroke-width:1.2}
+.edges .ln.on{stroke:var(--acc);stroke-width:1.8}
+.edges .ln.off{stroke-dasharray:3 4;opacity:.6}
+.edges .ln.sel{stroke:var(--ink);stroke-width:2}
+.edges .hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer;pointer-events:stroke}
+.edges .tmp{fill:none;stroke:var(--acc);stroke-width:1.5;stroke-dasharray:5 4}
+.rail{position:absolute;inset:0;pointer-events:none}
+.fl{position:absolute;left:14px;display:flex;align-items:baseline;gap:8px;pointer-events:auto}
+.fn{border:0;padding:0;font:300 26px/1 'Inter Tight',Inter,sans-serif;letter-spacing:-.02em;color:var(--ink)}
+.fl.closed .fn{color:var(--mute);font-size:16px}
+.fc{color:var(--faint);font-size:12px}
+.fa{width:26px;height:26px;padding:0;border-radius:50%;line-height:1;font-size:16px;color:var(--mute)}
+.zoom{position:absolute;left:14px;bottom:14px;display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:3px}
+.zoom button{border:0;min-width:30px;padding:4px 8px}
+#zl{min-width:48px;color:var(--mute);font-size:12px}
+.dock{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:4px}
+.dock button{border:0;display:grid;justify-items:center;gap:3px;padding:6px 10px 5px;font-size:11.5px;color:var(--mute)}
+.dock button:hover,.dock button.on{background:var(--paper2);color:var(--ink)}
+.ico{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 3px;border-radius:6px;background:var(--paper2);border:1px solid var(--line);font:500 11px/1 Inter,sans-serif;color:var(--ink)}
+.dpop{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--edge);border-radius:10px;padding:8px;width:min(560px,calc(100vw - 24px));max-height:min(60vh,520px);overflow-y:auto}
+.dpop h4{margin:8px 6px 4px;font:500 12px/1.2 Inter,sans-serif;color:var(--faint)}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:2px}
+.tile{display:flex;align-items:center;gap:8px;border:0;text-align:left;padding:6px;border-radius:6px;cursor:grab}
+.tile:hover{background:var(--paper2)}
+.tile span:last-child{display:grid}
+.tile small{color:var(--faint);font-size:11px;line-height:1.25}
+.node{position:absolute;left:0;top:0;width:264px;background:var(--paper);border:1px solid var(--line);border-radius:9px;will-change:transform}
+.node.wide{width:420px}
+.node.task{width:560px;border-color:var(--ink)}
+.node:hover{border-color:var(--edge)}
+.node.sel{box-shadow:0 0 0 2px var(--ink)}
+.node.pick{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
+.node.pick.sel{box-shadow:inset 3px 0 0 var(--acc),0 0 0 2px var(--ink)}
+.node.drop{opacity:.5}
+.node.drop .nt{text-decoration:line-through}
+.node.hid{display:none}
+.node.new{animation:pop .35s ease-out}
+@keyframes pop{from{opacity:0}}
+.nh{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:7px 6px 2px 10px;cursor:grab}
+.nk{color:var(--faint);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nc{display:flex;align-items:center;gap:2px}
+.nt{display:block;font:500 15px/1.3 Inter,sans-serif;padding:2px 9px 4px;margin:0 1px 2px;min-height:1.6em;width:calc(100% - 2px)}
+.nt::placeholder{color:var(--faint);font-weight:400}
+.task .nt{display:none}
+.ib,.spk,.star{border:0;padding:2px 6px;color:var(--mute);font-size:15px;line-height:1}
+.spk{color:var(--acc)}
+.star{color:var(--faint)}
+.star.on{color:var(--acc)}
+.stl{border:1px solid var(--acc);color:var(--acc);font-size:11px;padding:1px 6px;border-radius:10px;margin-right:2px;white-space:nowrap}
+.cm{min-width:22px;height:20px;padding:0 6px;font-size:11px;border-radius:10px 10px 10px 2px;background:var(--paper2)}
+.cm.al{background:var(--acc);border-color:var(--acc);color:#fff}
+.nb{padding:0 8px 6px}
+.nb>textarea[data-f=text]{color:var(--mute);font-size:12.5px}
+.nf{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
+.nf button,.nf .lnk{font-size:12px;padding:4px 9px}
+.nf .pri{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.lnk{color:var(--ink);border:1px solid var(--line);border-radius:6px;text-decoration:none;display:inline-block}
+.why input{color:var(--acc);font-size:12px}
+.why{padding:0 8px 6px}
+.port{position:absolute;left:50%;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:var(--paper);border:1px solid var(--edge);opacity:0;cursor:crosshair}
+.pt{top:-6px}
+.pb{bottom:-6px}
+.node:hover .port,.node.sel .port{opacity:1}
+.qt{position:absolute;right:0;bottom:100%;padding-bottom:7px;display:none;gap:4px}
+.node:hover .qt,.node.sel .qt{display:flex}
+.qt button{display:flex;align-items:center;gap:5px;background:var(--paper);font-size:11.5px;padding:3px 7px 3px 3px;border-radius:8px;white-space:nowrap}
+.qt .ico{min-width:18px;height:18px;font-size:10px}
+.task .tk{font:400 16px/1.45 Inter,sans-serif;color:var(--ink)}
+.srcs{display:flex;flex-wrap:wrap;gap:4px;margin:4px 2px}
+.srcs a,.srcs button{font-size:11.5px;padding:2px 8px;border:1px solid var(--line);border-radius:12px;color:var(--mute);text-decoration:none;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:4px 2px}
+.th{position:relative;aspect-ratio:1;border-radius:5px;overflow:hidden;background:var(--paper2)}
+.th img,.th video{width:100%;height:100%;object-fit:cover;display:block}
+.th button{position:absolute;right:3px;top:3px;border:0;background:var(--paper);padding:0 6px;font-size:12px;opacity:0}
+.th:hover button{opacity:1}
+.fileth{display:grid;place-items:center;padding:6px;text-align:center}
+.fileth a{font-size:11.5px;color:var(--ink);overflow-wrap:anywhere}
+.live{color:var(--acc);font-size:12px;margin:2px 3px}
+.shot{display:block;margin:2px 2px 6px;border-radius:6px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/10;background:var(--paper2)}
+.shot img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.drophere{border:1px dashed var(--edge);border-radius:6px;padding:14px;color:var(--faint);text-align:center;margin:4px 2px;font-size:12.5px}
+.tbl{width:100%;border-collapse:collapse;margin:2px 0}
+.tbl td{padding:1px 2px;border-top:1px solid var(--line);vertical-align:top}
+.tbl td.ac{white-space:nowrap;text-align:right}
+.tbl td.ac a,.tbl td.ac button{border:0;padding:3px 5px;font-size:12px;color:var(--mute);text-decoration:none}
+.tbl input{font-size:12.5px}
+.sel2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 62px;gap:4px;margin:2px 0 4px}
+.sel2 select,.sel1{border-color:var(--line);font-size:12px;padding:4px}
+.lbl{color:var(--faint);font-size:11.5px;margin:4px 3px 0}
+.outs{display:grid;gap:6px;margin-top:6px;max-height:420px;overflow-y:auto}
+.o{border:1px solid var(--line);border-radius:7px;padding:7px 8px;background:var(--paper2)}
+.o b{font-weight:500;display:block}
+.o p{margin:2px 0 4px;color:var(--mute);font-size:12.5px;white-space:pre-wrap}
+.o .r{display:flex;gap:4px}
+.o .r button{font-size:11.5px;padding:2px 8px}
+.v{font-size:11.5px;font-weight:500;margin-right:6px}
+.v.pass,.ok i{color:var(--ok)}
+.v.risk,.warn i{color:var(--risk)}
+.v.fail,.conflict i{color:var(--acc)}
+.svgimg{width:100%;display:block;border-radius:5px;background:var(--paper);border:1px solid var(--line);margin:4px 0}
+.busy{height:2px;margin:6px 2px 0;background:linear-gradient(90deg,transparent,var(--acc),transparent);background-size:40% 100%;background-repeat:no-repeat;animation:run 1.1s linear infinite}
+@keyframes run{from{background-position:-40% 0}to{background-position:140% 0}}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:3px 2px}
+.chip{font-size:11.5px;padding:3px 8px;border-radius:20px;color:var(--mute)}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.note{color:var(--faint);font-size:11.5px;margin:4px 3px}
+.err{color:var(--acc);font-size:12px;margin:4px 3px}
+.menu{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--edge);border-radius:8px;padding:4px;min-width:190px;display:grid}
+.menu button{border:0;text-align:left;padding:7px 10px;border-radius:5px}
+.menu button:hover{background:var(--paper2)}
+.menu .dz{color:var(--acc)}
+.pop{position:fixed;z-index:18;width:320px;max-width:calc(100vw - 24px);background:var(--paper);border:1px solid var(--edge);border-radius:12px;display:grid;grid-template-rows:auto minmax(0,1fr) auto;max-height:min(70vh,520px)}
+.ph{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.ph b{font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ph button{border:0;padding:2px 8px}
+.pt2{overflow-y:auto;padding:10px 12px;display:grid;gap:8px;align-content:start}
+.pm{white-space:pre-wrap;font-size:13px}
+.pm.me{background:var(--paper2);border-radius:8px;padding:6px 9px;justify-self:end;max-width:92%}
+.pm i{display:block;font-style:normal;font-size:11.5px;font-weight:500;margin-bottom:2px}
+.pm.wait{color:var(--faint)}
+.pf{border-top:1px solid var(--line);padding:8px 10px;display:grid;gap:6px}
+.pf textarea{border-color:var(--line);background:var(--bg);min-height:3em}
+.pf .row{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.pf .row button{font-size:12px;padding:4px 9px}
+.pf .pri{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.side{display:grid;grid-template-rows:auto minmax(0,1fr);border-left:1px solid var(--line);background:var(--paper);min-height:0}
+.tabs{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tab{border:0;border-radius:6px 6px 0 0;padding:8px 12px;color:var(--mute);font:500 14px/1 'Inter Tight',Inter,sans-serif}
+.tab[aria-selected=true]{color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
+.tabs .mut{margin-left:auto;align-self:center}
+.tabs .x{border:0;padding:4px 8px;align-self:center}
+.pane{display:none;min-height:0}
+.pane.on{display:grid}
+#kit{grid-template-rows:auto minmax(0,1fr)}
+#chat{grid-template-rows:minmax(0,1fr) auto}
+.mut{color:var(--faint);font-size:12px}
+.kq{padding:10px 12px;border-bottom:1px solid var(--line)}
+.kq input{border-color:var(--line);background:var(--bg);font-size:14px;padding:7px 9px}
+.kl{overflow-y:auto;padding:4px 6px 20px}
+.kg{border-bottom:1px solid var(--line)}
+.kg summary{cursor:pointer;padding:10px 8px;font-weight:500;display:flex;justify-content:space-between;list-style:none}
+.kg summary::-webkit-details-marker{display:none}
+.kg summary span{color:var(--faint);font-weight:400;font-size:12px}
+.ksel{padding:8px 12px 0;color:var(--mute);font-size:12px}
+.msgs{overflow-y:auto;padding:12px 14px;display:grid;align-content:start;gap:10px}
+.m{white-space:pre-wrap;font-size:13.5px}
+.m.u{background:var(--paper2);border-radius:8px;padding:8px 10px;justify-self:end;max-width:92%}
+.m.t{color:var(--faint);font-size:12px}
+.cf{border-top:1px solid var(--line);padding:10px 12px;display:grid;gap:6px}
+.cf textarea{border-color:var(--line);min-height:4.2em;font-size:14px;background:var(--bg)}
+.cf .row{display:flex;gap:6px;align-items:center}
+.cf .row select{width:auto;margin-right:auto;border-color:var(--line);font-size:12px}
+.cf .pri{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.empty{color:var(--faint);font-size:12.5px}
+@media (max-width:900px){.logo,#pname{display:none}}
+@media (max-width:760px){
+.app,.app.noside{grid-template-columns:minmax(0,1fr)}
+.st,.tb .lt{display:none}
+.side{position:fixed;left:0;right:0;bottom:0;height:62%;z-index:15;border-left:0;border-top:1px solid var(--edge)}
+.top select{max-width:120px}
+.dock{left:auto;right:10px;transform:none}
+.dock button{padding:6px 6px 5px}
+}
+@media (prefers-reduced-motion:reduce){.node.new,.busy{animation:none}}
+</style>
+</head>
+<body>
+<div class="app noside" id="app">
+<header class="top">
+<span class="logo">Creative Tree</span>
+<select id="plist" aria-label="Project"></select>
+<input id="pname" aria-label="Project name">
+<button id="pmenu" aria-label="Project actions">⋯</button>
+<span class="st" id="st">Loading…</span>
+<button class="tb" id="sum" title="Write a clear one-line title for every node that has none">✦ <span class="lt">Fill titles</span></button>
+<button class="tb" id="refall" hidden>↻ Refresh</button>
+<button class="tb" id="tkit">Toolkit</button>
+<button class="tb" id="tchat">Chat</button>
+</header>
+<main class="cv" id="cv">
+<div class="world" id="world"><div id="bands"></div><svg class="edges" id="edges"></svg><div id="nodes"></div></div>
+<div class="rail" id="rail"></div>
+<div class="zoom"><button id="zo" aria-label="Zoom out">−</button><button id="zl" aria-label="Reset zoom">100%</button><button id="zi" aria-label="Zoom in">+</button><button id="fit">Fit</button></div>
+<div class="dock" id="dock"></div>
+</main>
+<aside class="side" id="side">
+<div class="tabs" role="tablist"><button class="tab" role="tab" id="t-kit" aria-selected="true">Toolkit</button><button class="tab" role="tab" id="t-chat" aria-selected="false">Chat</button><span class="mut" id="aist">Connecting AI…</span><button class="x" id="sidex" aria-label="Close panel">×</button></div>
+<section class="pane on" id="kit"><div><div class="kq"><input id="kq" placeholder="Search tools, libraries, models" aria-label="Search toolkit"></div><div class="ksel" id="ksel"></div></div><div class="kl" id="kl"></div></section>
+<section class="pane" id="chat"><div class="msgs" id="msgs"></div>
+<form class="cf" id="cf"><textarea id="ci" placeholder="Try: give me 10 distant analogies for “calm” and put them on Ideas"></textarea><div class="row"><select id="cbrain" aria-label="AI depth"><option value="quick">Fast</option><option value="default" selected>Balanced</option><option value="complex">Deep</option></select><button type="button" id="stop" hidden>Stop</button><button class="pri" id="send">Send</button></div></form></section>
+</aside>
+</div>
+<input type="file" id="fi" accept="image/*" multiple hidden>
+<script src="/tree/shim.js"></script>
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ORDER=['brief','research','prod'];
+const NAMES={brief:'Inputs',research:'Ideas',prod:'Production'};
+const CARDL={brief:'Input',research:'Idea',prod:'Branch'};
+const TL={brief:'Brief',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
+const ADDS={brief:[['brief','Brief'],['files','Files: guides, models, videos'],['table','Competitors'],['card','Input or no-go zone'],['link','Link'],['gen','Input analysis']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
+const MODES={insights:'Input analysis',ideas:'Ideas',collide:'Collisions',prompts:'Prompts for a model',sketch:'Composition sketches'};
+const BRAINS={quick:'Fast',default:'Balanced',complex:'Deep'};
+const OPS={none:['No method',''],ban:['Anti-cliché','First list what anyone and any AI would make for this, then go somewhere else entirely.'],invert:['TRIZ: inversion','Do the opposite of the category habit: remove the main object, show its trace, swap cause and effect.'],contra:['TRIZ: contradiction','State the core contradiction (it must be X and not X) and resolve it with separation in time, space or scale.'],morph:['Morphological box','Split the task into axes (medium, motion, metaphor, material, angle, time) and combine unexpected values.'],analogy:['Distant analogy','Find how nature, navigation, architecture, science, crafts or other industries solve the same job. Transfer the principle, not the picture.'],bisoc:['Collide two inputs','Collide inputs in pairs: an element of one plus an element of another makes a new image.'],scamper:['SCAMPER','Substitute, combine, adapt, modify, put to other use, eliminate, reverse.'],scale:['Scale and viewpoint','Change scale and viewpoint: macro, top-down, from inside, years later, through the object itself.'],random:['Random stimulus','Pick an unrelated random word or object and force a connection to the task.'],oblique:['Oblique strategy','Use oblique strategies: honor the error as a hidden intention; remove the most important thing; make one thing huge.']};
+const TESTS={sec:['1-second test','Is it understood in one second without explanation?'],bad:['Bad-day test','How does it read the day after an incident, or in a hostile post?'],swap:['Logo-swap test','Would it work just as well with a competitor\'s logo? If yes, it fails.'],scale:['Scale test','Does the idea stretch across ten formats: banner, site, deck, vehicle, video?'],task:['Task fit','Does it do what this brief needs right now?'],make:['Producibility','Can it be made with the time and assets available?'],cliche:['Cliché check','How close is it to what the category or any AI would produce by default?'],legal:['Claims and legal','Any claims that need data, permission or legal review?']};
+const ROOMS={founder:['Founder','Busy and risk-averse; must retell it to the board'],board:['Investment committee','Ten people incl. CFO and lawyer; half veto anything risky'],buyer:['Target buyer','The person who signs the contract'],cand:['Candidate','A senior engineer deciding whether to join'],lay:['Non-designer','Smart, no design vocabulary'],rival:['Rival creative director','Looking for the weak spot']};
+const LIBS=[
+ ['pinterest','Pinterest','Moodboards','Broad visual search; expect the average','https://www.pinterest.com','https://www.pinterest.com/search/pins/?q=','Pi'],
+ ['arena','Are.na','Moodboards','Curated, less algorithmic channels','https://www.are.na','','Ar'],
+ ['cosmos','Cosmos','Moodboards','Visual discovery and collections','https://www.cosmos.so','','Co'],
+ ['savee','Savee','Moodboards','Designers\' saved inspiration','https://savee.it','','Sa'],
+ ['gimg','Google Images','Moodboards','Wide net of real-world photos','https://images.google.com','https://www.google.com/search?tbm=isch&q=','Gi'],
+ ['mobbin','Mobbin','Websites and apps','Real app and web UI patterns','https://mobbin.com','','Mo'],
+ ['godly','Godly','Websites and apps','Award-level web design','https://godly.website','','Go'],
+ ['awwwards','Awwwards','Websites and apps','Awarded websites','https://www.awwwards.com','','Aw'],
+ ['landbook','Land-book','Websites and apps','Landing page gallery','https://land-book.com','','Lb'],
+ ['siteinspire','Siteinspire','Websites and apps','Curated web design','https://www.siteinspire.com','','Si'],
+ ['brandnew','Brand New','Logos and identity','Reviews of new identities','https://www.underconsideration.com/brandnew/','','BN'],
+ ['logobook','Logobook','Logos and identity','Logo archive by shape and theme','https://www.logobook.com','','Lo'],
+ ['fontsinuse','Fonts In Use','Logos and identity','Typefaces in real work','https://fontsinuse.com','','FU'],
+ ['behance','Behance','Illustration','Case studies and illustration','https://www.behance.net','','Be'],
+ ['dribbble','Dribbble','Illustration','Icons, illustration, motion','https://dribbble.com','https://dribbble.com/search/','Dr'],
+ ['adsworld','Ads of the World','Advertising','Campaign archive','https://www.adsoftheworld.com','','AW'],
+ ['dandad','D&AD','Advertising','Award archive','https://www.dandad.org','','DA'],
+ ['cannes','Cannes Lions','Advertising','Festival work','https://www.canneslions.com','','CL'],
+ ['uspto','USPTO','Trademarks','US trademark search','https://tmsearch.uspto.gov','','US'],
+ ['euipo','EUIPO eSearch','Trademarks','EU trademarks','https://euipo.europa.eu/eSearch/','','EU'],
+ ['tmview','TMview','Trademarks','Many national offices at once','https://www.tmdn.org/tmview/','','TM'],
+ ['wipo','WIPO Brand Database','Trademarks','International marks','https://branddb.wipo.int','','WI']];
+const MODELS=[['Image','Krea 2','Fast aesthetic exploration','K2'],['Image','Nano Banana Pro','Edits and consistency from refs','NB'],['Image','Flux 2','Photoreal, precise control','F2'],['Image','Midjourney','Mood and style exploration','MJ'],['Image','Ideogram','Text inside images','Id'],['Image','Recraft','Vectors, icons, logo drafts','Rc'],['Video','Seedance 2.5','Long shots with sound, many refs','Sd'],['Video','Kling 4.0','Motion and multi-shot','Kl'],['Video','Veo 3.1','Short polished shots, first and last frame','Ve'],['Video','Runway Aleph 2.0','Edit footage: new background, insert a product','Rw'],['Video','Luma Modify','Restyle footage, keep the motion','Lu'],['3D','Tripo','Clean hard-surface meshes','Tr'],['3D','Meshy','Textured models and rigging','Me'],['3D','Rodin','High-detail models','Ro'],['3D','Marble','Whole 3D worlds with exact camera','Ma'],['Tool','Cinema 4D · MCP','Scene work driven by Claude','C4'],['Tool','Blender · MCP','Scene work driven by Claude','Bl'],['Tool','After Effects','Type and motion finishing','AE']];
+const TARGETS=MODELS.filter(m=>m[0]!=='Tool').map(m=>m[1]);
+const TOOLS=MODELS.filter(m=>m[0]!=='Image').map(m=>m[1]);
+const FMTS=['1:1','4:5','16:9','9:16','6 s','15 s'];
+const STS=['Planned','In progress','In review','Delivered'];
+const OPIC={ban:'≠',invert:'↺',contra:'⇋',morph:'⊞',analogy:'≈',bisoc:'✕',scamper:'S',scale:'⤢',random:'?',oblique:'↯'};
+const TIC={sec:'1s',bad:'BD',swap:'LS',scale:'Sc',task:'TF',make:'Pr',cliche:'Cl',legal:'Lg'};
+const RIC={founder:'Fo',board:'IC',buyer:'By',cand:'Ca',lay:'ND',rival:'RC'};
+
+const mk=(t,f,o={})=>Object.assign({id:uid(),t,f,x:40,y:56,title:'',text:'',thread:[]},
+ t==='board'?{items:[]}:t==='files'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
+
+function template(){
+ const T=mk('task','brief',{id:'t0',x:40,y:56,title:'Task',text:'Need an animated banner for Avride\'s robotaxi launch in Miami (LinkedIn 1200×627 plus a 9:16 cut, [TBD: duration]) that answers why Avride when Waymo, Zoox and Tesla are already here. Follow the brand guide [TBD: awaiting], keep the voice confident and safety-first, use the real vehicle model, and avoid everything on the no-go list.',pick:true});
+ const b=mk('brief','brief',{id:'b1',x:40,y:350,title:'Launch banner: why Avride, when Waymo, Zoox and Tesla are already in Miami',text:'Animated banner for the robotaxi launch. Key question: why Avride, when Waymo, Zoox and Tesla already operate in the city. Brand voice: confident, short, safety-first.'});
+ const t=mk('table','brief',{id:'r1',x:340,y:350,title:'Three rivals already drive in Miami: Waymo, Zoox, Tesla',rows:[{name:'Waymo',url:'https://waymo.com',note:'in Miami since January 2026'},{name:'Zoox',url:'https://zoox.com',note:'since April 2026'},{name:'Tesla Robotaxi',url:'https://www.tesla.com',note:'since July 2026, launched with a Spanglish post'}]});
+ const z=mk('card','brief',{id:'r2',x:800,y:350,nogo:true,title:'Avoid sunsets, palms, Miami Vice neon, empty seats, lidar, Spanglish',text:'Sunset on Ocean Drive, palms, Miami Vice neon, empty driver\'s seat, lidar point clouds, "the future is here", a Spanglish greeting (Tesla used it).'});
+ const fs=mk('files','brief',{id:'f1',x:1100,y:350,title:'Brand guide and 3D vehicle model, both pending from the client',links:'Brand guide: awaiting from the client\nVehicle 3D model: awaiting, goes to Cinema 4D\nPrevious launch videos: to collect'});
+ const an=mk('gen','brief',{id:'a1',x:1400,y:350,title:'Tensions, white space and gaps in the inputs',mode:'insights',n:4,out:[{title:'Fourth to market: "we are here" will not stand out',text:'Waymo, Zoox and Tesla all launched in Miami in 2026.'},{title:'The local greeting is taken by Tesla',text:'Tesla launched with a Spanglish greeting, so that move fails the logo-swap test.'}]});
+ const g=mk('gen','research',{id:'r4',x:560,y:300,title:'Collide the launch with navigation, aviation, hotel service, lighthouses',mode:'collide',op:'analogy',n:6,pick:true});
+ const i1=mk('card','research',{id:'c1',x:140,title:'Neon sign video: the car rolls in, the Art Deco sign lights up',text:'Night facade; the neon switches on: open. Hypothesis: no refs or composition yet.',pick:true,thread:[{role:'ai',kind:'warn',text:'Fits the task, but "open" alone repeats "we are here". Add what makes Avride different before it goes to design.'}]});
+ const i3=mk('card','research',{id:'c4',x:440,title:'The car as a lighthouse: one steady beam guiding the night city',text:'Safety without showing danger.',pick:true});
+ const i4=mk('card','research',{id:'c5',x:740,title:'Concierge, not chauffeur: a held door, a key tag, service that drives',text:'Built on Avride\'s own "At your service".',pick:true});
+ const i2=mk('card','research',{id:'c2',x:1180,title:'One calm car amid nervous Miami traffic',drop:true,why:'Not a launch message; would need angry drivers on screen'});
+ const ch=mk('check','research',{id:'c3',x:1100,y:330,title:'Gate before production: is it clear, safe and only ours?',tests:['sec','bad','swap','task'],rooms:['founder','board']});
+ const d1=mk('source','prod',{id:'d1',x:140,title:'Art Deco neon hotel signs at night',lib:'pinterest',q:'art deco neon hotel sign miami night'});
+ const d2=mk('source','prod',{id:'d2',x:440,title:'Lighthouse beams in long exposure',lib:'gimg',q:'lighthouse beam long exposure night'});
+ const d3=mk('card','prod',{id:'d3',x:740,title:'Concierge cues to shoot: bell, key tag, held door'});
+ const p1=mk('gen','prod',{id:'p1',x:1040,title:'Sketch: night facade, the sign switches on, the car arrives below, 1200×627',mode:'sketch',n:4});
+ return {v:5,id:uid(),name:'Avride · demo',open:{brief:true,research:true,prod:true},nodes:[T,b,t,z,fs,an,g,i1,i3,i4,i2,ch,d1,d2,d3,p1],
+  edges:[['t0','r4'],['r4','c1'],['r4','c4'],['r4','c5'],['r4','c2'],['c1','c3'],['c4','c3'],['c5','c3'],['c1','d1'],['c4','d2'],['c5','d3'],['c1','p1']].map(([a,b])=>({id:uid(),a,b})),chat:[],view:null};
+}
+function blank(){return {v:5,id:uid(),name:'Untitled project',open:{brief:true,research:true,prod:true},nodes:[mk('task','brief',{x:40,y:56,title:'Task'}),mk('brief','brief',{x:40,y:300})],edges:[],chat:[],view:null};}
+
+let DICT=null,dictFor=null,livePart='';
+let P=template(),V={x:220,y:20,z:.8},sel=null,geo={},els={},U=[],R=[],DB=null,AS=null,S=null,LIM=null,projects=[];
+const cv=$('#cv'),world=$('#world'),nodesEl=$('#nodes'),bandsEl=$('#bands'),edgesEl=$('#edges'),rail=$('#rail');
+const byId=id=>P.nodes.find(n=>n.id===id);
+const libOf=k=>LIBS.find(l=>l[0]===k)||LIBS[0];
+const use=n=>window.claude&&window.claude.use?window.claude.use(n).catch(()=>null):Promise.resolve(null);
+const okUrl=u=>/^https:\/\/[^\s"'<>]+$/.test(String(u||''));
+const BLOBP=window.CT_BLOB||'/_blob/';
+const imgSrc=it=>it.asset?BLOBP+encodeURIComponent(it.asset):(/^data:image\//.test(it.src||'')?it.src:'');
+const blob=it=>it.asset?BLOBP+encodeURIComponent(it.asset):'';
+const svgSrc=s=>typeof s==='string'&&/^\s*<svg[\s>]/i.test(s)&&s.length<40000?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s):'';
+function lab(n){
+ if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card').indexOf(n);return 'Idea '+(i+1);}
+ if(n.t==='card')return n.nogo?'No-go zone':CARDL[n.f];
+ if(n.t==='gen'){const m=n.op&&n.op!=='none'&&OPS[n.op]?' · '+OPS[n.op][0]:'';return (n.mode==='sketch'?'Sketches':n.mode==='insights'?'Input analysis':n.mode==='prompts'?'Prompts for '+n.target:n.mode==='collide'?'Collisions':'Generator')+m;}
+ if(n.t==='board'&&n.f==='prod')return 'Final refs';
+ if(n.t==='source')return libOf(n.lib)[1];
+ return TL[n.t];
+}
+const srcUrl=n=>{const l=libOf(n.lib);return l[5]&&n.q?l[5]+encodeURIComponent(n.q):l[4];};
+
+/* staleness: a node remembers a fingerprint of everything upstream */
+function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return h.toString(36);}
+function ancestors(n,seen=new Set()){for(const e of P.edges)if(e.b===n.id&&!seen.has(e.a)){seen.add(e.a);const a=byId(e.a);if(a)ancestors(a,seen);}return seen;}
+const contentOf=x=>[x.title,x.text,x.links,x.q,x.url,x.nogo?'n':'',JSON.stringify(x.rows||[]),(x.items||[]).map(i=>i.id).join(','),x.drop?'d':''].join('|');
+function upstream(n){const ids=new Set(ancestors(n));if(n.t==='task')P.nodes.forEach(x=>{if(x.f==='brief'&&x.id!==n.id)ids.add(x.id);});return [...ids].sort();}
+function basisOf(n){return hashStr(upstream(n).map(id=>{const x=byId(id);return x?id+':'+contentOf(x):''}).join('\n'));}
+function isStale(n){if(n.f==='brief'&&n.t!=='task')return false;if(!upstream(n).length)return false;return !!n.basis&&basisOf(n)!==n.basis;}
+
+function snap(){U.push(JSON.stringify({nodes:P.nodes,edges:P.edges,open:P.open}));if(U.length>60)U.shift();R=[];}
+function restore(s){const o=JSON.parse(s);P.nodes=o.nodes;P.edges=o.edges;P.open=o.open;sel=null;closePop();renderAll();save();}
+function undo(){if(!U.length)return;R.push(JSON.stringify({nodes:P.nodes,edges:P.edges,open:P.open}));restore(U.pop());}
+function redo(){if(!R.length)return;U.push(JSON.stringify({nodes:P.nodes,edges:P.edges,open:P.open}));restore(R.pop());}
+
+/* toolkit */
+const KIT=[
+ ['Inputs','Everything the work starts from',[
+  {name:'Files',ic:'▤',desc:'Guides, PDFs, videos, images; links to 3D models',fl:'brief',fn:(f,from,x)=>addNode('files','brief',{},null,{x})},
+  {name:'Competitors',ic:'⇄',desc:'A table with links; the AI can suggest more',fl:'brief',fn:(f,from,x)=>addNode('table','brief',{},null,{x})},
+  {name:'No-go zone',ic:'⊘',desc:'What everyone would make; every generator avoids it',fl:'brief',fn:(f,from,x)=>addNode('card','brief',{nogo:true},null,{x})},
+  {name:'Brief',ic:'Br',desc:'Task, audience, constraints, timing',fl:'brief',fn:(f,from,x)=>addNode('brief','brief',{},null,{x})},
+  {name:'Input analysis',ic:'⌕',desc:'Tensions, what rivals own, white space, gaps',fl:'brief',fn:(f,from,x)=>addNode('gen','brief',{title:'Tensions, white space and gaps in the inputs',mode:'insights',n:5},null,{x})}]],
+ ['Notes','Raw thoughts on the Ideas floor',[
+  {name:'Note',ic:'¶',desc:'A typed thought',fl:'research',fn:(f,from,x)=>addNode('card','research',{},from,{x})},
+  {name:'Voice note',ic:'◉',desc:'Speak; it types as you talk',fl:'research',fn:(f,from,x)=>{const m=addNode('card','research',{},from,{x});toggleDict(m);return m;}}]],
+ ['Idea methods','Generators with a method; connect inputs to them',Object.entries(OPS).filter(([k])=>k!=='none').map(([k,v])=>({name:v[0],ic:OPIC[k],desc:v[1],fl:'research',fn:(f,from,x)=>addNode('gen',f,{op:k,mode:k==='bisoc'?'collide':'ideas'},from,{x})}))],
+ ['Checks','Gates before production',Object.entries(TESTS).map(([k,v])=>({name:v[0],ic:TIC[k],desc:v[1],fn:(f,from,x)=>addNode('check',f,{tests:[k],rooms:[]},from,{x})}))],
+ ['Rooms','Simulated audiences that predict objections',Object.entries(ROOMS).map(([k,v])=>({name:v[0],ic:RIC[k],desc:v[1],fn:(f,from,x)=>addNode('check',f,{tests:[],rooms:[k]},from,{x})}))],
+ ['Sketch tools','Cheap composition sketches and storyboards',[{name:'Composition sketches',ic:'Sk',desc:'SVG layouts from an idea',fl:'prod',fn:(f,from,x)=>addNode('gen','prod',{title:pre('Sketch: ',from),mode:'sketch',n:4},from,{x})},{name:'Storyboard frames',ic:'St',desc:'Shot-by-shot frames for motion',fl:'prod',fn:(f,from,x)=>addNode('gen','prod',{title:pre('Storyboard, frame by frame with timing: ',from)||'Storyboard, frame by frame with timing',mode:'sketch',n:6},from,{x})}]],
+ ...[...new Set(LIBS.map(l=>l[2]))].map(g=>[g,'Reference libraries; search opens in a new tab',LIBS.filter(l=>l[2]===g).map(l=>({name:l[1],ic:l[6],desc:l[3],lib:1,fl:'prod',fn:(f,from,x)=>addNode('source','prod',{lib:l[0],q:''},from,{x})}))]),
+ ...['Image','Video','3D','Tool'].map(g=>[g==='Tool'?'Production tools':g+' models','Executors; Claude writes the prompts until the model is connected',MODELS.filter(m=>m[0]===g).map(m=>({name:m[1],ic:m[3],desc:m[2],fl:'prod',fn:(f,from,x)=>g==='Tool'?addNode('prod','prod',{title:pre('Make in '+m[1]+': ',from)||'Make in '+m[1],tools:[m[1]]},from,{x}):addNode('gen','prod',{title:pre('',from),mode:'prompts',target:m[1],n:4},from,{x})}))])
+];
+const pre=(p,from)=>{const s=from&&byId(from);return s&&s.title?(p+s.title).slice(0,200):'';};
+const kitByName=name=>{for(let g=0;g<KIT.length;g++){const i=KIT[g][2].findIndex(it=>it.name===name);if(i>=0)return g+':'+i;}return null;};
+const kitAt=k=>{const[g,i]=String(k).split(':').map(Number);return KIT[g]&&KIT[g][2][i];};
+const DOCK=[['Inputs','▤',['Inputs','Notes']],['Methods','≈',['Idea methods']],['Checks','✓',['Checks','Rooms']],['Libraries','Pi',[...new Set(LIBS.map(l=>l[2]))]],['Models','Kl',['Image models','Video models','3D models','Sketch tools','Production tools']]];
+function quick(n){
+ if(n.t==='task'||n.drop)return [];
+ if(n.f==='brief')return n.t==='brief'||n.t==='files'||n.t==='table'?['Input analysis']:[];
+ if(n.f==='research'&&n.t==='card')return ['Composition sketches','Pinterest','Mobbin','1-second test'];
+ if(n.f==='prod'&&['card','source','board'].includes(n.t))return ['Composition sketches','Kling 4.0','Seedance 2.5','Krea 2'];
+ return [];
+}
+const PH=n=>n.t==='brief'?'What the brief asks for, in one line':n.t==='files'?'What these files are':n.t==='table'?'Who already competes, in one line':n.t==='link'?'What this site shows':n.t==='source'?'What refs to find':n.t==='board'?'What these refs are for':n.t==='prod'?'What gets made, with which tool':n.t==='check'?'What this gate decides':n.t==='gen'?(n.mode==='insights'?'What to look for in the inputs':'Direction in one line: what to look for'):n.nogo?'What to avoid, in one line':n.f==='brief'?'What this input says, in one line':n.f==='research'?'The idea as a prompt: format, subject, action':'This branch as a prompt: what we make and how';
+const tileHTML=(k,cls)=>{const it=kitAt(k);return it?`<button class="${cls}" data-k="${k}" draggable="true" title="${esc(it.desc)}"><span class="ico">${esc(it.ic)}</span>${cls==='tile'?`<span><b style="font-weight:500">${esc(it.name)}</b><small>${esc(it.desc)}</small></span>`:esc(it.name)}</button>`:'';};
+
+const opts=(obj,cur)=>Object.entries(obj).map(([k,v])=>`<option value="${k}"${cur===k?' selected':''}>${esc(Array.isArray(v)?v[0]:v)}</option>`).join('');
+const itemHTML=it=>{const k=it.kind||'image';const x=`<button data-a="imgdel" data-i="${esc(it.id)}" aria-label="Remove">×</button>`;
+ if(k==='image')return `<div class="th"><img alt="" src="${esc(imgSrc(it))}">${x}</div>`;
+ if(k==='video'&&blob(it))return `<div class="th"><video src="${esc(blob(it))}" muted loop autoplay playsinline></video>${x}</div>`;
+ return `<div class="th fileth"><a href="${esc(blob(it))}" target="_blank" rel="noopener">${esc(it.name||'file')}</a>${x}</div>`;};
+const thumbs=n=>n.items.length?`<div class="grid">${n.items.map(itemHTML).join('')}</div>`:`<div class="drophere">${n.t==='files'?'Drop guides, PDFs, videos, images':'Drop or paste images'}${n.t==='link'?(window.CT_SHOT?' of the site':': a site screenshot'):n.t==='source'?' you found here':''}</div>`;
+function sources(){
+ const out=[];
+ for(const n of P.nodes.filter(x=>x.f==='brief'&&x.t!=='task')){
+  if(n.t==='link'&&okUrl(n.url))out.push([n.title||n.url,n.url]);
+  if(n.t==='table')n.rows.forEach(r=>{if(okUrl(r.url))out.push([r.name||r.url,r.url]);});
+  (n.items||[]).forEach(i=>{if(i.asset&&i.kind!=='image')out.push([i.name||'file',blob(i)]);});
+  if(n.t==='files'&&n.links)(n.links.match(/https:\/\/[^\s"'<>]+/g)||[]).forEach(u=>out.push([u.replace(/^https:\/\//,'').slice(0,36),u]));
+ }
+ return out;
+}
+function body(n){
+ if(n.t==='task'){const ins=P.nodes.filter(x=>x.f==='brief'&&x.t!=='task');const src=sources();
+  return `<textarea class="tk" data-f="text" placeholder="One clear prompt: what, for whom, which formats, by which brief and guide, what to avoid">${esc(n.text)}</textarea><div class="lbl">From ${ins.length} input${ins.length===1?'':'s'}</div><div class="srcs">${ins.map(x=>`<button data-a="goto" data-i="${esc(x.id)}" title="${esc(x.title)}">${esc(x.title||lab(x))}</button>`).join('')}${src.map(([t,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join('')}</div>`;}
+ if(n.t==='brief'||n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, constraints, timing':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'');
+ if(n.t==='board')return thumbs(n);
+ if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea><div class="note">3D files are kept as links for now.</div>`;
+ if(n.t==='link')return (window.CT_SHOT&&okUrl(n.url)?`<a class="shot" href="${esc(n.url)}" target="_blank" rel="noopener"><img alt="Homepage of ${esc(n.url)}" loading="lazy" src="${esc(window.CT_SHOT+encodeURIComponent(n.url))}"></a>`:'')+`<input data-f="url" placeholder="https://site" value="${esc(n.url)}"><textarea data-f="text" placeholder="Notes">${esc(n.text)}</textarea>`+thumbs(n);
+ if(n.t==='source'){const l=libOf(n.lib);return `<div class="lbl">${l[5]?'Search query':'Search there for'} · ${esc(l[3])}</div><input data-f="q" placeholder="a few words" value="${esc(n.q)}">`+thumbs(n);}
+ if(n.t==='table')return `<table class="tbl"><tbody>${n.rows.map((r,i)=>`<tr><td><input data-f="row:${i}:name" value="${esc(r.name)}" placeholder="Name"><input data-f="row:${i}:url" value="${esc(r.url)}" placeholder="https://"><input data-f="row:${i}:note" value="${esc(r.note)}" placeholder="Note"></td><td class="ac">${okUrl(r.url)?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Site ↗</a><br>`:''}<button data-a="rowlink" data-i="${i}">→ card</button><br><button data-a="rowdel" data-i="${i}">remove</button></td></tr>`).join('')}</tbody></table>${n.rows.length?'':'<div class="empty">Add competitors by hand or ask the AI</div>'}`;
+ if(n.t==='gen'){
+  const ins=inputs(n).length;
+  return `<div class="sel2"><select data-f="mode" aria-label="Mode">${opts(MODES,n.mode)}</select><select data-f="op" aria-label="Method">${opts(OPS,n.op)}</select><select data-f="n" aria-label="How many">${[3,4,6,8,12].map(k=>`<option${+n.n===k?' selected':''}>${k}</option>`).join('')}</select></div>`
+  +`<div class="sel2" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><select data-f="brain" aria-label="AI depth">${opts(BRAINS,n.brain||'default')}</select>${n.mode==='prompts'?`<select data-f="target" aria-label="Target model">${TARGETS.map(t=>`<option${n.target===t?' selected':''}>${esc(t)}</option>`).join('')}</select>`:'<span></span>'}</div>`
+  +`<div class="note">${n.f==='brief'?'Reads every input on this floor.':`Inputs: ${ins}.`} Runs on Claude now: text${n.mode==='sketch'?' and SVG sketches':''}. Image and video models connect through Weave or Krea.</div>`
+  +(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
+  +(n.out.length?`<div class="outs sc">${n.out.map((o,i)=>`<div class="o">${o.svg&&svgSrc(o.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(o.svg))}">`:''}<b>${esc(o.title)}</b><p>${esc(o.text)}</p><div class="r"><button data-a="outup" data-i="${i}">${n.f==='research'?'+ add as idea':'+ add as card'}</button><button data-a="outdel" data-i="${i}">remove</button></div></div>`).join('')}</div>`:'');
+ }
+ if(n.t==='check'){
+  const ins=inputs(n);
+  return `<div class="lbl">Tests</div><div class="chips">${Object.entries(TESTS).map(([k,v])=>`<button class="chip${n.tests.includes(k)?' on':''}" data-a="test" data-v="${k}" title="${esc(v[1])}">${esc(v[0])}</button>`).join('')}</div><div class="lbl">Rooms</div><div class="chips">${Object.entries(ROOMS).map(([k,v])=>`<button class="chip${n.rooms.includes(k)?' on':''}" data-a="room" data-v="${k}" title="${esc(v[1])}">${esc(v[0])}</button>`).join('')}</div>`
+  +`<div class="note">Checks ${ins.length} connected node${ins.length===1?'':'s'}. The room predicts objections; it does not vote.</div>`
+  +(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
+  +(n.res.length?`<div class="outs sc">${n.res.map(r=>`<div class="o"><b><span class="v ${esc(r.verdict)}">${esc(r.verdict)}</span>${esc(r.title)}</b><p>${esc(r.notes)}</p></div>`).join('')}</div>`:'');
+ }
+ if(n.t==='prod')return `<div class="lbl">Tools</div><div class="chips">${TOOLS.map(t=>`<button class="chip${n.tools.includes(t)?' on':''}" data-a="tool" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="lbl">Formats</div><div class="chips">${FMTS.map(t=>`<button class="chip${n.fmt.includes(t)?' on':''}" data-a="fmt" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="lbl">Status</div><select class="sel1" data-f="st">${STS.map(s=>`<option${n.st===s?' selected':''}>${s}</option>`).join('')}</select><textarea data-f="text" placeholder="Production notes">${esc(n.text)}</textarea><div class="note">Kling, Veo and Cinema 4D are tracked by hand for now.</div>`;
+ return '';
+}
+function foot(n){
+ const a=[];
+ if(n.t==='task')a.push(['task','Rewrite from inputs',1]);
+ if(n.t==='brief')a.push(['bq','Questions for the client']);
+ if((n.t==='brief'||n.t==='card')&&DICT)a.push(['dict',dictFor===n.id?'Stop dictation':'Dictate']);
+ if(n.t==='files')a.push(['addfile','+ files']);
+ if(n.t==='table'){a.push(['rowadd','+ row']);a.push(['aifind','Find with AI']);}
+ if(n.t==='board'||n.t==='link'||n.t==='source'){a.push(['addimg','+ images']);if(n.items.length&&LIM&&LIM.images)a.push(['readrefs','Read the refs']);}
+ if(n.t==='gen'||n.t==='check')a.push(['run',n.busy?'Running…':'Run',1]);
+ if(n.f==='research'&&n.t==='card')a.push(['up','Develop →']);
+ let h=a.map(([k,v,p])=>`<button data-a="${k}"${p?' class="pri"':''}${k==='run'&&n.busy?' disabled':''}>${v}</button>`).join('');
+ if(n.t==='link'&&okUrl(n.url))h+=`<a class="lnk" href="${esc(n.url)}" target="_blank" rel="noopener">Open ↗</a>`;
+ if(n.t==='source'){const l=libOf(n.lib);h+=`<a class="lnk" href="${esc(srcUrl(n))}" target="_blank" rel="noopener">${l[5]&&n.q?'Search':'Open'} ${esc(l[1])} ↗</a>`;}
+ return h;
+}
+function nodeHTML(n){
+ const th=n.thread||[];const st=isStale(n);
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button></span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea><div class="nb">${body(n)}</div>${n.drop?`<div class="why"><input data-f="why" placeholder="Why it was dropped" value="${esc(n.why||'')}"></div>`:''}<div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
+}
+const ro=new ResizeObserver(()=>schedule());
+const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
+function grow(t){t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';}
+function cls(n){return 'node'+(n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(n.drop?' drop':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
+function renderNode(n,fresh){
+ let el=els[n.id];
+ if(!el){el=document.createElement('div');el.dataset.id=n.id;nodesEl.appendChild(el);els[n.id]=el;ro.observe(el);}
+ el.className=cls(n)+(fresh?' new':'');el.innerHTML=nodeHTML(n);
+ if(!FS)el.querySelectorAll('textarea').forEach(grow);
+ schedule();
+}
+function renderAll(){
+ for(const id in els){ro.unobserve(els[id]);els[id].remove();}
+ els={};
+ bandsEl.innerHTML=ORDER.slice().reverse().map(k=>`<div class="band" data-band="${k}"><div class="hint"></div></div>`).join('');
+ P.nodes.forEach(n=>renderNode(n));
+ $('#pname').value=P.name;renderChat();layout();kitSel();markStale();
+}
+let raf=0;
+function schedule(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;layout();});}
+function layout(){
+ let y=0;
+ for(const k of ORDER.slice().reverse()){
+  const ns=P.nodes.filter(n=>n.f===k);let h=64;
+  if(P.open[k]){let m=0;for(const n of ns){const el=els[n.id];m=Math.max(m,n.y+(el?el.offsetHeight:160));}h=Math.max(260,m+60);}
+  geo[k]={top:y,h,c:ns.length};y+=h;
+ }
+ for(const b of bandsEl.children){const g=geo[b.dataset.band];b.style.top=g.top+'px';b.style.height=g.h+'px';b.firstChild.textContent=P.open[b.dataset.band]&&!g.c?'Empty. Press + next to the floor name, double-click here, or drag a tool from the dock':'';}
+ for(const n of P.nodes){const el=els[n.id];if(!el)continue;el.classList.toggle('hid',!P.open[n.f]);const p=pos(n);el.style.transform=`translate(${p.x}px,${p.y}px)`;}
+ drawEdges();placeRail();placePop();
+}
+function pos(n){return n._ax!=null?{x:n._ax,y:n._ay}:{x:n.x,y:geo[n.f]?geo[n.f].top+n.y:0};}
+function rect(n){
+ if(!P.open[n.f]){const g=geo[n.f];return {x:n.x,y:g.top+22,w:264,h:20,hid:1};}
+ const p=pos(n),el=els[n.id];return {x:p.x,y:p.y,w:el?el.offsetWidth:264,h:el?el.offsetHeight:120};
+}
+function curve(A,B){
+ const ac=A.y+A.h/2,bc=B.y+B.h/2;
+ if(Math.abs(ac-bc)<Math.max(A.h,B.h)/2){const a={x:A.x+A.w,y:ac},b={x:B.x,y:bc};if(B.x<A.x){a.x=A.x;b.x=B.x+B.w;}const k=Math.max(40,Math.abs(b.x-a.x)*.4)*(b.x>=a.x?1:-1);return `M${a.x} ${a.y}C${a.x+k} ${a.y} ${b.x-k} ${b.y} ${b.x} ${b.y}`;}
+ const up=ac>bc,a={x:A.x+A.w/2,y:up?A.y:A.y+A.h},b={x:B.x+B.w/2,y:up?B.y+B.h:B.y},k=Math.max(30,Math.abs(a.y-b.y)*.45)*(up?-1:1);
+ return `M${a.x} ${a.y}C${a.x} ${a.y+k} ${b.x} ${b.y-k} ${b.x} ${b.y}`;
+}
+let tmpPath='';
+function drawEdges(){
+ let h='';
+ for(const e of P.edges){const A=byId(e.a),B=byId(e.b);if(!A||!B)continue;const ra=rect(A),rb=rect(B),d=curve(ra,rb);
+  const c=(A.pick&&B.pick?' on':'')+(A.drop||B.drop||ra.hid||rb.hid?' off':'')+(sel&&sel.k==='e'&&sel.id===e.id?' sel':'');
+  h+=`<path class="hit" data-edge="${e.id}" d="${d}"/><path class="ln${c}" d="${d}"/>`;}
+ edgesEl.innerHTML=h+(tmpPath?`<path class="tmp" d="${tmpPath}"/>`:'');
+}
+function placeRail(){
+ rail.innerHTML=ORDER.slice().reverse().map(k=>{const g=geo[k];if(!g)return '';const top=P.open[k]?V.y+g.top*V.z+12:V.y+(g.top+g.h/2)*V.z-11;
+  const pk=P.nodes.filter(n=>n.f==='research'&&n.t==='card'&&n.pick).length;
+  return `<div class="fl${P.open[k]?'':' closed'}" style="top:${top}px"><button class="fn" data-fl="${k}" aria-expanded="${P.open[k]}">${NAMES[k]}</button><span class="fc">${k==='research'&&g.c?`${g.c} · ${pk} shortlisted`:(g.c||'')}</span><button class="fa" data-add="${k}" aria-label="Add to ${NAMES[k]}">+</button></div>`;}).join('');
+}
+function applyView(){world.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.z})`;$('#zl').textContent=Math.round(V.z*100)+'%';placeRail();placePop();}
+function zoomAt(cx,cy,f){const r=cv.getBoundingClientRect(),px=cx-r.left,py=cy-r.top,z=clamp(V.z*f,.2,2);V.x=px-(px-V.x)*(z/V.z);V.y=py-(py-V.y)*(z/V.z);V.z=z;applyView();saveView();}
+function fit(){
+ const vis=P.nodes.filter(n=>P.open[n.f]);const r=cv.getBoundingClientRect();
+ if(!vis.length){V={x:180,y:20,z:.9};applyView();return;}
+ let x0=1e9,x1=-1e9;for(const n of vis){const q=rect(n);x0=Math.min(x0,q.x);x1=Math.max(x1,q.x+q.w);}
+ const y1=geo.brief.top+geo.brief.h;
+ let z=clamp(Math.min((r.width-260)/(x1-x0+80),(r.height-90)/y1),.25,1.2);
+ const minZ=r.width<600?.55:.45;
+ if(z<minZ){z=minZ;const b=P.nodes.find(n=>n.t==='task')||vis[0],q=rect(b);V={z,x:Math.min(200,r.width/2-(q.x+q.w/2)*z),y:r.height-80-y1*z};}
+ else V={z,x:240-(x0-40)*z,y:10};
+ applyView();saveView();
+}
+function floorAt(wy){for(const k of ORDER){const g=geo[k];if(wy>=g.top&&wy<g.top+g.h)return k;}return wy<0?'prod':'brief';}
+function toWorld(cx,cy){const r=cv.getBoundingClientRect();return {x:(cx-r.left-V.x)/V.z,y:(cy-r.top-V.y)/V.z};}
+function select(k,id){sel=k?{k,id}:null;for(const n of P.nodes){const el=els[n.id];if(el)el.classList.toggle('sel',!!(sel&&sel.k==='n'&&sel.id===n.id));}drawEdges();kitSel();}
+function freeSpot(f,x){const ns=P.nodes.filter(n=>n.f===f);let y=56;while(ns.some(n=>Math.abs(n.x-x)<250&&Math.abs(n.y-y)<120))y+=40;return y;}
+function viewX(){return Math.round(toWorld(cv.getBoundingClientRect().left+cv.clientWidth/2,0).x-132);}
+function addNode(t,f,o={},from,at){
+ snap();P.open[f]=true;
+ const n=mk(t,f,Object.assign({x:at&&at.x!=null?Math.round(at.x):viewX(),y:0},o));
+ n.y=at&&at.y!=null?Math.max(40,Math.round(at.y)):freeSpot(f,n.x);
+ if(!Array.isArray(n.thread))n.thread=[];
+ P.nodes.push(n);if(from)P.edges.push({id:uid(),a:from,b:n.id});
+ n.basis=basisOf(n);
+ renderNode(n,1);select('n',n.id);save();return n;
+}
+function reveal(n){requestAnimationFrame(()=>{const p=pos(n),r=cv.getBoundingClientRect(),sy=V.y+p.y*V.z,sx=V.x+p.x*V.z;if(sy<20||sy>r.height-140)V.y+=r.height*.4-sy;if(sx<170||sx>r.width-280)V.x+=r.width*.45-sx;applyView();});}
+function inputs(n){return P.edges.filter(e=>e.b===n.id).map(e=>byId(e.a)).filter(Boolean);}
+function nodeText(n){
+ if(!n)return '';
+ let s=`[${lab(n)}] ${n.title||''}`;
+ if(n.text)s+=`\n${n.text}`;
+ if(n.t==='table')s+='\n'+n.rows.map(r=>`- ${r.name} ${r.url} ${r.note}`).join('\n');
+ if(n.t==='link'&&n.url)s+=`\n${n.url}`;
+ if(n.t==='source')s+=`\nlibrary: ${libOf(n.lib)[1]}; query: ${n.q||'-'}`;
+ if(n.items&&n.items.length)s+=`\n(files: ${n.items.map(i=>i.name||i.kind||'image').join(', ')})`;
+ if(n.t==='files'&&n.links)s+=`\n${n.links}`;
+ if(n.t==='gen'&&n.out.length)s+='\n'+n.out.slice(0,8).map(o=>`- ${o.title}: ${o.text}`).join('\n');
+ if(n.t==='check'&&n.res.length)s+='\n'+n.res.map(r=>`- ${r.verdict}: ${r.title}: ${r.notes}`).join('\n');
+ if(n.drop)s+=`\nDROPPED${n.why?': '+n.why:''}`;
+ return s.slice(0,1600);
+}
+function summary(){return ORDER.map(k=>`## ${NAMES[k]} (${k})\n`+(P.nodes.filter(n=>n.f===k).map(n=>`id=${n.id} `+nodeText(n)).join('\n\n')||'empty')).join('\n\n').slice(0,24000);}
+function bans(){return P.nodes.filter(n=>n.drop||n.nogo).map(n=>`- ${n.title}${n.why?': '+n.why:''}${n.nogo&&n.text?': '+n.text:''}`).join('\n');}
+const taskText=()=>P.nodes.filter(x=>x.t==='task').map(x=>x.text).join('\n')||'-';
+const briefText=()=>P.nodes.filter(x=>x.f==='brief'&&x.t!=='task').map(nodeText).join('\n\n').slice(0,9000);
+function promote(n,o){
+ const i=ORDER.indexOf(n.f),f=o?n.f:ORDER[Math.min(i+1,ORDER.length-1)],src=o||n;
+ const m=addNode('card',f,{title:src.title||'',text:src.text||'',svg:src.svg||''},n.id,o?{x:n.x+(n.t==='gen'?440:300)+Math.round(Math.random()*60),y:n.y+Math.round(Math.random()*80)}:{x:n.x});
+ reveal(m);return m;
+}
+function useKit(it,src,at){
+ if(!it)return;
+ const f=it.fl||(src&&src.f!=='brief'?src.f:'research');
+ const from=src&&it.fl!=='brief'&&!src.drop?src.id:null;
+ const x=at&&at.x!=null?at.x:(src&&it.fl!=='brief'?src.x+300:viewX());
+ const m=it.fn(f,from,x);
+ if(m){reveal(m);if(m.t==='source'&&src)craftQuery(m,src);}
+ return m;
+}
+async function craftQuery(m,src){
+ if(!S)return;const l=libOf(m.lib);
+ try{const r=await S.json(`For this node, write a ${l[1]} search query (2 to 6 words, English) that finds strong, non-obvious visual references, and a title saying what refs we want (max 10 words). Node: ${nodeText(src).slice(0,800)}\nReply with only JSON {"q":"...","title":"..."}.`,{modelTier:'quick',cache:false});
+  if(r&&typeof r.q==='string'&&byId(m.id)){m.q=r.q.slice(0,80);if(!m.title&&typeof r.title==='string')m.title=r.title.slice(0,120);renderNode(m);save();}}catch(_){}
+}
+
+function renderKit(){
+ const q=$('#kq').value.trim().toLowerCase();
+ $('#kl').innerHTML=KIT.map(([g,d,items],gi)=>{const its=items.map((it,ii)=>({it,ii})).filter(({it})=>!q||(g+' '+it.name+' '+it.desc).toLowerCase().includes(q));if(!its.length)return '';
+  return `<details class="kg"${q||gi<3?' open':''}><summary>${esc(g)}<span>${its.length}</span></summary><div class="dgrid" style="grid-template-columns:minmax(0,1fr)">${its.map(({ii})=>tileHTML(gi+':'+ii,'tile')).join('')}</div></details>`;}).join('')||'<div class="empty" style="padding:12px">Nothing matches</div>';
+}
+function kitSel(){const n=sel&&sel.k==='n'&&byId(sel.id);const t=n&&(n.title||lab(n));$('#ksel').textContent=n?`Adds next to “${t.length>48?t.slice(0,46)+'…':t}” and connects to it`:'Select a node to connect new tools to it, or drag a tool onto a node';}
+$('#kq').oninput=renderKit;
+function kitClick(e){const b=e.target.closest('[data-k]');if(!b)return;const src=sel&&sel.k==='n'&&byId(sel.id);useKit(kitAt(b.dataset.k),src);closeDock();if(innerWidth<760)sidePanel(null);}
+$('#kl').onclick=kitClick;
+document.addEventListener('dragstart',e=>{const b=e.target.closest&&e.target.closest('[data-k]');if(b){e.dataTransfer.setData('text/plain','kit:'+b.dataset.k);e.dataTransfer.effectAllowed='copy';}});
+
+/* dock */
+let dockPop=null;
+$('#dock').innerHTML=DOCK.map(([n,ic],i)=>`<button data-d="${i}"><span class="ico">${esc(ic)}</span>${esc(n)}</button>`).join('');
+function closeDock(){if(dockPop){dockPop.remove();dockPop=null;document.querySelectorAll('#dock .on').forEach(b=>b.classList.remove('on'));}}
+$('#dock').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const was=b.classList.contains('on');closeDock();if(was)return;b.classList.add('on');
+ const [,,groups]=DOCK[+b.dataset.d];dockPop=document.createElement('div');dockPop.className='dpop';
+ dockPop.innerHTML=`<div class="note" style="margin:2px 6px 6px">${sel&&sel.k==='n'?'Click to attach to the selected node, or drag onto any node':'Drag onto a node to attach, or click to add'}</div>`+KIT.map(([g,d,items],gi)=>groups.includes(g)?`<h4>${esc(g)}</h4><div class="dgrid">${items.map((it,ii)=>tileHTML(gi+':'+ii,'tile')).join('')}</div>`:'').join('');
+ document.body.appendChild(dockPop);const r=$('#dock').getBoundingClientRect(),w=dockPop.offsetWidth,h=dockPop.offsetHeight;
+ dockPop.style.left=clamp(r.left+r.width/2-w/2,12,innerWidth-w-12)+'px';dockPop.style.top=Math.max(12,r.top-h-8)+'px';
+ dockPop.onclick=kitClick;};
+
+let menuEl=null;
+function closeMenu(){if(menuEl){menuEl.remove();menuEl=null;}}
+function openMenu(x,y,items){closeMenu();menuEl=document.createElement('div');menuEl.className='menu';menuEl.innerHTML=items.map(([k,v,d],i)=>`<button data-m="${i}"${d?' class="dz"':''}>${esc(v)}</button>`).join('');document.body.appendChild(menuEl);
+ const w=menuEl.offsetWidth,h=menuEl.offsetHeight;menuEl.style.left=clamp(x,8,innerWidth-w-8)+'px';menuEl.style.top=clamp(y,8,innerHeight-h-8)+'px';
+ menuEl.onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const it=items[+b.dataset.m];closeMenu();it[3]();};menuEl.querySelector('button').focus();}
+function nodeMenu(n,x,y){
+ const sl=n.f==='research'&&n.t==='card';
+ openMenu(x,y,[['pick',n.pick?(sl?'Remove from shortlist':'Remove from chosen path'):(sl?'Shortlist':'Add to chosen path'),0,()=>{snap();n.pick=!n.pick;renderNode(n);save();}],
+  ['drop',n.drop?'Bring back':'Drop, with a reason',0,()=>{snap();n.drop=!n.drop;renderNode(n);save();}],
+  ...(n.f!=='prod'&&n.t!=='task'?[['up',n.f==='research'?'Develop in production':'Move up to Ideas',0,()=>promote(n)]]:[]),
+  ['dup','Duplicate',0,()=>{const c=JSON.parse(JSON.stringify(n));delete c.id;delete c.busy;delete c.basis;c.thread=[];addNode(n.t,n.f,c,null,{x:n.x+30,y:n.y+30});}],
+  ['del','Delete',1,()=>delNode(n.id)]]);
+}
+function delNode(id){snap();if(popFor===id)closePop();P.nodes=P.nodes.filter(n=>n.id!==id);P.edges=P.edges.filter(e=>e.a!==id&&e.b!==id);const el=els[id];if(el){ro.unobserve(el);el.remove();delete els[id];}sel=null;kitSel();schedule();save();}
+
+/* comment popover, Figma-style */
+let pop=null,popFor=null,popCtl=null;
+function closePop(){if(pop){pop.remove();pop=null;}popFor=null;if(popCtl){popCtl.abort();popCtl=null;}}
+function openPop(n,focus){
+ if(popFor!==n.id){closePop();popFor=n.id;pop=document.createElement('div');pop.className='pop';document.body.appendChild(pop);pop.onclick=popClick;pop.onsubmit=popSubmit;}
+ if(n.alert){n.alert=false;renderNode(n);save();}
+ renderPop();placePop();if(focus)pop.querySelector('textarea').focus();
+}
+function renderPop(wait){
+ const n=byId(popFor);if(!n||!pop)return closePop();
+ const th=n.thread||[];const last=[...th].reverse().find(m=>m.role==='ai');
+ const kindTxt={ok:'Still fits',warn:'Heads-up',conflict:'Conflict'};
+ pop.innerHTML=`<div class="ph"><b>${esc(lab(n))}: ${esc(n.title||'Untitled')}</b><button data-p="x" aria-label="Close">×</button></div><div class="pt2 sc">${th.length?th.map(m=>`<div class="pm ${m.role==='me'?'me':'ai'}${m.kind?' '+m.kind:''}">${m.kind?`<i>${kindTxt[m.kind]||''}</i>`:''}${esc(m.text)}</div>`).join(''):'<div class="empty">Ask the AI to rework this node, add children, find refs, or check it against the inputs.</div>'}${wait?'<div class="pm wait" id="pwait">Thinking…</div>':''}</div><form class="pf"><textarea placeholder="Ask AI about this node, or reply" aria-label="Message"></textarea><div class="row">${upstream(n).length?'<button type="button" data-p="check">Check against inputs</button>':''}${last&&last.kind&&last.kind!=='ok'?'<button type="button" data-p="fit">Update to fit</button>':''}<button class="pri">Send</button></div></form>`;
+ const t=pop.querySelector('.pt2');t.scrollTop=t.scrollHeight;
+ pop.querySelector('textarea').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))pop.querySelector('form').requestSubmit();});
+}
+function placePop(){
+ if(!pop||!popFor)return;const el=els[popFor];if(!el)return;const r=el.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
+ let x=r.right+10;if(x+w>innerWidth-8)x=r.left-w-10;if(x<8)x=clamp(r.left,8,innerWidth-w-8);
+ pop.style.left=x+'px';pop.style.top=clamp(r.top,58,innerHeight-h-8)+'px';
+}
+function popClick(e){const b=e.target.closest('[data-p]');if(!b)return;const n=byId(popFor);if(!n)return;
+ if(b.dataset.p==='x')closePop();
+ if(b.dataset.p==='check')refresh([n],true);
+ if(b.dataset.p==='fit')askNode(n,'Update this node so it fits the current inputs. Keep its core idea and change only what the inputs require. Use update_node, then say in one line what changed.',true);}
+function popSubmit(e){e.preventDefault();const n=byId(popFor);const t=pop.querySelector('textarea');const q=t.value.trim();if(!n||!q)return;t.value='';askNode(n,q);}
+const NODE_RULES=`You are the creative director's assistant inside a single node of "Creative Tree" (floors: brief = Inputs, research = Ideas, prod = Production). Work on this node only unless asked. The node's title is its one-line prompt: short and concrete (max 14 words), e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up". Do not invent facts about companies. Reply briefly in the language the designer writes in.`;
+function nodeTools(n){return [
+ {name:'update_node',description:'Rewrites fields of this node. Any of: title (the one-line prompt, max 14 words), text (details). Returns ok.',inputSchema:{type:'object',properties:{title:{type:'string'},text:{type:'string'}}},
+  execute(i){if(!byId(n.id))throw new Error('node is gone');snap();if(typeof i.title==='string')n.title=i.title.slice(0,200);if(typeof i.text==='string')n.text=i.text.slice(0,2000);renderNode(n);save();return 'ok';}},
+ {name:'add_child',description:'Adds a node connected from this one and returns its id. kind: card (idea, branch or note), gen (generator), check (gate), source (reference library search; give lib and q). floor defaults to the next floor up.',inputSchema:{type:'object',properties:{kind:{type:'string',enum:['card','gen','check','source']},floor:{type:'string',enum:ORDER},title:{type:'string',description:'one-line prompt, max 14 words'},text:{type:'string'},lib:{type:'string',enum:LIBS.map(l=>l[0])},q:{type:'string'},mode:{type:'string',enum:Object.keys(MODES)},op:{type:'string',enum:Object.keys(OPS)}},required:['kind','title']},
+  execute(i){const k=['card','gen','check','source'].includes(i.kind)?i.kind:'card';const f=ORDER.includes(i.floor)?i.floor:(k==='source'?'prod':ORDER[Math.min(ORDER.indexOf(n.f)+1,2)]);const o={title:String(i.title||'').slice(0,200),text:String(i.text||'').slice(0,1500)};
+   if(k==='source'){o.lib=LIBS.some(l=>l[0]===i.lib)?i.lib:'pinterest';o.q=String(i.q||o.title).slice(0,80);}
+   if(k==='gen'){o.mode=MODES[i.mode]?i.mode:'ideas';o.op=OPS[i.op]?i.op:'none';}
+   const m=addNode(k,f,o,n.id,{x:n.x+300+Math.round(Math.random()*200)});return {id:m.id};}}];}
+async function askNode(n,msg,fit){
+ if(!S){flash('AI is not available in this view');return;}
+ n.thread.push({role:'me',text:msg.length>200&&fit?'Update to fit the inputs':msg});save();renderPop(true);placePop();
+ const ups=upstream(n).map(id=>nodeText(byId(id))).join('\n\n').slice(0,6000);
+ const kids=P.edges.filter(e=>e.a===n.id).map(e=>nodeText(byId(e.b))).join('\n\n').slice(0,2500);
+ const hist=n.thread.slice(-9,-1).map(m=>`${m.role==='me'?'Designer':'Assistant'}: ${m.text}`).join('\n');
+ const input=`${NODE_RULES}\n\nTask:\n${taskText()}\n\nThis node:\nid=${n.id}\n${nodeText(n)}\n\nWhat feeds it:\n${ups||'-'}\n\nWhat grows from it:\n${kids||'-'}\n\nDo not repeat:\n${bans()||'-'}\n\nEarlier on this node:\n${hist||'-'}\n\nDesigner: ${msg}`;
+ popCtl=new AbortController();const id=n.id;
+ const opt={signal:popCtl.signal,modelTier:'default',onText:({text})=>{const w=pop&&popFor===id&&pop.querySelector('#pwait');if(w){w.className='pm ai';w.textContent=text;}}};
+ if(LIM&&LIM.tools)opt.tools=nodeTools(n);else opt.cache=false;
+ try{const{text}=await S(input,opt);n.thread.push({role:'ai',text:text.slice(0,3000)});if(fit)n.basis=basisOf(n);}
+ catch(e){if(e&&e.code!=='cancelled')n.thread.push({role:'ai',text:e&&e.text?e.text:errTxt(e)});}
+ popCtl=null;renderNode(n);save();if(popFor===id){renderPop();placePop();}
+}
+async function refresh(list,openAfter){
+ if(!S)return flash('AI is not available in this view');
+ list=list.slice(0,12);if(!list.length)return;flash(`Checking ${list.length} node${list.length===1?'':'s'}…`);
+ list.forEach(n=>{n.busy=true;});
+ const prompt=`You are a demanding creative director. Something upstream of these nodes changed. For each node decide whether it still fits its current inputs and the task. status: ok (still fits), warn (fits with a caveat; give advice), conflict (no longer fits; say why and what to change). Notes: 1-2 sentences, concrete. ${LANG}\n\nTask:\n${taskText()}\n\nNodes:\n${list.map(n=>`id=${n.id}\n${nodeText(n)}\nIts current inputs:\n${upstream(n).map(id=>nodeText(byId(id))).join('\n').slice(0,2500)}`).join('\n\n---\n\n')}\n\nReply with only a JSON array of {"id":"...","status":"ok|warn|conflict","note":"..."}.`;
+ try{const res=await S.json(prompt,{modelTier:'default',cache:false});
+  for(const r of (Array.isArray(res)?res:[])){const n=byId(String(r&&r.id));if(!n)continue;const k=['ok','warn','conflict'].includes(r.status)?r.status:'warn';n.thread.push({role:'ai',kind:k,text:String(r.note||'').slice(0,600)});n.basis=basisOf(n);if(k!=='ok')n.alert=true;}
+  flash('Checked');
+ }catch(e){flash(errTxt(e));}
+ list.forEach(n=>{delete n.busy;renderNode(n);});save();
+ if(openAfter&&list.length===1)openPop(list[0]);
+}
+let stT=0;
+function markStale(){clearTimeout(stT);stT=setTimeout(()=>{let c=0;for(const n of P.nodes){const s=isStale(n);if(s)c++;const b=els[n.id]&&els[n.id].querySelector('.stl');if(b)b.hidden=!s;}const r=$('#refall');r.hidden=!c;r.textContent=`↻ Refresh ${c}`;},300);}
+$('#refall').onclick=()=>refresh(P.nodes.filter(isStale));
+$('#sum').onclick=async()=>{
+ if(!S)return flash('AI is not available in this view');
+ const list=P.nodes.filter(n=>!n.title.trim()&&n.t!=='task');if(!list.length)return flash('Every node has a title. Clear one to rewrite it');
+ flash('Writing titles…');
+ try{const res=await S.json(`Write a clear title for each node: one line, max 14 words, concrete, readable at a glance; never a generic name like "Brief", "Files" or "Idea". On the Inputs floor (brief) say what the input says, e.g. "Brand guide v3: navy, Inter, safety-first voice". On Ideas and Production write it as a prompt (format, subject, action), e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up". ${LANG}\n\nTask:\n${taskText()}\n\nNodes:\n${list.map(n=>'id='+n.id+' floor='+n.f+' '+nodeText(n)).join('\n\n').slice(0,20000)}\n\nReply with only a JSON array of {"id":"...","title":"..."}.`,{modelTier:'default',cache:false});
+  snap();const was=new Set(P.nodes.filter(isStale).map(n=>n.id));let c=0;
+  for(const r of (Array.isArray(res)?res:[])){const n=byId(String(r&&r.id));if(n&&!n.title.trim()&&typeof r.title==='string'){n.title=r.title.slice(0,200);renderNode(n);c++;}}
+  P.nodes.forEach(n=>{if(!was.has(n.id))n.basis=basisOf(n);});save();flash(`Wrote ${c} title${c===1?'':'s'}`);
+ }catch(e){flash(errTxt(e));}
+};
+async function rewriteTask(n){
+ if(!S)return flash('AI is not available in this view');n.busy=true;flash('Rewriting the task…');
+ try{const{text}=await S(`Write the task as one clear prompt of 1-3 sentences, like: "Need a video banner for Avride, 1200×627 and 9:16, on the theme X, following the brief and the brand guide; avoid Y." Use only facts from the inputs; where a fact is missing write [TBD: what]. Refer to sources by their titles. No preamble. ${LANG}\n\nInputs:\n${briefText()}\n\nDo not repeat:\n${bans()||'-'}`,{modelTier:'default',cache:false});
+  snap();n.text=text.trim().slice(0,1200);n.basis=basisOf(n);flash('Task rewritten');
+ }catch(e){flash(errTxt(e));}
+ delete n.busy;renderNode(n);save();
+}
+
+let drag=null;
+cv.addEventListener('pointerdown',e=>{
+ closeMenu();closeDock();if(e.button!==0)return;
+ const fl=e.target.closest('[data-fl]'),ad=e.target.closest('[data-add]');
+ if(fl){snap();P.open[fl.dataset.fl]=!P.open[fl.dataset.fl];layout();save();return;}
+ if(ad){const k=ad.dataset.add,r=ad.getBoundingClientRect();openMenu(r.right+6,r.top,ADDS[k].map(([t,v])=>[t,v,0,()=>{const o=t==='gen'&&k==='prod'?{mode:'sketch',n:4}:t==='gen'&&k==='brief'?{mode:'insights',n:5,title:'Tensions, white space and gaps in the inputs'}:{};reveal(addNode(t,k,o));}]));return;}
+ if(e.target.closest('.zoom,.dock'))return;
+ const port=e.target.closest('[data-port]'),nel=e.target.closest('.node'),hit=e.target.closest('[data-edge]');
+ if(port&&nel){e.preventDefault();drag={k:'c',id:nel.dataset.id,port:port.dataset.port};cv.setPointerCapture(e.pointerId);return;}
+ if(nel){const id=nel.dataset.id;if(!(sel&&sel.id===id))select('n',id);
+  if(e.target.closest('.nh')&&!e.target.closest('input,button,select,textarea')){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};cv.setPointerCapture(e.pointerId);}
+  return;}
+ if(hit){select('e',hit.dataset.edge);return;}
+ select(null);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+ drag={k:'p',sx:e.clientX,sy:e.clientY,vx:V.x,vy:V.y};cv.classList.add('pan');cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+ if(!drag)return;
+ if(drag.k==='p'){V.x=drag.vx+e.clientX-drag.sx;V.y=drag.vy+e.clientY-drag.sy;applyView();return;}
+ if(drag.k==='n'){const n=byId(drag.id);const dx=(e.clientX-drag.sx)/V.z,dy=(e.clientY-drag.sy)/V.z;if(!drag.moved&&Math.hypot(dx,dy)<3)return;if(!drag.moved){snap();drag.moved=1;}
+  n._ax=drag.ax+dx;n._ay=drag.ay+dy;els[n.id].style.transform=`translate(${n._ax}px,${n._ay}px)`;drawEdges();placePop();return;}
+ if(drag.k==='c'){const r=rect(byId(drag.id)),w=toWorld(e.clientX,e.clientY),a={x:r.x+r.w/2,y:drag.port==='t'?r.y:r.y+r.h};const k=(w.y<a.y?-1:1)*Math.max(30,Math.abs(w.y-a.y)*.45);tmpPath=`M${a.x} ${a.y}C${a.x} ${a.y+k} ${w.x} ${w.y-k} ${w.x} ${w.y}`;drawEdges();}
+});
+function endDrag(e){
+ if(!drag)return;const d=drag;drag=null;cv.classList.remove('pan');
+ if(d.k==='p'){saveView();return;}
+ if(d.k==='n'){const n=byId(d.id);if(d.moved){const f=floorAt(n._ay+16);if(P.open[f]){n.f=f;n.y=Math.max(40,Math.round(n._ay-geo[f].top));}else n.y=Math.max(40,Math.round(n._ay-geo[n.f].top));n.x=Math.round(n._ax);delete n._ax;delete n._ay;renderNode(n);save();}return;}
+ if(d.k==='c'){tmpPath='';const t=document.elementFromPoint(e.clientX,e.clientY),tn=t&&t.closest('.node');
+  if(tn&&tn.dataset.id!==d.id){const a=d.port==='t'?d.id:tn.dataset.id,b=d.port==='t'?tn.dataset.id:d.id;if(!P.edges.some(x=>x.a===a&&x.b===b)){snap();P.edges.push({id:uid(),a,b});const g=byId(b);if(g&&(g.t==='gen'||g.t==='check'))renderNode(g);save();}}
+  drawEdges();}
+}
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('wheel',e=>{
+ const s=e.target.closest('.sc,textarea');if(s&&!e.ctrlKey&&!e.metaKey&&s.scrollHeight>s.clientHeight+2)return;
+ e.preventDefault();
+ if(e.ctrlKey||e.metaKey)zoomAt(e.clientX,e.clientY,Math.exp(-clamp(e.deltaY,-50,50)*.01));
+ else{V.x-=e.deltaX;V.y-=e.deltaY;applyView();saveView();}
+},{passive:false});
+cv.addEventListener('dblclick',e=>{if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;addNode('card',f,{},null,{x:w.x-132,y:w.y-geo[f].top-20});});
+$('#zi').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1.2);};
+$('#zo').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/1.2);};
+$('#zl').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/V.z);};
+$('#fit').onclick=fit;
+
+let typed=false;
+world.addEventListener('focusin',e=>{if(e.target.dataset.f)typed=false;});
+function setField(n,f,v){if(f.startsWith('row:')){const[,i,k]=f.split(':');if(n.rows[+i])n.rows[+i][k]=v;return;}n[f]=f==='n'?+v:v;}
+world.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f||t.tagName==='SELECT')return;const n=byId(t.closest('.node').dataset.id);if(!n)return;if(!typed){snap();typed=true;}setField(n,f,t.value);if(t.tagName==='TEXTAREA'&&!FS)grow(t);if(f==='title')kitSel();save();});
+world.addEventListener('change',e=>{const t=e.target,f=t.dataset.f;if(!f)return;const n=byId(t.closest('.node').dataset.id);if(!n)return;
+ if(t.tagName==='SELECT'){snap();setField(n,f,t.value);if(f==='mode')renderNode(n);save();return;}
+ if(f==='url'||f==='q'||f.endsWith(':url')||f==='links')renderNode(n);
+ if(n.f==='brief')P.nodes.filter(x=>x.t==='task').forEach(x=>renderNode(x));});
+world.addEventListener('click',e=>{
+ const b=e.target.closest('[data-a],[data-k]');if(!b)return;const n=byId(b.closest('.node').dataset.id);if(!n)return;
+ if(b.dataset.k){useKit(kitAt(b.dataset.k),n);return;}
+ const a=b.dataset.a,i=+b.dataset.i;
+ if(a==='menu'){const r=b.getBoundingClientRect();nodeMenu(n,r.right-190,r.bottom+4);return;}
+ if(a==='ai'||a==='pop')return void openPop(n,a==='ai');
+ if(a==='refresh')return void refresh([n],true);
+ if(a==='task')return void rewriteTask(n);
+ if(a==='goto'){const t=byId(b.dataset.i);if(t){select('n',t.id);reveal(t);}return;}
+ if(a==='up')return void promote(n);
+ if(a==='run')return void(n.t==='check'?runCheck(n):runGen(n));
+ if(a==='outup')return void promote(n,n.out[i]);
+ if(a==='outdel'){snap();n.out.splice(i,1);renderNode(n);save();return;}
+ if(a==='rowadd'){snap();n.rows.push({name:'',url:'',note:''});renderNode(n);save();return;}
+ if(a==='rowdel'){snap();n.rows.splice(i,1);renderNode(n);save();return;}
+ if(a==='rowlink'){const r=n.rows[i];reveal(addNode('link','brief',{title:r.name||'',url:r.url||'',text:r.note||''},null,{x:n.x+(i%3)*290,y:n.y+340}));return;}
+ if(a==='aifind')return void aiFind(n);
+ if(a==='bq')return void briefQ(n);
+ if(a==='readrefs')return void readRefs(n);
+ if(a==='addimg'||a==='addfile'){pickFor=n.id;$('#fi').accept=a==='addimg'?'image/*':'';$('#fi').click();return;}
+ if(a==='imgdel'){snap();n.items=n.items.filter(x=>x.id!==b.dataset.i);renderNode(n);save();return;}
+ if(a==='star'){snap();n.pick=!n.pick;renderNode(n);save();return;}
+ if(a==='dict')return void toggleDict(n);
+ if(['tool','fmt','test','room'].includes(a)){const arr={tool:n.tools,fmt:n.fmt,test:n.tests,room:n.rooms}[a],v=b.dataset.v;snap();const k=arr.indexOf(v);k<0?arr.push(v):arr.splice(k,1);renderNode(n);save();}
+});
+document.addEventListener('pointerdown',e=>{if(menuEl&&!e.target.closest('.menu,[data-add]'))closeMenu();if(dockPop&&!e.target.closest('.dpop,.dock'))closeDock();if(pop&&!e.target.closest('.pop,[data-a="ai"],[data-a="pop"],[data-a="refresh"]')&&!e.target.closest('.node'))closePop();});
+document.addEventListener('keydown',e=>{
+ const ed=e.target.closest&&e.target.closest('input,textarea,select');
+ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!ed){e.preventDefault();e.shiftKey?redo():undo();return;}
+ if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('nt')){e.preventDefault();e.target.blur();return;}
+ if(e.key==='Escape'){closeMenu();closeDock();closePop();if(!ed)select(null);return;}
+ if(ed)return;
+ if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();if(sel.k==='n')delNode(sel.id);else{snap();P.edges=P.edges.filter(x=>x.id!==sel.id);sel=null;drawEdges();save();}}
+});
+
+let pickFor=null;
+$('#fi').onchange=e=>{const n=byId(pickFor);if(n)addImages(n,[...e.target.files]);e.target.value='';};
+async function addImages(n,files){
+ const any=n.t==='files';
+ const list=files.filter(f=>any||/^image\//.test(f.type));
+ if(!list.length){if(files.length)flash('Only images go here; put documents in a Files node on Inputs');return;}
+ snap();
+ for(const f of list){
+  const kind=/^image\//.test(f.type)?'image':/^video\//.test(f.type)?'video':'file';
+  if(AS){try{const r=await AS.upload(f);n.items.push({id:uid(),asset:r.id,kind,name:f.name});continue;}catch(err){if(kind!=='image'){flash(`Can't store ${f.name}; add it as a link`);continue;}}}
+  if(kind==='image'&&f.size<400000){const src=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f);});n.items.push({id:uid(),src,local:1,kind,name:f.name});}
+  else flash(AS?'Could not upload a file':'Without storage only small images are kept');
+ }
+ renderNode(n);P.nodes.filter(x=>x.t==='task').forEach(x=>renderNode(x));save();
+}
+function toggleDict(n){
+ if(!DICT){flash('Dictation works in Chrome and the Claude desktop app');return;}
+ if(dictFor===n.id){DICT.stop().catch(()=>{});return;}
+ if(dictFor)DICT.stop().catch(()=>{});
+ dictFor=n.id;livePart='';snap();
+ DICT.start().catch(e=>{dictFor=null;renderNode(n);flash(e&&e.code==='not_granted'?'Microphone was not allowed':'Dictation did not start');});
+ renderNode(n);
+}
+cv.addEventListener('dragover',e=>{e.preventDefault();});
+cv.addEventListener('drop',e=>{e.preventDefault();
+ const k=e.dataTransfer.getData('text/plain')||'';
+ if(k.startsWith('kit:')){const it=kitAt(k.slice(4)),t=e.target.closest('.node'),src=t&&byId(t.dataset.id);closeDock();
+  if(src)useKit(it,src);else{const w=toWorld(e.clientX,e.clientY);useKit(it,null,{x:w.x-132});}return;}
+ const files=[...(e.dataTransfer.files||[])];if(!files.length)return;
+ const t=e.target.closest('.node');let n=t&&byId(t.dataset.id);
+ if(!n||!n.items||(n.t!=='files'&&files.some(f=>!/^image\//.test(f.type)))){const w=toWorld(e.clientX,e.clientY);let f=floorAt(w.y);if(!P.open[f])f='prod';const doc=f==='brief'||files.some(f=>!/^image\//.test(f.type));if(doc)f='brief';n=addNode(doc?'files':'board',f,{},null,{x:w.x-132,y:doc&&f!==floorAt(w.y)?56:w.y-geo[f].top-20});}
+ addImages(n,files);});
+document.addEventListener('paste',e=>{
+ if(e.target.closest&&e.target.closest('input,textarea'))return;
+ const files=[...(e.clipboardData&&e.clipboardData.files||[])];if(!files.length)return;e.preventDefault();
+ let n=sel&&sel.k==='n'&&byId(sel.id);if(!n||!n.items)n=addNode('board','prod',{});addImages(n,files);
+});
+
+let flashT=0;
+function flash(m){$('#st').textContent=m;clearTimeout(flashT);flashT=setTimeout(()=>status(),3500);}
+const errTxt=e=>({not_granted:'AI is not allowed in this view',sampling_disabled:'AI is not available for this account',rate_limited:'Too many requests; try again later',invalid_json:'The AI answered in the wrong format; try again',refused:'The AI declined this request',cancelled:'Stopped',images_unavailable:'Images cannot be sent to the AI in this view'}[e&&e.code]||'That didn\'t work; try again');
+async function blobsOf(ns){
+ const out=[];if(!LIM||!LIM.images)return out;
+ for(const n of ns)for(const it of (n.items||[])){if(out.length>=Math.min(4,LIM.images.maxCount))return out;if((it.kind||'image')!=='image')continue;const s=imgSrc(it);if(!s)continue;try{const b=await (await fetch(s)).blob();if(LIM.images.mediaTypes.includes(b.type))out.push(b);}catch(_){}}
+ return out;
+}
+const LANG='Write in the same language as the brief.';
+async function runGen(n){
+ if(!S){n.err='AI is not available in this view';renderNode(n);return;}
+ const ins=n.f==='brief'?P.nodes.filter(x=>x.f==='brief'&&x.id!==n.id&&x.t!=='gen'):inputs(n);
+ const modeTxt={insights:'Analyze the inputs, not ideas yet: tensions, what competitors already own, white space, risks, what is missing or must be asked. Each item is one insight grounded in the inputs.',ideas:'Propose idea directions.',collide:'Make collisions: each idea = element A (from the inputs or the task) + a distant element B → a new image. Name both elements in the text.',prompts:`Write prompts in English for the model ${n.target}: subject, composition, light, material, camera, style. text = the prompt itself, title = what the shot is.`,sketch:'Make composition sketches of the frame. For each give svg: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"> using only rect, line, circle, ellipse, path, polygon, text; strokes #1c1b19 and #8a857c; fills none, #e6e3de or #f7f5f1; one accent #e0522b; labels of up to 3 words, font-size 10 to 14; no images, links, scripts or styles.'}[n.mode];
+ const shape=n.mode==='insights'?'{"title": "the insight in one line, max 12 words", "text": "1-2 sentences, grounded in the inputs"}':n.mode==='sketch'?'{"title": "the frame as a one-line prompt, max 14 words", "text": "1-2 sentences: what is in the frame and why it is not obvious", "svg": "<svg …>…</svg>"}':n.mode==='prompts'?'{"title": "what the shot is, max 12 words", "text": "the full prompt"}':'{"title": "the idea as a one-line prompt, max 14 words: format, subject, action, e.g. Neon sign video: the car rolls in, the Art Deco sign lights up", "text": "1-3 sentences: what we see and why it is not obvious"}';
+ const prompt=`You are the creative director of a branding studio. Work wide: do not propose what is obvious for the category, and nothing from the do-not-repeat list. Do not invent facts about companies. ${LANG}\n\nMode: ${modeTxt}\n${OPS[n.op]&&OPS[n.op][1]?'Method: '+OPS[n.op][1]+'\n':''}Direction from the designer: ${[n.title,n.prompt].filter(Boolean).join('. ')||'-'}\n\nTask:\n${taskText()}\n\nInputs:\n${n.f==='brief'?'':briefText().slice(0,4000)+'\n\n'}${ins.map(nodeText).join('\n\n')||'-'}\n\nDo not repeat:\n${bans()||'-'}\n\nReply with only a JSON array of ${n.n} objects shaped like ${shape}.`;
+ n.busy=true;n.err='';renderNode(n);
+ try{
+  const imgs=await blobsOf(ins.filter(x=>x.items&&x.items.length));
+  const opt={modelTier:n.brain||'default',cache:false};if(imgs.length)opt.images=imgs;
+  const res=await S.json(imgs.length?prompt+'\n\nAttached are images from the connected boards: use them as references.':prompt,opt);
+  const arr=(Array.isArray(res)?res:[]).filter(o=>o&&typeof o==='object').map(o=>({title:String(o.title||'').slice(0,200),text:String(o.text||'').slice(0,900),svg:typeof o.svg==='string'?o.svg:''}));
+  if(!arr.length)throw {code:'invalid_json'};
+  snap();n.out=arr.concat(n.out).slice(0,30);n.basis=basisOf(n);
+ }catch(e){n.err=errTxt(e);}
+ n.busy=false;renderNode(n);save();
+}
+async function runCheck(n){
+ if(!S){n.err='AI is not available in this view';renderNode(n);return;}
+ const ins=inputs(n).filter(x=>x.t!=='check');
+ if(!ins.length){n.err='Connect the ideas or sketches to check';renderNode(n);return;}
+ if(!n.tests.length&&!n.rooms.length){n.err='Pick at least one test or room';renderNode(n);return;}
+ const prompt=`You are a demanding creative director running gates before the next stage. ${LANG}\n\nTask:\n${taskText()}\n\nInputs:\n${briefText().slice(0,4000)}\n\nTests:\n${n.tests.map(k=>`- ${TESTS[k][0]}: ${TESTS[k][1]}`).join('\n')||'-'}\n\nRooms (predict each audience's objections; the room does not vote, it tells us what to defend):\n${n.rooms.map(k=>`- ${ROOMS[k][0]}: ${ROOMS[k][1]}`).join('\n')||'-'}\n\nCandidates:\n${ins.map(x=>`id=${x.id} `+nodeText(x)).join('\n\n')}\n\nFor each candidate give one verdict: pass, risk or fail, and short notes per test and room (what fails, what to defend, how to fix). Reply with only a JSON array of {"id": "...", "verdict": "pass|risk|fail", "notes": "..."}.`;
+ n.busy=true;n.err='';renderNode(n);
+ try{
+  const res=await S.json(prompt,{modelTier:'default',cache:false});
+  const arr=(Array.isArray(res)?res:[]).filter(o=>o&&o.id).map(o=>{const x=byId(String(o.id));const v=['pass','risk','fail'].includes(o.verdict)?o.verdict:'risk';return {id:String(o.id),title:x?(x.title||lab(x)):String(o.id),verdict:v,notes:String(o.notes||'').slice(0,1200)};});
+  if(!arr.length)throw {code:'invalid_json'};
+  snap();n.res=arr;n.basis=basisOf(n);
+ }catch(e){n.err=errTxt(e);}
+ n.busy=false;renderNode(n);save();
+}
+async function aiFind(n){
+ if(!S)return flash('AI is not available');flash('Looking for competitors…');
+ try{const res=await S.json(`From the inputs below, list up to 8 competitors: direct, indirect and non-obvious. You cannot browse, so include only what you are sure of and mark anything to verify. ${LANG}\n\nInputs:\n${briefText()}\n\nAlready in the table: ${n.rows.map(r=>r.name).join(', ')||'-'}\n\nReply with only a JSON array of {"name": "...", "url": "https://...", "note": "why it competes, up to 10 words"}.`,{modelTier:'default',cache:false});
+  const add=(Array.isArray(res)?res:[]).filter(o=>o&&o.name).map(o=>({name:String(o.name).slice(0,60),url:okUrl(o.url)?String(o.url):'',note:String(o.note||'').slice(0,120)}));
+  snap();n.rows.push(...add);renderNode(n);save();flash(`Added ${add.length}. Check the links`);
+ }catch(e){flash(errTxt(e));}
+}
+async function briefQ(n){
+ if(!S)return flash('AI is not available');flash('Reading the brief…');
+ try{const res=await S.json(`You are a creative director. Read the inputs and list the questions for the client that must be answered before work starts: goal, audience, difference from competitors, brand constraints, formats, timing. At most 8, short. ${LANG}\n\nInputs:\n${briefText()}\n\nReply with only a JSON array of strings.`,{modelTier:'default',cache:false});
+  const q=(Array.isArray(res)?res:[]).map(s=>'— '+String(s)).join('\n');if(!q)throw {code:'invalid_json'};
+  reveal(addNode('card','brief',{title:'Open questions for the client before work starts',text:q},null,{x:n.x+300}));flash('Done');
+ }catch(e){flash(errTxt(e));}
+}
+async function readRefs(n){
+ if(!S)return flash('AI is not available');const imgs=await blobsOf([n]);if(!imgs.length)return flash('No images to read');flash('Reading the refs…');
+ try{const{text}=await S(`This is a designer's reference board ("${n.title}"). Briefly: 1) the shared visual language; 2) what is already a cliché here; 3) three unexpected moves these refs suggest. No preamble. ${LANG}\n\nTask:\n${taskText().slice(0,1500)}`,{images:imgs,modelTier:'default',cache:false});
+  reveal(addNode('card',n.f,{title:'What these refs share, what is a cliché, three moves',text:text.slice(0,2000)},n.id,{x:n.x+290,y:n.y}));flash('Done');
+ }catch(e){flash(errTxt(e));}
+}
+
+const RULES=`You assist a creative director inside "Creative Tree", a canvas where work grows upward in three floors: brief (Inputs: the task, the brief, files, competitors, no-go zone, and their analysis), research (Ideas: generation and a shortlist of about three), prod (Production: sketches, final refs and branches for different generation methods). Every node's title is a clear one-line prompt (e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up"); never a generic name like "Brief" or "Idea". Your job is to widen the search rather than grab the first idea: distant analogies, the no-go zone, and the gates (1-second test, bad-day test, logo-swap test, scale, task fit, producibility). Do not invent facts about companies; flag what needs checking. Reply in the language the user writes in, briefly and concretely. When asked to put something on the board, use the tools add_node, connect and drop_node; node ids are in the board description.`;
+let chatCtl=null;
+function renderChat(){const m=$('#msgs');m.innerHTML=P.chat.length?'':'<div class="empty">Ask about the whole board. For one node, press ✦ on it.</div>';for(const c of P.chat){const d=document.createElement('div');d.className='m '+(c.role==='user'?'u':'a');d.textContent=c.content;m.appendChild(d);}m.scrollTop=m.scrollHeight;}
+const ctools=()=>[
+ {name:'add_node',description:'Adds a node to a floor of the board and returns its id. kind: card (note or idea), link (url card), gen (generator), check (gate), prod (production tracker). from: id of a source node to connect from.',inputSchema:{type:'object',properties:{floor:{type:'string',enum:ORDER},kind:{type:'string',enum:['card','link','gen','check','prod']},title:{type:'string',description:'one-line prompt, max 14 words'},text:{type:'string'},url:{type:'string'},from:{type:'string'}},required:['floor','title']},
+  execute(i){const f=ORDER.includes(i.floor)?i.floor:'research',k=['card','link','gen','check','prod'].includes(i.kind)?i.kind:'card',src=i.from&&byId(String(i.from))?String(i.from):null,s=src&&byId(src);const o={title:String(i.title||'').slice(0,200),text:String(i.text||'').slice(0,1500)};if(k==='link')o.url=okUrl(i.url)?String(i.url):'';const n=addNode(k,f,o,src,{x:s?s.x+Math.round(Math.random()*300):viewX()+Math.round(Math.random()*200)});return {id:n.id};}},
+ {name:'connect',description:'Connects two nodes: from is the input lower down, to is the consumer higher up. Returns ok.',inputSchema:{type:'object',properties:{from:{type:'string'},to:{type:'string'}},required:['from','to']},
+  execute(i){const a=String(i.from),b=String(i.to);if(!byId(a)||!byId(b))throw new Error('no such node');snap();P.edges.push({id:uid(),a,b});drawEdges();save();return 'ok';}},
+ {name:'drop_node',description:'Marks a node as dropped, with a reason. Returns ok.',inputSchema:{type:'object',properties:{id:{type:'string'},why:{type:'string'}},required:['id']},
+  execute(i){const n=byId(String(i.id));if(!n)throw new Error('no such node');snap();n.drop=true;n.why=String(i.why||'');renderNode(n);save();return 'ok';}}];
+$('#cf').onsubmit=async e=>{
+ e.preventDefault();const q=$('#ci').value.trim();if(!q)return;
+ if(!S){flash('AI is not available in this view');return;}
+ $('#ci').value='';P.chat.push({role:'user',content:q});renderChat();
+ const bub=document.createElement('div');bub.className='m t';bub.textContent='Thinking…';$('#msgs').appendChild(bub);
+ chatCtl=new AbortController();$('#stop').hidden=false;$('#send').disabled=true;
+ const input=[{role:'user',content:RULES+'\n\nCurrent board:\n'+summary()},...P.chat.slice(-12)];
+ const opt={signal:chatCtl.signal,modelTier:$('#cbrain').value,onText:({text})=>{bub.className='m a';bub.textContent=text;$('#msgs').scrollTop=1e9;}};
+ if(LIM&&LIM.tools)opt.tools=ctools();else opt.cache=false;
+ try{const{text}=await S(input,opt);P.chat.push({role:'assistant',content:text});}
+ catch(err){if(err&&err.text)P.chat.push({role:'assistant',content:err.text});bub.textContent=errTxt(err);}
+ $('#stop').hidden=true;$('#send').disabled=false;P.chat=P.chat.slice(-40);renderChat();save();
+};
+$('#stop').onclick=()=>chatCtl&&chatCtl.abort();
+$('#ci').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))$('#cf').requestSubmit();});
+let curTab='kit';
+function tab(w){curTab=w;for(const[t,p]of[['#t-kit','#kit'],['#t-chat','#chat']]){const on=p==='#'+w;$(t).setAttribute('aria-selected',on);$(p).classList.toggle('on',on);}}
+function sidePanel(w){const app=$('#app');const open=!app.classList.contains('noside');
+ if(!w||(open&&curTab===w))app.classList.add('noside');else{app.classList.remove('noside');tab(w);}
+ const o=!app.classList.contains('noside');$('#tkit').classList.toggle('on',o&&curTab==='kit');$('#tchat').classList.toggle('on',o&&curTab==='chat');
+ try{localStorage.setItem('ctree:side',o?curTab:'');}catch(_){}
+ requestAnimationFrame(()=>{placeRail();placePop();});}
+$('#t-kit').onclick=()=>sidePanel('kit');$('#t-chat').onclick=()=>sidePanel('chat');
+$('#tkit').onclick=()=>sidePanel('kit');$('#tchat').onclick=()=>sidePanel('chat');$('#sidex').onclick=()=>sidePanel(null);
+
+let saveT=0,saving=false,again=false,stTxt='';
+function status(t){if(t)stTxt=t;$('#st').textContent=stTxt;}
+function clean(){return JSON.parse(JSON.stringify(P,(k,v)=>k==='busy'||k==='err'||k==='_ax'||k==='_ay'?undefined:v));}
+function save(){clearTimeout(saveT);status('Edited');saveT=setTimeout(flush,900);markStale();}
+let viewT=0;function saveView(){clearTimeout(viewT);viewT=setTimeout(()=>{P.view={...V};save();},1200);}
+async function flush(){
+ clearTimeout(saveT);P.upd=Date.now();const c=clean();
+ try{localStorage.setItem('ctree:'+P.id,JSON.stringify(c));localStorage.setItem('ctree:last',P.id);}catch(_){}
+ if(!DB){status('Saved in this browser');return;}
+ if(saving){again=true;return;}saving=true;status('Saving…');
+ c.nodes.forEach(n=>{if(n.items)n.items=n.items.filter(i=>!i.local);});
+ try{await DB.doc('projects/'+P.id).set({name:P.name,upd:P.upd,data:c});status('Saved');const p=projects.find(x=>x.id===P.id);if(p){p.name=P.name;p.upd=P.upd;}else projects.push({id:P.id,name:P.name,upd:P.upd});fillList();}
+ catch(e){status(e&&e.code==='quota_exceeded'?'Storage is full':'Not saved; working locally');}
+ saving=false;if(again){again=false;flush();}
+}
+function fillList(){const l=$('#plist');const ps=projects.slice().sort((a,b)=>(b.upd||0)-(a.upd||0));if(!ps.some(p=>p.id===P.id))ps.unshift({id:P.id,name:P.name});l.innerHTML=ps.map(p=>`<option value="${esc(p.id)}"${p.id===P.id?' selected':''}>${esc(p.name||'Untitled')}</option>`).join('');}
+async function openProject(id,fresh){
+ if(!fresh)await flush();let d=null;
+ if(DB){try{const s=await DB.doc('projects/'+id).get();if(s.exists)d=s.data().data;}catch(_){}}
+ if(!d){try{d=JSON.parse(localStorage.getItem('ctree:'+id)||'null');}catch(_){}}
+ if(!d)return flash('Project not found');
+ load(d);
+}
+const GENERIC=/^(new |новый |новая |новое )?(brief|бриф|files|файлы|competitors|конкуренты|idea|идея|note|заметка|input|вводная|branch|ветка|generator|генератор|check|проверка|library|библиотека|link|ссылка|ref board|refs|рефы|final refs|финальные рефы|task|задача|voice note|голосовая заметка|sketches|наброски|storyboard|read the inputs|no-go zone|запретная зона|untitled)\s*\d*$/i;
+function migrate(d){
+ const p=Object.assign(blank(),d);
+ const old=(+d.v||0)<5;
+ p.nodes.forEach(n=>{
+  if(!ORDER.includes(n.f))n.f='prod';if(!Array.isArray(n.thread))n.thread=[];
+  n.title=String(n.title||'');
+  if(/no-go|запретн/i.test(n.title))n.nogo=true;
+  if(n.gist){n.title=n.gist;}
+  else if(n.t!=='task'&&GENERIC.test(n.title.trim()))n.title='';
+  if(n.prompt){n.title=(n.title&&!n.title.includes(n.prompt)?n.title+': ':'')+n.prompt;n.title=n.title.slice(0,300);}
+  delete n.gist;delete n.prompt;
+ });
+ if(!p.nodes.some(n=>n.t==='task')){p.nodes.forEach(n=>{if(n.f==='brief')n.y+=290;});p.nodes.unshift(mk('task','brief',{x:40,y:56,title:'Task'}));}
+ p.open={brief:true,research:true,prod:true,...Object.fromEntries(ORDER.filter(k=>d.open&&k in d.open).map(k=>[k,d.open[k]]))};
+ p.v=5;
+ const tmp=P;P=p;p.nodes.forEach(n=>{if(!n.basis||old)n.basis=basisOf(n);});P=tmp;
+ return p;
+}
+function load(d){closePop();P=migrate(d);U=[];R=[];sel=null;renderAll();if(P.view){V={...P.view};applyView();}else requestAnimationFrame(fit);fillList();}
+$('#plist').onchange=e=>openProject(e.target.value);
+$('#pname').oninput=e=>{P.name=e.target.value;save();};
+$('#pmenu').onclick=e=>{const r=e.currentTarget.getBoundingClientRect();openMenu(r.left,r.bottom+4,[
+ ['new','New project',0,async()=>{await flush();load(blank());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
+ ['demo','New demo project (Avride)',0,async()=>{await flush();load(template());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
+ ['dup','Duplicate project',0,async()=>{await flush();const c=clean();c.id=uid();c.name=P.name+' copy';load(c);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
+ ['del','Delete project…',1,()=>openMenu(r.left,r.bottom+4,[['no','Keep it',0,()=>{}],['yes',`Delete “${P.name||'Untitled'}” for good`,1,delProject]])]]);};
+async function delProject(){
+ const id=P.id;try{localStorage.removeItem('ctree:'+id);}catch(_){}
+ if(DB){try{await DB.doc('projects/'+id).delete();}catch(_){flash('Could not delete');return;}}
+ projects=projects.filter(p=>p.id!==id);const next=projects.slice().sort((a,b)=>b.upd-a.upd)[0];
+ if(next)openProject(next.id,true);else{load(blank());save();}
+}
+
+addEventListener('resize',()=>{placeRail();placePop();});
+try{const last=localStorage.getItem('ctree:last');const d=last&&JSON.parse(localStorage.getItem('ctree:'+last)||'null');if(d)P=migrate(d);else P=migrate(P);}catch(_){P=migrate(P);}
+try{const sd=localStorage.getItem('ctree:side');if(sd)sidePanel(sd);}catch(_){}
+renderKit();renderAll();if(P.view){V={...P.view};applyView();}else{applyView();requestAnimationFrame(()=>requestAnimationFrame(fit));}fillList();status('Changes save automatically');
+
+(async()=>{
+ const [db,as,s,dc]=await Promise.all([use('db'),use('assets'),use('sample'),use('dictation')]);
+ AS=as;S=s;DICT=dc;
+ if(DICT){try{
+  DICT.onFinal(({text})=>{const n=byId(dictFor);if(!n||!text)return;n.text=(n.text?n.text.replace(/\s*$/,' '):'')+text;livePart='';const el=els[n.id],ta=el&&el.querySelector('textarea[data-f="text"]'),lv=el&&el.querySelector('.live');if(ta){ta.value=n.text;if(!FS)grow(ta);}if(lv)lv.textContent='Listening…';save();});
+  DICT.onPartial(({text})=>{livePart=text;const el=els[dictFor],lv=el&&el.querySelector('.live');if(lv)lv.textContent=text;});
+  DICT.onState(({state})=>{if(state==='idle'&&dictFor){const n=byId(dictFor);dictFor=null;livePart='';if(n)renderNode(n);}});
+ }catch(_){DICT=null;}}
+ if(S){try{LIM=await S.limits();}catch(_){LIM=null;}$('#aist').textContent='';}else $('#aist').textContent='AI unavailable here';
+ P.nodes.filter(n=>n.items||n.t==='brief'||n.t==='card').forEach(n=>renderNode(n));
+ if(!db){status('Saved in this browser only');return;}
+ DB=db;const timer=setTimeout(()=>status('Storage is not answering; working locally'),10000);
+ try{const q=await DB.collection('projects').get();clearTimeout(timer);projects=q.docs.map(d=>{const v=d.data()||{};return {id:d.id,name:String(v.name||''),upd:+v.upd||0};});
+  if(projects.length){const own=projects.find(p=>p.id===P.id),top=projects.slice().sort((a,b)=>b.upd-a.upd)[0];await openProject((own||top).id,true);status('Saved');}
+  else{fillList();flush();}
+ }catch(e){clearTimeout(timer);status('Storage unavailable; working locally');DB=null;}
+})();
+}
+</script>
+</body>
+</html>

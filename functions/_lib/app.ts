@@ -16,6 +16,7 @@ import { brandingFor } from './branding';
 import { suggestHeadlines } from './headlines';
 import { articleIdeas } from './ideas';
 import { METHODS, runMethod } from './methods';
+import { mountTree } from './tree';
 import superplaneMarket from '../../data/superplane/market.json';
 
 type Vars = { user: SessionUser; ws: any; access: Access };
@@ -156,6 +157,9 @@ app.get('/me', async (c) => {
   const org = orgIds.length ? await c.env.DB.prepare('SELECT id, name, slug, logo_url FROM orgs WHERE id = ?').bind(orgIds[0]).first() : null;
   return c.json({ user: { id: user.id, email: user.email, name: user.name }, org, orgRoles: user.orgRoles, isAgency: orgIds.length > 0 });
 });
+
+// Creative Tree canvas (/tree/), agency only
+mountTree(app as any);
 
 app.get('/workspaces', async (c) => {
   const user = c.get('user');

@@ -34,6 +34,7 @@ export default function Projects() {
         <div className="flex items-center gap-3 text-[12px] text-muted">
           <ThemeSwitch />
           {me?.user.email}
+          {me?.isAgency && <Btn onClick={() => { location.href = '/tree/'; }}>Creative Tree</Btn>}
           <Btn onClick={async () => { await api('/auth/logout', { body: {} }); nav('/login'); }}>Sign out</Btn>
         </div>
       </div>

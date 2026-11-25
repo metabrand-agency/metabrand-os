@@ -136,3 +136,23 @@ CREATE TABLE IF NOT EXISTS notes (
 --   agency_member -> every workspace of the org (assignment later)
 --   client_*      -> only their workspace; only visibility='client' rows and status='published' research;
 --                    never: workspaces.stage, settings internals, notes, usage
+
+-- Creative Tree (/tree/): canvas projects as JSON and files dropped on them; agency org only
+CREATE TABLE IF NOT EXISTS tree_projects (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  upd INTEGER NOT NULL,
+  data TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS tree_projects_org ON tree_projects(org_id, upd);
+
+CREATE TABLE IF NOT EXISTS tree_files (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  name TEXT,
+  type TEXT NOT NULL,
+  data BLOB NOT NULL,
+  created_at INTEGER NOT NULL
+);

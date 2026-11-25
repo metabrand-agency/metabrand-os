@@ -16,4 +16,7 @@ export const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS data_sources (\n  id TEXT PRIMARY KEY,\n  org_id TEXT NOT NULL REFERENCES orgs(id),\n  provider TEXT NOT NULL,\n  secret_ref TEXT,\n  enabled INTEGER NOT NULL DEFAULT 1,\n  trial_until INTEGER\n)",
   "CREATE TABLE IF NOT EXISTS usage (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT REFERENCES workspaces(id),\n  provider TEXT NOT NULL,\n  units INTEGER NOT NULL,\n  cost_microusd INTEGER NOT NULL DEFAULT 0,\n  created_at INTEGER NOT NULL\n)",
   "CREATE TABLE IF NOT EXISTS notes (\n  id TEXT PRIMARY KEY,\n  workspace_id TEXT NOT NULL REFERENCES workspaces(id),\n  body TEXT NOT NULL,\n  author_id TEXT,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS tree_projects (\n  id TEXT PRIMARY KEY,\n  org_id TEXT NOT NULL,\n  name TEXT NOT NULL DEFAULT '',\n  upd INTEGER NOT NULL,\n  data TEXT NOT NULL\n)",
+  "CREATE INDEX IF NOT EXISTS tree_projects_org ON tree_projects(org_id, upd)",
+  "CREATE TABLE IF NOT EXISTS tree_files (\n  id TEXT PRIMARY KEY,\n  org_id TEXT NOT NULL,\n  name TEXT,\n  type TEXT NOT NULL,\n  data BLOB NOT NULL,\n  created_at INTEGER NOT NULL\n)",
 ];
