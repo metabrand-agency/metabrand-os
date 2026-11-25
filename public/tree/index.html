@@ -95,7 +95,8 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .node{position:absolute;left:0;top:0;width:264px;background:var(--paper);border:1px solid var(--line);border-radius:9px;will-change:transform;cursor:grab;user-select:none}
 .node input,.node textarea,.node select{user-select:text;cursor:auto}
 .node img,.node video{-webkit-user-drag:none;user-drag:none}
-.node .nt{cursor:grab}
+.node .nt,.node .ct{cursor:grab}
+.node .ct:focus{cursor:text}
 .node .nt:focus{cursor:text}
 body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!important}
 .node.wide{width:420px}
@@ -145,6 +146,21 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .msel{width:auto;border-color:transparent;font-size:12.5px;color:var(--mute);padding:4px 2px;cursor:pointer}
 .go{width:30px;height:30px;padding:0;border-radius:50%;background:var(--ink);color:var(--paper);border-color:var(--ink);font-size:15px;line-height:1}
 .nf:empty{display:none}
+.node.cardn .nt{display:none}
+.ct{display:block;width:100%;min-height:2.4em;color:var(--ink);padding:3px 5px}
+.ct.h1{font:500 22px/1.25 'Inter Tight',Inter,sans-serif;letter-spacing:-.01em}
+.ct.h2{font:500 16.5px/1.35 'Inter Tight',Inter,sans-serif}
+.ct.p{font-size:13.5px;line-height:1.5}
+.cline{display:none;padding:2px 10px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.cline.h1{font:500 20px/1.25 'Inter Tight',Inter,sans-serif}.cline.h2{font:500 15px/1.3 'Inter Tight',Inter,sans-serif}.cline.p{font-size:13.5px}
+.node.shut.cardn .cline{display:block}
+.sty{display:flex;gap:1px}
+.sty button{border:0;padding:3px 6px;font:500 10.5px/1 Inter,sans-serif;color:var(--faint);border-radius:5px}
+.sty button.on{color:var(--ink);background:var(--paper2)}
+.node.cardn:not(:hover):not(.sel) .cmp .ci,.node.cardn:not(:hover):not(.sel) .sty{display:none}
+.node.cardn .cmp .msel{max-width:120px}
+.tgl{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mute);margin:4px 3px 2px;cursor:pointer}
+.tgl input{width:auto;margin:0}
 .gen1{font-size:12px;padding:4px 10px;background:var(--ink);color:var(--paper);border-color:var(--ink);border-radius:6px}
 .gen1:disabled{background:none;color:var(--faint);border-color:var(--line);cursor:default}
 .docv{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:2px auto 4px;border-radius:6px;cursor:zoom-in}
@@ -337,9 +353,10 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ORDER=['brief','research','prod'];
 const NAMES={brief:'Inputs',research:'Ideas',prod:'Production'};
-const CARDL={brief:'Input',research:'Idea',prod:'Branch'};
+const CARDL={brief:'Input',research:'Idea',prod:'Note'};
+const firstLine=t=>String(t||'').split('\n').map(x=>x.trim()).find(Boolean)||'';
 const TL={folder:'Folder',brief:'Task',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
-const ADDS={brief:[['doc','File…'],['folder','Folder…'],['link','Link'],['card','Note'],['table','Competitors']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
+const ADDS={brief:[['doc','File…'],['folder','Folder…'],['link','Link'],['card','Note'],['table','Competitors']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Note'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
 const MODES={insights:'Input analysis',ideas:'Ideas',collide:'Collisions',prompts:'Prompts for a model',sketch:'Composition sketches'};
 const BRAINS={quick:'Fast',default:'Balanced',complex:'Deep'};
 const OPS={none:['No method',''],ban:['Anti-cliché','First list what anyone and any AI would make for this, then go somewhere else entirely.'],invert:['TRIZ: inversion','Do the opposite of the category habit: remove the main object, show its trace, swap cause and effect.'],contra:['TRIZ: contradiction','State the core contradiction (it must be X and not X) and resolve it with separation in time, space or scale.'],morph:['Morphological box','Split the task into axes (medium, motion, metaphor, material, angle, time) and combine unexpected values.'],analogy:['Distant analogy','Find how nature, navigation, architecture, science, crafts or other industries solve the same job. Transfer the principle, not the picture.'],bisoc:['Collide two inputs','Collide inputs in pairs: an element of one plus an element of another makes a new image.'],scamper:['SCAMPER','Substitute, combine, adapt, modify, put to other use, eliminate, reverse.'],scale:['Scale and viewpoint','Change scale and viewpoint: macro, top-down, from inside, years later, through the object itself.'],random:['Random stimulus','Pick an unrelated random word or object and force a connection to the task.'],oblique:['Oblique strategy','Use oblique strategies: honor the error as a hidden intention; remove the most important thing; make one thing huge.']};
@@ -378,7 +395,7 @@ const TIC={sec:'1s',bad:'BD',swap:'LS',scale:'Sc',task:'TF',make:'Pr',cliche:'Cl
 const RIC={founder:'Fo',board:'IC',buyer:'By',cand:'Ca',lay:'ND',rival:'RC'};
 
 const mk=(t,f,o={})=>Object.assign({id:uid(),t,f,x:40,y:56,title:'',text:'',thread:[]},
- t==='board'?{items:[]}:t==='folder'?{files:[],folder:''}:t==='files'||t==='brief'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
+ t==='board'?{items:[]}:t==='folder'?{files:[],folder:'',aiRead:false}:t==='files'||t==='brief'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
 
 function template(){
  const T=mk('task','brief',{id:'t0',x:40,y:56,title:'Task',text:'Need an animated banner for Avride\'s robotaxi launch in Miami (LinkedIn 1200×627 plus a 9:16 cut, [TBD: duration]) that answers why Avride when Waymo, Zoox and Tesla are already here. Follow the brand guide [TBD: awaiting], keep the voice confident and safety-first, use the real vehicle model, and avoid everything on the no-go list.',pick:true});
@@ -400,7 +417,7 @@ function template(){
  return {v:5,id:uid(),name:'Avride · demo',open:{brief:true,research:true,prod:true},nodes:[T,b,t,z,fs,an,g,i1,i3,i4,i2,ch,d1,d2,d3,p1],
   edges:[['t0','r4'],['r4','c1'],['r4','c4'],['r4','c5'],['r4','c2'],['c1','c3'],['c4','c3'],['c5','c3'],['c1','d1'],['c4','d2'],['c5','d3'],['c1','p1']].map(([a,b])=>({id:uid(),a,b})),chat:[],view:null};
 }
-function blank(){return {v:5,trash:[],id:uid(),name:'Empty tree',open:{brief:true,research:true,prod:true},nodes:[mk('brief','brief',{x:40,y:56,open:true})],edges:[],chat:[],view:null};}
+function blank(){return {v:6,trash:[],id:uid(),name:'Empty tree',open:{brief:true,research:true,prod:true},nodes:[mk('card','brief',{x:40,y:56,open:true,st:'h2'})],edges:[],chat:[],view:null};}
 
 let DICT=null,dictFor=null,livePart='';
 let P=template(),V={x:220,y:20,z:.8},sel=null,geo={},els={},U=[],R=[],DB=null,AS=null,S=null,LIM=null,projects=[];
@@ -514,15 +531,16 @@ function body(n){
  if(n.doc){const it=n.items[0];if(!it)return '';const k=it.kind||'image',u=k==='image'?imgSrc(it):blob(it),ext=(String(it.name||'').match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();
   if(docKind(it)==='PDF'){if(it.thumb)return `<img class="docv" data-a="look" alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}">`;if(window.CT_PDF&&AS)setTimeout(()=>pdfThumb(n),0);if(window.CT_SHOT)return `<div class="docf" data-a="look" role="button" tabindex="0"><b>PDF</b>${esc(it.name||'file')}</div>`;}
   return k==='image'&&u?`<img class="docv" data-a="look" alt="" src="${esc(u)}">`:k==='video'&&u?`<video class="docv" data-a="look" src="${esc(u)}" muted loop autoplay playsinline></video>`:docKind(it)==='Audio'&&u?`<audio class="doca" controls preload="none" src="${esc(u)}"></audio>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
- if(n.t==='card'&&n.f==='research'){const ups=upstream(n).length;
-  return `<textarea data-f="text" placeholder="Details, or a direction for the model">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
-  +`<div class="cmp">${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<select class="msel" data-f="model" aria-label="Model">${RUNS.map(([t,nm])=>`<option value="${t}"${(n.model||'default')===t?' selected':''}>${esc(nm)}</option>`).join('')}</select><span class="sp"></span><button class="gen1" data-a="gen1"${ups&&!n.busy?'':' disabled'} title="${ups?'Write this idea from the connected blocks':'Connect blocks to this idea first'}">${n.busy?'Generating…':n.genBy?'Regenerate':'Generate'}</button></div>`;}
- if(n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(DICT?`<div class="cmp">${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}</div>`:'');
+ if(n.t==='card'){const st=n.st||'p',ups=n.f==='research'?upstream(n).length:0;
+  const ph=n.nogo?'What to avoid':n.f==='brief'?'Write an input: the task, a constraint, a thought':n.f==='research'?'An idea, or a direction for the model':'A note';
+  return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea class="ct ${st}" data-f="text" placeholder="${ph}" aria-label="${esc(lab(n))}">${esc(n.text)}</textarea>`
+  +(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
+  +`<div class="cmp">${n.f==='brief'?'<button class="ci" data-a="addfile" aria-label="Attach files" title="Attach files">+</button>':''}${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sty">${['h1','h2','p'].map(v=>`<button data-a="sty" data-v="${v}" class="${st===v?'on':''}" aria-pressed="${st===v}" title="Text size">${v.toUpperCase()}</button>`).join('')}</span><span class="sp"></span>${n.f==='research'?`<select class="msel" data-f="model" aria-label="Model">${RUNS.map(([t,nm])=>`<option value="${t}"${(n.model||'default')===t?' selected':''}>${esc(nm)}</option>`).join('')}</select><button class="gen1" data-a="gen1"${ups&&!n.busy?'':' disabled'} title="${ups?'Write this idea from the connected blocks':'Connect blocks to this idea first'}">${n.busy?'Generating…':n.genBy?'Regenerate':'Generate'}</button>`:''}</div>`;}
  if(n.t==='board')return thumbs(n);
  if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea>`;
  if(n.t==='folder'){const fs=n.files||[];if(!fs.length)return `<button class="pickf" data-a="pickdir">Choose a folder…</button>`;
   const order=fs.map((f,i)=>i).sort((a,b)=>(fs[b].thumb?1:0)-(fs[a].thumb?1:0));const lim=n.all?order.length:18,shown=order.slice(0,lim);
-  return `<div class="ftiles">${shown.map(i=>{const f=fs[i],t=thumbSrc(f),ext=(String(f.name).match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();return t?`<button class="ft" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><img alt="" loading="lazy" src="${esc(t)}"><span>${esc(f.name)}</span></button>`:`<button class="ft nt0" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><b>${esc(ext)}</b><span>${esc(f.name)}</span></button>`;}).join('')}${order.length>lim?`<button class="ft nt0" data-a="fall"><b>+${order.length-lim}</b></button>`:''}</div>`;}
+  return `<div class="ftiles">${shown.map(i=>{const f=fs[i],t=thumbSrc(f),ext=(String(f.name).match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();return t?`<button class="ft" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><img alt="" loading="lazy" src="${esc(t)}"><span>${esc(f.name)}</span></button>`:`<button class="ft nt0" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><b>${esc(ext)}</b><span>${esc(f.name)}</span></button>`;}).join('')}${order.length>lim?`<button class="ft nt0" data-a="fall"><b>+${order.length-lim}</b></button>`:''}</div><label class="tgl"><input type="checkbox" data-a="airead"${n.aiRead?' checked':''}> Models may read its PDFs and texts</label>`;}
  if(n.t==='link'){if(!okUrl(n.url)||n._edit)return `<input data-f="url" placeholder="Paste a link" value="${esc(n.url)}" aria-label="Link">`;const pv=prevOf(n);
   return (pv?`<div class="lpv" data-a="look"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:n.meta&&n.meta.text?`<div class="npv" data-a="look">${esc(n.meta.text.replace(/^#+ /gm,'').slice(0,700))}</div>`:'')+`<a class="lurl" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.url.replace(/^https:\/\/(www\.)?/,''))}</a>`;}
  if(n.t==='source'){const l=libOf(n.lib);return `<div class="lbl">${l[5]?'Search query':'Search there for'} · ${esc(l[3])}</div><input data-f="q" placeholder="a few words" value="${esc(n.q)}">`+thumbs(n);}
@@ -546,7 +564,7 @@ function body(n){
 function foot(n){
  const a=[];
  if(n.t==='task')a.push(['task','Rewrite from inputs',1]);
- if(n.t==='brief'||n.doc)return '';
+ if(n.t==='brief'||n.t==='card'||n.doc)return '';
  if(n.t==='files'||n.t==='brief')a.push(['addfile','+ files']);
  if(n.t==='table'){a.push(['rowadd','+ row']);a.push(['aifind','Find with AI']);}
  if(n.t==='board'||n.t==='source'){a.push(['addimg','+ images']);if(n.items.length&&LIM&&LIM.images)a.push(['readrefs','Read the refs']);}
@@ -586,12 +604,12 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.notion?`<button class="ib" data-a="remeta" aria-label="Read again from Notion" title="Read again from Notion">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)&&!n._edit?`<button class="ib" data-a="editurl" aria-label="Edit link" title="Edit link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/></svg></button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.notion?`<button class="ib" data-a="remeta" aria-label="Read again from Notion" title="Read again from Notion">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)&&!n._edit?`<button class="ib" data-a="editurl" aria-label="Edit link" title="Edit link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/></svg></button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${n.t==='card'?`<div class="cline ${n.st||'p'}">${esc(firstLine(n.text))}</div>`:''}${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
 function grow(t){t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';}
-function cls(n){return 'node'+(n.t!=='task'&&!n.open?' shut':'')+(n.t==='brief'?' brief':n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
+function cls(n){return 'node'+(n.t==='card'?' cardn':'')+(n.t!=='task'&&!n.open?' shut':'')+(n.t==='brief'?' brief':n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
 function renderNode(n,fresh){
  let el=els[n.id];
  if(!el){el=document.createElement('div');el.dataset.id=n.id;nodesEl.appendChild(el);els[n.id]=el;ro.observe(el);}
@@ -673,6 +691,7 @@ function addNode(t,f,o={},from,at){
  const n=mk(t,f,Object.assign({x:at&&at.x!=null?Math.round(at.x):viewX(),y:0},o));
  n.y=at&&at.y!=null?Math.max(40,Math.round(at.y)):freeSpot(f,n.x);
  if(!Array.isArray(n.thread))n.thread=[];
+ if(n.t==='card'){if(n.title&&!(n.text||'').startsWith(n.title))n.text=n.title+(n.text?'\n'+n.text:'');n.title=firstLine(n.text).slice(0,200);}
  if(o.open===undefined)n.open=t!=='card'||!n.title;
  P.nodes.push(n);if(from)P.edges.push({id:uid(),a:from,b:n.id});
  n.basis=basisOf(n);
@@ -877,7 +896,7 @@ function popSubmit(e){e.preventDefault();const n=byId(popFor);const t=pop.queryS
 const NODE_RULES=`You are the creative director's assistant inside a single node of "Creative Tree" (floors: brief = Inputs, research = Ideas, prod = Production). Work on this node only unless asked. The node's title is its one-line prompt: short and concrete (max 14 words), e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up". Do not invent facts about companies. Reply briefly in the language the designer writes in.`;
 function nodeTools(n){return [
  {name:'update_node',description:'Rewrites fields of this node. Any of: title (the one-line prompt, max 14 words), text (details). Returns ok.',inputSchema:{type:'object',properties:{title:{type:'string'},text:{type:'string'}}},
-  execute(i){if(!byId(n.id))throw new Error('node is gone');snap();if(typeof i.title==='string')n.title=i.title.slice(0,200);if(typeof i.text==='string')n.text=i.text.slice(0,2000);renderNode(n);save();return 'ok';}},
+  execute(i){if(!byId(n.id))throw new Error('node is gone');snap();if(n.t==='card'){const t1=typeof i.title==='string'?i.title.slice(0,200):'',tx=typeof i.text==='string'?i.text.slice(0,2000):null;if(tx!==null)n.text=(t1?t1+'\n':'')+tx;else if(t1)n.text=[t1,...String(n.text||'').split('\n').slice(1)].join('\n');n.title=firstLine(n.text);}else{if(typeof i.title==='string')n.title=i.title.slice(0,200);if(typeof i.text==='string')n.text=i.text.slice(0,2000);}renderNode(n);save();return 'ok';}},
  {name:'add_child',description:'Adds a node connected from this one and returns its id. kind: card (idea, branch or note), gen (generator), check (gate), source (reference library search; give lib and q). floor defaults to the next floor up.',inputSchema:{type:'object',properties:{kind:{type:'string',enum:['card','gen','check','source']},floor:{type:'string',enum:ORDER},title:{type:'string',description:'one-line prompt, max 14 words'},text:{type:'string'},lib:{type:'string',enum:LIBS.map(l=>l[0])},q:{type:'string'},mode:{type:'string',enum:Object.keys(MODES)},op:{type:'string',enum:Object.keys(OPS)}},required:['kind','title']},
   execute(i){const k=['card','gen','check','source'].includes(i.kind)?i.kind:'card';const f=ORDER.includes(i.floor)?i.floor:(k==='source'?'prod':ORDER[Math.min(ORDER.indexOf(n.f)+1,2)]);const o={title:String(i.title||'').slice(0,200),text:String(i.text||'').slice(0,1500)};
    if(k==='source'){o.lib=LIBS.some(l=>l[0]===i.lib)?i.lib:'pinterest';o.q=String(i.q||o.title).slice(0,80);}
@@ -914,7 +933,7 @@ function markStale(){clearTimeout(stT);stT=setTimeout(()=>{let c=0;for(const n o
 $('#refall').onclick=()=>refresh(P.nodes.filter(isStale));
 $('#sum').onclick=async()=>{
  if(!S)return flash('AI is not available in this view');
- const list=P.nodes.filter(n=>!n.title.trim()&&n.t!=='task');if(!list.length)return flash('Every node has a title. Clear one to rewrite it');
+ const list=P.nodes.filter(n=>!n.title.trim()&&n.t!=='task'&&n.t!=='card');if(!list.length)return flash('Every node has a title. Clear one to rewrite it');
  flash('Writing titles…');
  try{const res=await S.json(`Write a clear title for each node: one line, max 14 words, concrete, readable at a glance; never a generic name like "Brief", "Files" or "Idea". On the Inputs floor (brief) say what the input says, e.g. "Brand guide v3: navy, Inter, safety-first voice". On Ideas and Production write it as a prompt (format, subject, action), e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up". ${LANG}\n\nTask:\n${taskText()}\n\nNodes:\n${list.map(n=>'id='+n.id+' floor='+n.f+' '+nodeText(n)).join('\n\n').slice(0,20000)}\n\nReply with only a JSON array of {"id":"...","title":"..."}.`,{modelTier:'default',cache:false});
   snap();const was=new Set(P.nodes.filter(isStale).map(n=>n.id));let c=0;
@@ -969,7 +988,7 @@ async function genIdea(n){
  const ups=upstream(n).map(byId).filter(Boolean);if(!ups.length){flash('Connect blocks to this idea first');return;}
  const others=P.nodes.filter(x=>x!==n&&x.f==='research'&&x.t==='card'&&x.title).map(x=>'- '+x.title).join('\n');
  const nogo=ups.filter(x=>x.nogo).map(x=>`- ${x.title}${x.text?': '+x.text:''}`).join('\n');
- const dir=[n.genBy?'':n.title,n.genBy?'':n.text].filter(Boolean).join('. ');
+ const dir=n.genBy?'':String(n.text||'').trim();
  n.busy=true;n.err='';renderNode(n);
  try{
   const f=await filesOf(ups);
@@ -981,7 +1000,7 @@ ${nogo?`\nAvoid:\n${nogo}\n`:''}${others?`\nOther ideas already on the board (do
 Reply with only JSON: {"title":"the idea as a one-line prompt, max 14 words: format, subject, action","text":"2-4 sentences: what we see, why it answers the task, what makes it not obvious"}`;
   const r=await S.json(prompt,withFiles(f,{modelTier:n.model||'default',cache:false}));
   if(!r||typeof r.title!=='string')throw {code:'invalid_json'};
-  snap();n.title=r.title.slice(0,200);n.text=String(r.text||'').slice(0,1200);n.genBy=n.model||'default';n.basis=basisOf(n);
+  snap();n.title=r.title.slice(0,200);n.text=n.title+(r.text?'\n'+String(r.text).slice(0,1200):'');n.genBy=n.model||'default';n.basis=basisOf(n);
  }catch(e){n.err=errTxt(e);}
  delete n.busy;renderNode(n);save();
 }
@@ -1005,7 +1024,7 @@ cv.addEventListener('pointerdown',e=>{
  if(port&&nel){e.preventDefault();drag={k:'c',id:nel.dataset.id,port:port.dataset.port};cv.setPointerCapture(e.pointerId);return;}
  if(nel){const id=nel.dataset.id;if(!(sel&&sel.id===id))select('n',id);
   // a title being edited selects text; otherwise dragging it moves the block, and a click starts editing
-  if(!e.target.closest('input,button,select,textarea:not(.nt),a,audio,.port')&&!(e.target.classList.contains('nt')&&e.target===document.activeElement)){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};}
+  if(!e.target.closest('input,button,select,textarea:not(.nt):not(.ct),a,audio,.port')&&!((e.target.classList.contains('nt')||e.target.classList.contains('ct'))&&e.target===document.activeElement)){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};}
   return;}
  if(hit){if(sel&&sel.k==='e'&&sel.id===hit.dataset.edge)return void cutEdge(sel.id);select('e',hit.dataset.edge);return;}
  select(null);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
@@ -1014,7 +1033,7 @@ cv.addEventListener('pointerdown',e=>{
 cv.addEventListener('pointermove',e=>{
  if(!drag)return;
  if(drag.k==='p'){V.x=drag.vx+e.clientX-drag.sx;V.y=drag.vy+e.clientY-drag.sy;applyView();return;}
- if(drag.k==='n'){const n=byId(drag.id);const dx=(e.clientX-drag.sx)/V.z,dy=(e.clientY-drag.sy)/V.z;if(!drag.moved&&Math.hypot(dx,dy)<3)return;if(!drag.moved){snap();drag.moved=1;try{cv.setPointerCapture(e.pointerId);}catch(_){}const ae=document.activeElement;if(ae&&ae.classList&&ae.classList.contains('nt')){ae.blur();getSelection().removeAllRanges();}document.body.classList.add('dragging');}
+ if(drag.k==='n'){const n=byId(drag.id);const dx=(e.clientX-drag.sx)/V.z,dy=(e.clientY-drag.sy)/V.z;if(!drag.moved&&Math.hypot(dx,dy)<3)return;if(!drag.moved){snap();drag.moved=1;try{cv.setPointerCapture(e.pointerId);}catch(_){}const ae=document.activeElement;if(ae&&ae.classList&&(ae.classList.contains('nt')||ae.classList.contains('ct'))){ae.blur();getSelection().removeAllRanges();}document.body.classList.add('dragging');}
   n._ax=drag.ax+dx;n._ay=drag.ay+dy;els[n.id].style.transform=`translate(${n._ax}px,${n._ay}px)`;drawEdges();placePop();return;}
  if(drag.k==='r'){const n=byId(drag.id),w=Math.round(clamp(drag.w0+(e.clientX-drag.sx)/V.z,200,1400));if(!drag.moved){snap();drag.moved=1;}n.w=w;els[n.id].style.width=w+'px';schedule();return;}
  if(drag.k==='c'){const r=rect(byId(drag.id)),w=toWorld(e.clientX,e.clientY),a={x:r.x+r.w/2,y:drag.port==='t'?r.y:r.y+r.h};const k=(w.y<a.y?-1:1)*Math.max(30,Math.abs(w.y-a.y)*.45);tmpPath=`M${a.x} ${a.y}C${a.x} ${a.y+k} ${w.x} ${w.y-k} ${w.x} ${w.y}`;drawEdges();}
@@ -1053,7 +1072,7 @@ let typed=false;
 world.addEventListener('focusout',e=>{const t=e.target;if(!t.matches||!t.matches('input[data-f="url"]'))return;const el=t.closest('.node'),n=el&&byId(el.dataset.id);if(n&&n._edit&&t.value===n.url)setTimeout(()=>{if(n._edit){delete n._edit;renderNode(n);}},0);});
 world.addEventListener('focusin',e=>{if(e.target.dataset.f)typed=false;});
 function setField(n,f,v){if(f.startsWith('row:')){const[,i,k]=f.split(':');if(n.rows[+i])n.rows[+i][k]=v;return;}n[f]=f==='n'?+v:v;}
-world.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f||t.tagName==='SELECT')return;const n=byId(t.closest('.node').dataset.id);if(!n)return;if(!typed){snap();typed=true;}setField(n,f,t.value);if(t.tagName==='TEXTAREA'&&!FS)grow(t);if(f==='title')kitSel();save();});
+world.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f||t.tagName==='SELECT')return;const n=byId(t.closest('.node').dataset.id);if(!n)return;if(!typed){snap();typed=true;}setField(n,f,t.value);if(n.t==='card'&&f==='text')n.title=firstLine(n.text).slice(0,200);if(t.tagName==='TEXTAREA'&&!FS)grow(t);if(f==='title')kitSel();save();});
 world.addEventListener('change',e=>{const t=e.target,f=t.dataset.f;if(!f)return;const n=byId(t.closest('.node').dataset.id);if(!n)return;
  if(t.tagName==='SELECT'){snap();setField(n,f,t.value);if(f==='mode')renderNode(n);save();return;}
  if(f==='url'&&n.t==='link'){delete n._edit;n.meta=null;renderNode(n);linkMeta(n);}
@@ -1071,6 +1090,8 @@ world.addEventListener('click',e=>{
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
  if(a==='look')return void lightbox(n);
+ if(a==='sty'){snap();n.st=b.dataset.v;renderNode(n);save();return;}
+ if(a==='airead'){snap();n.aiRead=!n.aiRead;renderNode(n);save();return;}
  if(a==='editurl'){n._edit=true;renderNode(n);const i=els[n.id]&&els[n.id].querySelector('input[data-f="url"]');if(i){i.focus();i.select();}return;}
  if(a==='pickdir')return void pickDir(n);
  if(a==='ftile')return void openLocal(n,+b.dataset.i);
@@ -1118,15 +1139,15 @@ let pickLink=null;
 function addOf(t,k,at,lk){
  if(t==='doc'){pickFor=null;pickAt=at||null;pickLink=lk||null;$('#fi').accept='';$('#fi').click();return;}
  const o=t==='gen'&&k==='prod'?{mode:'sketch',n:4}:t==='gen'&&k==='brief'?{mode:'insights',n:5,title:'Tensions, white space and gaps in the inputs'}:t==='nogo'?{nogo:true}:{};
- const bs=P.nodes.filter(x=>x.t==='brief');
- const m=addNode(t==='nogo'?'card':t,k,o,null,at||(k==='brief'&&bs.length===1?docSpot(bs[0]):undefined));if(!at)reveal(m);
+ const tr=k==='brief'?trunk():null;
+ const m=addNode(t==='nogo'?'card':t,k,o,null,at||(tr?docSpot(tr):undefined));if(!at)reveal(m);
  if(lk){linkEdge(m,lk);save();}
- else if(k==='brief'&&t!=='brief'&&bs.length===1){P.edges.push({id:uid(),a:m.id,b:bs[0].id});schedule();save();}
+ else if(tr&&tr.id!==m.id){P.edges.push({id:uid(),a:m.id,b:tr.id});schedule();save();}
  if(t==='folder'){pickDir(m);return m;}
- const ta=els[m.id]&&els[m.id].querySelector(m.t==='link'?'input[data-f="url"]':m.t==='brief'?'textarea.bt':'textarea.nt');if(ta)ta.focus();
+ const ta=els[m.id]&&els[m.id].querySelector(m.t==='link'?'input[data-f="url"]':m.t==='card'?'textarea.ct':m.t==='brief'?'textarea.bt':'textarea.nt');if(ta)ta.focus();
  return m;
 }
-$('#fi').onchange=e=>{const fs=[...e.target.files];const n=byId(pickFor);if(n)addImages(n,fs);else if(fs.length){const bs=P.nodes.filter(x=>x.t==='brief');addDocs(pickLink?null:bs.length===1?bs[0]:null,fs,pickAt||undefined,pickLink);}pickFor=null;pickAt=null;pickLink=null;e.target.value='';};
+$('#fi').onchange=e=>{const fs=[...e.target.files];const n=byId(pickFor);if(n)addImages(n,fs);else if(fs.length){addDocs(pickLink?null:trunk(),fs,pickAt||undefined,pickLink);}pickFor=null;pickAt=null;pickLink=null;e.target.value='';};
 function docSpot(task,at){
  if(at)return at;
  const el=task&&els[task.id],y=task?task.y+(el?el.offsetHeight:160)+80:56;let x=task?task.x:viewX();
@@ -1158,7 +1179,7 @@ async function pullFrames(n){
  }catch(_){flash('Figma did not answer');}
 }
 function addLink(url,at){
- const bs=P.nodes.filter(x=>x.t==='brief'),b=bs.length===1?bs[0]:null;
+ const b=trunk();
  const m=addNode('link','brief',{url,open:true},null,at||docSpot(b));if(b){P.edges.push({id:uid(),a:m.id,b:b.id});schedule();}
  save();reveal(m);linkMeta(m);return m;
 }
@@ -1171,16 +1192,17 @@ async function addDocs(brief,files,at,lk){
   if(!it){flash(`Can't keep ${f.name}${AS&&window.CT_SHOT?' (files up to 25 MB here)':''}; add a link instead`);continue;}
   const pos=docSpot(brief,at);at=null;
   const m=addNode('files','brief',{doc:true,open:true,title:f.name.replace(/\.[^.]+$/,'').slice(0,120),items:[it]},null,pos);
-  if(lk)linkEdge(m,lk);else if(brief&&brief.t==='brief'){P.edges.push({id:uid(),a:m.id,b:brief.id});}
+  if(lk)linkEdge(m,lk);else if(brief&&(brief.t==='brief'||brief.t==='card')){P.edges.push({id:uid(),a:m.id,b:brief.id});}
   last=m;made.push(m);
  }
  schedule();P.nodes.filter(x=>x.t==='task').forEach(x=>renderNode(x));save();
  if(last)reveal(last);
  return made;
 }
-const briefOf=n=>n&&n.t==='brief'?n:n&&n.doc?byId((P.edges.find(e=>e.a===n.id)||{}).b)||null:null;
+function trunk(){const c=P.nodes.filter(x=>x.f==='brief'&&(x.t==='card'||x.t==='brief')&&!x.doc&&!x.run&&!x.nogo);c.sort((a,b)=>a.y-b.y||a.x-b.x);return c[0]||null;}
+const briefOf=n=>n&&(n.t==='brief'||n.t==='card')?n:n&&n.doc?byId((P.edges.find(e=>e.a===n.id)||{}).b)||null:null;
 async function addImages(n,files){
- if(n.t==='brief'||n.doc)return addDocs(briefOf(n)||n,files);
+ if(n.t==='brief'||n.t==='card'||n.doc)return addDocs(briefOf(n)||n,files);
  const any=n.t==='files'||n.t==='brief';
  const list=files.filter(f=>any||/^image\//.test(f.type));
  if(!list.length){if(files.length)flash('Only images go here; put documents in a Files node on Inputs');return;}
@@ -1210,8 +1232,8 @@ cv.addEventListener('drop',e=>{e.preventDefault();
  if(!files.length){const u=(e.dataTransfer.getData('text/uri-list')||e.dataTransfer.getData('text/plain')||'').split('\n')[0].trim();if(okUrl(u)&&!u.startsWith(location.origin+'/')){const w=toWorld(e.clientX,e.clientY);addLink(u,floorAt(w.y)==='brief'?{x:w.x-132,y:Math.max(40,w.y-geo.brief.top-20)}:undefined);}return;}
  const t=e.target.closest('.node');let n=t&&byId(t.dataset.id);
  const w0=toWorld(e.clientX,e.clientY);
- if(n&&(n.t==='brief'||n.doc))return void addDocs(briefOf(n),files);
- if(!n&&floorAt(w0.y)==='brief'){const bs=P.nodes.filter(x=>x.t==='brief');return void addDocs(bs.length===1?bs[0]:null,files,{x:w0.x-132,y:Math.max(40,w0.y-geo.brief.top-20)});}
+ if(n&&(n.t==='brief'||n.t==='card'||n.doc))return void addDocs(briefOf(n),files);
+ if(!n&&floorAt(w0.y)==='brief'){return void addDocs(trunk(),files,{x:w0.x-132,y:Math.max(40,w0.y-geo.brief.top-20)});}
  if(!n||!n.items||(n.t!=='files'&&files.some(f=>!/^image\//.test(f.type)))){const w=w0;let f=floorAt(w.y);if(!P.open[f])f='prod';const doc=f==='brief'||files.some(f=>!/^image\//.test(f.type));if(doc)f='brief';n=addNode(doc?'files':'board',f,{},null,{x:w.x-132,y:doc&&f!==floorAt(w.y)?56:w.y-geo[f].top-20});}
  addImages(n,files);});
 document.addEventListener('paste',e=>{
@@ -1235,7 +1257,7 @@ async function filesOf(ns){
  const out={images:[],documents:[],text:'',note:''};const skipped=[];
  const maxDocs=LIM&&LIM.documents?Math.min(3,LIM.documents.maxCount||3):0;
  for(const n of ns.filter(x=>x.t==='link'&&x.meta&&x.meta.text)){if(out.text.length<60000)out.text+=`\n\n--- Notion page: ${n.title||n.url} ---\n`+n.meta.text.slice(0,30000);}
- for(const n of ns.filter(x=>x.t==='folder')){let any=false;for(const f of n.files||[]){if(f.kind!=='pdf'&&f.kind!=='text')continue;const file=await localFile(n,f);if(!file)continue;any=true;
+ for(const n of ns.filter(x=>x.t==='folder'&&x.aiRead)){let any=false;for(const f of n.files||[]){if(f.kind!=='pdf'&&f.kind!=='text')continue;const file=await localFile(n,f);if(!file)continue;any=true;
   if(f.kind==='pdf'){if(out.documents.length<maxDocs&&file.size<30e6)out.documents.push(file);else skipped.push(f.name);}else if(out.text.length<40000)out.text+=`\n\n--- File: ${f.path} ---\n`+(await file.text()).slice(0,20000);}
   if(!any&&(n.files||[]).some(f=>f.kind==='pdf'||f.kind==='text'))out.note+=`\n\nThe folder “${n.folder}” is not connected in this session, so its documents were not read.`;}
  for(const n of ns)for(const it of (n.items||[])){
@@ -1367,7 +1389,7 @@ async function openProject(id,fresh){
 const GENERIC=/^(new |новый |новая |новое )?(brief|бриф|files|файлы|competitors|конкуренты|idea|идея|note|заметка|input|вводная|branch|ветка|generator|генератор|check|проверка|library|библиотека|link|ссылка|ref board|refs|рефы|final refs|финальные рефы|task|задача|voice note|голосовая заметка|sketches|наброски|storyboard|read the inputs|no-go zone|запретная зона|untitled)\s*\d*$/i;
 function migrate(d){
  const p=Object.assign(blank(),d);
- const old=(+d.v||0)<5;
+ const old=(+d.v||0)<5,v6=(+d.v||0)<6;
  p.nodes.forEach(n=>{
   if(!ORDER.includes(n.f))n.f='prod';if(!Array.isArray(n.thread))n.thread=[];
   n.title=String(n.title||'');
@@ -1381,7 +1403,12 @@ function migrate(d){
   n.items.forEach((it,i)=>{const d=mk('files','brief',{doc:true,open:true,title:String(it.name||'Document').replace(/\.[^.]+$/,''),items:[it],x:n.x+480+i*290,y:n.y});p.nodes.push(d);p.edges.push({id:uid(),a:d.id,b:n.id});});
   n.items=[];});
  p.open={brief:true,research:true,prod:true,...Object.fromEntries(ORDER.filter(k=>d.open&&k in d.open).map(k=>[k,d.open[k]]))};
- p.v=5;
+ if(v6)p.nodes.forEach(n=>{
+  if(n.t==='brief'){n.t='card';n.st=n.st||'h2';n.open=true;delete n.model;delete n.items;delete n.links;}
+  if(n.t==='card'){const t=String(n.title||'').trim();if(t&&!String(n.text||'').startsWith(t))n.text=t+(n.text?'\n'+n.text:'');n.title=firstLine(n.text).slice(0,200);}
+  if(n.t==='folder'&&n.aiRead===undefined)n.aiRead=false;
+ });
+ p.v=6;
  if(!Array.isArray(p.trash))p.trash=[];
  p.nodes.forEach(n=>{if(n.t==='link'&&okUrl(n.url)&&service(n.url)==='Notion'&&/^notion\b|all-in-one|log ?in|sign ?up|workspace/i.test(n.title||'')){n.title=slugTitle(n.url);if(n.meta){n.meta.title=n.title;n.meta.image='';}}});
  const tmp=P;P=p;p.nodes.forEach(n=>{if(!n.basis||old)n.basis=basisOf(n);});P=tmp;
