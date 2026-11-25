@@ -979,7 +979,8 @@ cv.addEventListener('pointerdown',e=>{
  if(e.target.closest('[data-rz]')&&nel){e.preventDefault();const id=nel.dataset.id;select('n',id);drag={k:'r',id,sx:e.clientX,w0:nel.offsetWidth,moved:0};cv.setPointerCapture(e.pointerId);return;}
  if(port&&nel){e.preventDefault();drag={k:'c',id:nel.dataset.id,port:port.dataset.port};cv.setPointerCapture(e.pointerId);return;}
  if(nel){const id=nel.dataset.id;if(!(sel&&sel.id===id))select('n',id);
-  if(!e.target.closest('input,button,select,textarea:not(.nt),a,audio,.port')){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};}
+  // a title being edited selects text; otherwise dragging it moves the block, and a click starts editing
+  if(!e.target.closest('input,button,select,textarea:not(.nt),a,audio,.port')&&!(e.target.classList.contains('nt')&&e.target===document.activeElement)){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};}
   return;}
  if(hit){if(sel&&sel.k==='e'&&sel.id===hit.dataset.edge)return void cutEdge(sel.id);select('e',hit.dataset.edge);return;}
  select(null);if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
