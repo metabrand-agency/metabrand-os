@@ -159,6 +159,12 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .nobig{color:#ddd;display:grid;place-items:center;height:100%;text-align:center;font-size:14px;line-height:1.6}
 .lpv{display:block;width:100%;aspect-ratio:16/10;border-radius:6px;overflow:hidden;background:var(--paper2);margin:2px 0 4px;cursor:zoom-in}
 .lpv img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.npv{font-size:12px;line-height:1.5;color:var(--mute);max-height:9.2em;overflow:hidden;white-space:pre-line;margin:2px 3px 4px;cursor:zoom-in;-webkit-mask-image:linear-gradient(#000 70%,transparent)}
+.ndoc{background:var(--paper);color:var(--ink);height:100%;overflow-y:auto;padding:48px max(32px,calc(50% - 360px));font-size:15px;line-height:1.6}
+.ndoc h1,.ndoc h2,.ndoc h3{font-family:'Inter Tight',Inter,sans-serif;font-weight:500;line-height:1.25;margin:1.4em 0 .5em}
+.ndoc h1{font-size:30px;margin-top:0}.ndoc h2{font-size:21px}.ndoc h3{font-size:17px}
+.ndoc p{margin:.5em 0}.ndoc li{margin:.2em 0}.ndoc blockquote{margin:.8em 0;padding-left:14px;border-left:2px solid var(--line);color:var(--mute)}
+.ndoc pre{background:var(--paper2);padding:10px;border-radius:6px;white-space:pre-wrap}
 .lurl{display:block;font-size:11.5px;color:var(--mute);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 3px 4px;cursor:pointer}
 .lurl:hover{color:var(--ink);text-decoration:underline}
 .ib svg{display:block}
@@ -513,7 +519,7 @@ function body(n){
   const order=fs.map((f,i)=>i).sort((a,b)=>(fs[b].thumb?1:0)-(fs[a].thumb?1:0));const lim=n.all?order.length:18,shown=order.slice(0,lim);
   return `<div class="ftiles">${shown.map(i=>{const f=fs[i],t=thumbSrc(f),ext=(String(f.name).match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();return t?`<button class="ft" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><img alt="" loading="lazy" src="${esc(t)}"><span>${esc(f.name)}</span></button>`:`<button class="ft nt0" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><b>${esc(ext)}</b><span>${esc(f.name)}</span></button>`;}).join('')}${order.length>lim?`<button class="ft nt0" data-a="fall"><b>+${order.length-lim}</b></button>`:''}</div>`;}
  if(n.t==='link'){if(!okUrl(n.url)||n._edit)return `<input data-f="url" placeholder="Paste a link" value="${esc(n.url)}" aria-label="Link">`;const pv=prevOf(n);
-  return (pv?`<div class="lpv" data-a="look"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'')+`<a class="lurl" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.url.replace(/^https:\/\/(www\.)?/,''))}</a>`;}
+  return (pv?`<div class="lpv" data-a="look"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:n.meta&&n.meta.text?`<div class="npv" data-a="look">${esc(n.meta.text.replace(/^#+ /gm,'').slice(0,700))}</div>`:'')+`<a class="lurl" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.url.replace(/^https:\/\/(www\.)?/,''))}</a>`;}
  if(n.t==='source'){const l=libOf(n.lib);return `<div class="lbl">${l[5]?'Search query':'Search there for'} · ${esc(l[3])}</div><input data-f="q" placeholder="a few words" value="${esc(n.q)}">`+thumbs(n);}
  if(n.t==='table')return `<table class="tbl"><tbody>${n.rows.map((r,i)=>`<tr><td><input data-f="row:${i}:name" value="${esc(r.name)}" placeholder="Name"><input data-f="row:${i}:url" value="${esc(r.url)}" placeholder="https://"><input data-f="row:${i}:note" value="${esc(r.note)}" placeholder="Note"></td><td class="ac">${okUrl(r.url)?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Site ↗</a><br>`:''}<button data-a="rowlink" data-i="${i}">→ card</button><br><button data-a="rowdel" data-i="${i}">remove</button></td></tr>`).join('')}</tbody></table>${n.rows.length?'':'<div class="empty">Add competitors by hand or ask the AI</div>'}`;
  if(n.t==='gen'){
@@ -576,7 +582,7 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)&&!n._edit?`<button class="ib" data-a="editurl" aria-label="Edit link" title="Edit link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/></svg></button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.notion?`<button class="ib" data-a="remeta" aria-label="Read again from Notion" title="Read again from Notion">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)&&!n._edit?`<button class="ib" data-a="editurl" aria-label="Edit link" title="Edit link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/></svg></button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
@@ -676,12 +682,13 @@ function nodeText(n){
  if(n.text)s+=`\n${n.text}`;
  if(n.t==='table')s+='\n'+n.rows.map(r=>`- ${r.name} ${r.url} ${r.note}`).join('\n');
  if(n.t==='link'&&n.url)s+=`\n${n.url}`;
+ if(n.t==='link'&&n.meta&&n.meta.text)s+=`\nPage text:\n${n.meta.text}`;
  if(n.t==='source')s+=`\nlibrary: ${libOf(n.lib)[1]}; query: ${n.q||'-'}`;
  if(n.items&&n.items.length)s+=`\n(files: ${n.items.map(i=>i.name||i.kind||'image').join(', ')})`;
  if(n.t==='files'&&n.links)s+=`\n${n.links}`;
  if(n.t==='gen'&&n.out.length)s+='\n'+n.out.slice(0,8).map(o=>`- ${o.title}: ${o.text}`).join('\n');
  if(n.t==='check'&&n.res.length)s+='\n'+n.res.map(r=>`- ${r.verdict}: ${r.title}: ${r.notes}`).join('\n');
- return s.slice(0,1600);
+ return s.slice(0,n.meta&&n.meta.text?12000:1600);
 }
 function summary(){return ORDER.map(k=>`## ${NAMES[k]} (${k})\n`+(P.nodes.filter(n=>n.f===k).map(n=>`id=${n.id} `+nodeText(n)).join('\n\n')||'empty')).join('\n\n').slice(0,24000);}
 function bans(){return P.nodes.filter(n=>n.nogo).map(n=>`- ${n.title}${n.text?': '+n.text:''}`).join('\n');}
@@ -801,8 +808,24 @@ function bigView(inner,open,onClose){
  d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))close();});document.addEventListener('keydown',key,true);
  document.body.appendChild(d);d.querySelector('[data-x]').focus({preventScroll:true});
 }
+// a small, safe markdown: everything is escaped first
+function mdHTML(t){
+ const out=[];let list=null;const close=()=>{if(list){out.push(`</${list}>`);list=null;}};
+ const blocks=String(t).split(/\n```\n?|^```\n?/m);
+ blocks.forEach((chunk,bi)=>{if(bi%2){close();out.push(`<pre>${esc(chunk)}</pre>`);return;}
+  for(const raw of chunk.split('\n')){const l=raw.trimEnd();let m;
+   if(!l.trim()){close();continue;}
+   if((m=l.match(/^(#{1,3}) (.*)/))){close();out.push(`<h${m[1].length}>${esc(m[2])}</h${m[1].length}>`);continue;}
+   if((m=l.match(/^\s*[-*] (?:\[( |x)\] )?(.*)/))){if(list!=='ul'){close();out.push('<ul>');list='ul';}out.push(`<li>${m[1]==='x'?'☑ ':m[1]===' '?'☐ ':''}${esc(m[2])}</li>`);continue;}
+   if((m=l.match(/^\s*\d+\. (.*)/))){if(list!=='ol'){close();out.push('<ol>');list='ol';}out.push(`<li>${esc(m[1])}</li>`);continue;}
+   if((m=l.match(/^> ?(.*)/))){close();out.push(`<blockquote>${esc(m[1])}</blockquote>`);continue;}
+   if(l==='---'){close();out.push('<hr>');continue;}
+   close();out.push(`<p>${esc(l)}</p>`);}
+ });close();return out.join('');
+}
 function lightbox(n){
  let inner='',open='';
+ if(n.t==='link'&&n.meta&&n.meta.text){bigView(`<article class="ndoc">${mdHTML((n.meta.title?'# '+n.meta.title+'\n\n':'')+n.meta.text)}</article>`,n.url);return;}
  if(n.t==='link'&&okUrl(n.url)){open=n.url;const em=window.CT_SHOT?embedOf(n.url):'';const pv=prevOf(n);
   if(em)inner=`<iframe src="${esc(em)}" allow="fullscreen; autoplay; clipboard-write" allowfullscreen></iframe>`;else if(pv)inner=`<img alt="" src="${esc(pv)}">`;else return void window.open(n.url,'_blank','noopener');}
  else if(n.doc&&n.items[0]){const it=n.items[0],u=it.kind==='image'?imgSrc(it):blob(it);if(!u)return;open=u;
@@ -1085,6 +1108,9 @@ function docSpot(task,at){
 }
 async function linkMeta(n){
  if(okUrl(n.url)&&!n.title&&service(n.url)==='Notion'){n.title=slugTitle(n.url);renderNode(n);save();}
+ if(window.CT_NOTION&&okUrl(n.url)&&service(n.url)==='Notion'){const u=n.url;try{const r=await fetch(window.CT_NOTION+encodeURIComponent(u),{credentials:'same-origin'});const m=await r.json().catch(()=>({}));if(n.url!==u||!byId(n.id))return;
+  if(r.ok){const was=n.title;n.meta={notion:true,title:String(m.title||'').slice(0,200),text:String(m.text||'').slice(0,60000),v:Date.now()};if(n.meta.title&&(!was||was===slugTitle(u)))n.title=n.meta.title;renderNode(n);save();flash(`Read “${n.title||'the page'}” from Notion`);return;}
+  if(m.code==='not_shared'||m.code==='no_id'){flash(m.error);return;}}catch(_){}}
  if(!window.CT_META||!okUrl(n.url))return;const u=n.url;
  if(window.CT_FIGMA&&service(u)==='Figma'){try{const r=await fetch(window.CT_FIGMA+'meta?u='+encodeURIComponent(u),{credentials:'same-origin'});
   if(r.ok){const m=await r.json();if(n.url!==u||!byId(n.id))return;n.meta={figma:true,title:String(m.title||'').slice(0,200),file:String(m.file||''),kind:String(m.type||''),v:Date.now()};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();return;}}catch(_){}}
@@ -1180,6 +1206,7 @@ const LANG='Write in the same language as the brief.';
 async function filesOf(ns){
  const out={images:[],documents:[],text:'',note:''};const skipped=[];
  const maxDocs=LIM&&LIM.documents?Math.min(3,LIM.documents.maxCount||3):0;
+ for(const n of ns.filter(x=>x.t==='link'&&x.meta&&x.meta.text)){if(out.text.length<60000)out.text+=`\n\n--- Notion page: ${n.title||n.url} ---\n`+n.meta.text.slice(0,30000);}
  for(const n of ns.filter(x=>x.t==='folder')){let any=false;for(const f of n.files||[]){if(f.kind!=='pdf'&&f.kind!=='text')continue;const file=await localFile(n,f);if(!file)continue;any=true;
   if(f.kind==='pdf'){if(out.documents.length<maxDocs&&file.size<30e6)out.documents.push(file);else skipped.push(f.name);}else if(out.text.length<40000)out.text+=`\n\n--- File: ${f.path} ---\n`+(await file.text()).slice(0,20000);}
   if(!any&&(n.files||[]).some(f=>f.kind==='pdf'||f.kind==='text'))out.note+=`\n\nThe folder “${n.folder}” is not connected in this session, so its documents were not read.`;}

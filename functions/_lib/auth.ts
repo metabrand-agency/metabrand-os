@@ -4,6 +4,7 @@ export type Env = {
   APOLLO_API_KEY?: string;
   AHREFS_API_KEY?: string;
   FIGMA_TOKEN?: string;
+  NOTION_TOKEN?: string;
   SESSION_SECRET: string;
   ACCESS_CODE: string;
   MODEL?: string;

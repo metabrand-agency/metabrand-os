@@ -222,6 +222,57 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
     } catch (e: any) { return c.json({ error: e.message }, e.status === 403 || e.status === 404 ? 403 : 502); }
   });
 
+  // ---------- Notion: pages shared with the agency's Notion connection (NOTION_TOKEN), read as text
+  app.get('/tree/notion', async (c) => {
+    if (!c.env.NOTION_TOKEN) return c.json({ error: 'Notion is not connected yet', code: 'not_connected' }, 409);
+    let u: URL;
+    try { u = new URL(c.req.query('u') || ''); } catch { return c.json({ error: 'Bad link' }, 400); }
+    if (!/(^|\.)notion\.(so|site)$/.test(u.hostname)) return c.json({ error: 'Not a Notion link' }, 400);
+    const hex = (u.pathname.replace(/-/g, '').match(/[0-9a-f]{32}/gi) || []).pop() || (u.searchParams.get('p') || '').replace(/-/g, '');
+    if (!/^[0-9a-f]{32}$/i.test(hex)) return c.json({ error: 'This Notion link has no page id; copy the link from the page itself', code: 'no_id' }, 400);
+    const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    const api = async (path: string) => {
+      const r = await fetch('https://api.notion.com/v1/' + path, { headers: { Authorization: `Bearer ${c.env.NOTION_TOKEN}`, 'Notion-Version': '2026-03-11' }, signal: AbortSignal.timeout(15000) });
+      if (!r.ok) throw Object.assign(new Error(r.status === 404 || r.status === 403 ? 'This page is not shared with the Metabrand connection in Notion' : `Notion error ${r.status}`), { status: r.status });
+      return r.json() as Promise<any>;
+    };
+    try {
+      return await cached(c, `notion/${hex}`, 600, async () => {
+        const page = await api(`pages/${id}`);
+        const tp: any = Object.values(page.properties || {}).find((p: any) => p && p.type === 'title');
+        const title = (tp?.title || []).map((t: any) => t.plain_text).join('').trim();
+        const out: string[] = []; const images: string[] = []; let count = 0;
+        const rich = (b: any) => (b?.rich_text || []).map((t: any) => t.plain_text).join('');
+        const walk = async (bid: string, depth: number) => {
+          let cursor: string | undefined;
+          do {
+            const d = await api(`blocks/${bid}/children?page_size=100${cursor ? '&start_cursor=' + cursor : ''}`);
+            for (const b of d.results || []) {
+              if (++count > 600) return;
+              const v = b[b.type] || {}; const pad = '  '.repeat(depth);
+              const line = ({
+                heading_1: () => `# ${rich(v)}`, heading_2: () => `## ${rich(v)}`, heading_3: () => `### ${rich(v)}`,
+                paragraph: () => rich(v), quote: () => `> ${rich(v)}`, callout: () => `> ${rich(v)}`,
+                bulleted_list_item: () => `${pad}- ${rich(v)}`, numbered_list_item: () => `${pad}1. ${rich(v)}`,
+                to_do: () => `${pad}- [${v.checked ? 'x' : ' '}] ${rich(v)}`, toggle: () => `${pad}- ${rich(v)}`,
+                code: () => '```\n' + rich(v) + '\n```', divider: () => '---', child_page: () => `## ${v.title || ''}`,
+                bookmark: () => v.url || '', link_preview: () => v.url || '', embed: () => v.url || '', equation: () => v.expression || '',
+                image: () => { const src = v.file?.url || v.external?.url; if (src && images.length < 8) images.push(src); return `[image${(v.caption || []).length ? ': ' + v.caption.map((t: any) => t.plain_text).join('') : ''}]`; },
+                table_row: () => '| ' + (v.cells || []).map((cell: any[]) => cell.map((t) => t.plain_text).join('')).join(' | ') + ' |',
+              } as Record<string, () => string>)[b.type];
+              if (line) out.push(line());
+              if (b.has_children && depth < 3 && b.type !== 'child_page' && b.type !== 'child_database') await walk(b.id, depth + 1);
+            }
+            cursor = d.has_more ? d.next_cursor : undefined;
+          } while (cursor);
+        };
+        await walk(id, 0);
+        const text = out.join('\n').replace(/\n{3,}/g, '\n\n').slice(0, 60000);
+        return c.json({ title, text, image: images[0] || '', images });
+      });
+    } catch (e: any) { return c.json({ error: e.message, code: e.status === 404 || e.status === 403 ? 'not_shared' : 'failed' }, e.status === 404 || e.status === 403 ? 403 : 502); }
+  });
+
   // One turn of the Messages API. The page runs the tool loop itself, so tools act on the canvas in the browser.
   app.post('/tree/ai', async (c) => {
     if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'AI is not configured: add ANTHROPIC_API_KEY', code: 'sampling_disabled' }, 503);

@@ -6,6 +6,7 @@
   window.CT_SHOT = '/api/shot?u=';
   window.CT_META = '/api/tree/meta?u=';
   window.CT_FIGMA = '/api/tree/figma/';
+  window.CT_NOTION = '/api/tree/notion?u=';
   window.CT_PDF = '/tree/vendor/';
   window.CT_MODELS = [['quick', 'Claude Haiku'], ['default', 'Claude Sonnet'], ['complex', 'Claude Opus'], ['fable', 'Claude Fable']];
 

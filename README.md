@@ -53,4 +53,5 @@ A canvas for creative work: Inputs → Ideas → Production, with generators, ch
 - Link nodes show a homepage preview through `/api/shot`.
 - Figma (read-only): set the secret `FIGMA_TOKEN` (a Figma personal access token with file content read access; Figma tokens expire after at most 90 days). Figma links then show frames rendered by Figma, and a page's frames can be pulled in as blocks. Figma's API cannot write into files.
 - Folder blocks show a folder from the computer: files stay local (File System Access API where the browser allows it, otherwise a folder picker each session); only small previews are stored.
+- Notion (read-only): set the secret `NOTION_TOKEN` (an internal Notion connection with Read content) and add that connection to the pages you want read. Notion links then show the page text, open it readable, and models read it.
 - PDFs get a first-page preview rendered in the browser with pdf.js (`public/tree/vendor`, Apache-2.0).
