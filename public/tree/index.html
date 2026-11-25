@@ -118,6 +118,22 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .meta{display:none;color:var(--faint);font-size:11.5px;padding:0 10px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .node.shut .meta{display:block}
 .node.shut .nt{margin-bottom:0}
+.node.brief{width:440px}
+.node.brief .nh{padding:10px 8px 2px 14px;cursor:grab}
+.node.brief .nk{color:var(--ink);font:500 15px/1.2 'Inter Tight',Inter,sans-serif}
+.node.brief .nt{display:none}
+.node.brief .nb{padding:0 10px 8px}
+.bt{min-height:6em;font-size:14px;line-height:1.5;padding:4px 5px;color:var(--ink)}
+.cmp{display:flex;align-items:center;gap:6px;padding:4px 0 0}
+.cmp .sp{flex:1}
+.ci{width:30px;height:30px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px;line-height:1;color:var(--mute)}
+.ci.on{color:var(--acc);border-color:var(--acc)}
+.msel{width:auto;border-color:transparent;font-size:12.5px;color:var(--mute);padding:4px 2px;cursor:pointer}
+.go{width:30px;height:30px;padding:0;border-radius:50%;background:var(--ink);color:var(--paper);border-color:var(--ink);font-size:15px;line-height:1}
+.nf:empty{display:none}
+.docv{display:block;width:100%;border-radius:6px;margin:2px 0 4px;background:var(--paper2)}
+.docf{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:6px;margin:2px 0 4px;color:var(--ink);text-decoration:none;font-size:12.5px}
+.docf b{font:500 10.5px/1 Inter,sans-serif;padding:4px 5px;border-radius:4px;background:var(--paper2);color:var(--mute)}
 .fold{border:0;padding:2px 5px;color:var(--faint);font-size:12px;line-height:1}
 .nb>textarea[data-f=text]{color:var(--mute);font-size:12.5px}
 .nf{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
@@ -352,6 +368,7 @@ function lab(n){
  const pre=n.run?n.run+' · ':'';
  if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card'&&(x.run||'')===(n.run||'')).indexOf(n);return pre+'Idea '+(i+1);}
  if(n.kind==='read')return pre+'Reading of the brief';
+ if(n.doc){const it=n.items[0]||{};return it.kind==='image'?'Image':it.kind==='video'?'Video':/\.pdf$/i.test(it.name||'')?'PDF':'Document';}
  if(n.run&&n.t==='card')return pre+CARDL[n.f];
  if(n.t==='card')return n.nogo?'No-go zone':CARDL[n.f];
  if(n.t==='gen'){const m=n.op&&n.op!=='none'&&OPS[n.op]?' · '+OPS[n.op][0]:'';return (n.mode==='sketch'?'Sketches':n.mode==='insights'?'Input analysis':n.mode==='prompts'?'Prompts for '+n.target:n.mode==='collide'?'Collisions':'Generator')+m;}
@@ -398,7 +415,7 @@ const kitAt=k=>{const[g,i]=String(k).split(':').map(Number);return KIT[g]&&KIT[g
 const DOCK=[['Inputs','▤',['Inputs','Notes']],['Methods','≈',['Idea methods']],['Checks','✓',['Checks','Rooms']],['Libraries','Pi',[...new Set(LIBS.map(l=>l[2]))]],['Models','Kl',['Image models','Video models','3D models','Sketch tools','Production tools']]];
 function quick(n){
  if(n.t==='task'||n.drop)return [];
- if(n.f==='brief')return n.t==='brief'||n.t==='files'||n.t==='table'?['Input analysis']:[];
+ if(n.f==='brief')return (n.t==='files'&&!n.doc)||n.t==='table'?['Input analysis']:[];
  if(n.f==='research'&&n.t==='card')return ['Composition sketches','Pinterest','Mobbin','1-second test'];
  if(n.f==='prod'&&['card','source','board'].includes(n.t))return ['Composition sketches','Kling 4.0','Seedance 2.5','Krea 2'];
  return [];
@@ -425,9 +442,13 @@ function sources(){
 function body(n){
  if(n.t==='task'){const ins=P.nodes.filter(x=>x.f==='brief'&&x.t!=='task'&&!x.run);const src=sources();
   return `<textarea class="tk" data-f="text" placeholder="One clear prompt: what, for whom, which formats, by which brief and guide, what to avoid">${esc(n.text)}</textarea><div class="lbl">From ${ins.length} input${ins.length===1?'':'s'}</div><div class="srcs">${ins.map(x=>`<button data-a="goto" data-i="${esc(x.id)}" title="${esc(x.title)}">${esc(x.title||lab(x))}</button>`).join('')}${src.map(([t,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join('')}</div>`;}
- if(n.t==='brief'||n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.t==='brief'?thumbs(n):'');
+ if(n.t==='brief')return `<textarea class="bt" data-f="text" placeholder="Write or paste the brief. Attach documents with +" aria-label="Brief">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')
+  +`<div class="cmp"><button class="ci" data-a="addfile" aria-label="Attach documents" title="Attach documents">+</button>${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sp"></span><select class="msel" data-f="model" aria-label="Model">${RUNS.map(([t,nm])=>`<option value="${t}"${(n.model||'default')===t?' selected':''}>${esc(nm)}</option>`).join('')}<option value="all"${n.model==='all'?' selected':''}>All models</option></select><button class="go" data-a="go" aria-label="Run a pass with this model" title="Run a pass with this model">↑</button></div>`;
+ if(n.doc){const it=n.items[0];if(!it)return '';const k=it.kind||'image',u=k==='image'?imgSrc(it):blob(it),ext=(String(it.name||'').match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();
+  return k==='image'&&u?`<img class="docv" alt="" src="${esc(u)}">`:k==='video'&&u?`<video class="docv" src="${esc(u)}" muted loop autoplay playsinline></video>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
+ if(n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.t==='brief'?thumbs(n):'');
  if(n.t==='board')return thumbs(n);
- if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea><div class="note">3D files are kept as links for now.</div>`;
+ if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea>`;
  if(n.t==='link')return (window.CT_SHOT&&okUrl(n.url)?`<a class="shot" href="${esc(n.url)}" target="_blank" rel="noopener"><img alt="Homepage of ${esc(n.url)}" loading="lazy" src="${esc(window.CT_SHOT+encodeURIComponent(n.url))}"></a>`:'')+`<input data-f="url" placeholder="https://site" value="${esc(n.url)}"><textarea data-f="text" placeholder="Notes">${esc(n.text)}</textarea>`+thumbs(n);
  if(n.t==='source'){const l=libOf(n.lib);return `<div class="lbl">${l[5]?'Search query':'Search there for'} · ${esc(l[3])}</div><input data-f="q" placeholder="a few words" value="${esc(n.q)}">`+thumbs(n);}
  if(n.t==='table')return `<table class="tbl"><tbody>${n.rows.map((r,i)=>`<tr><td><input data-f="row:${i}:name" value="${esc(r.name)}" placeholder="Name"><input data-f="row:${i}:url" value="${esc(r.url)}" placeholder="https://"><input data-f="row:${i}:note" value="${esc(r.note)}" placeholder="Note"></td><td class="ac">${okUrl(r.url)?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Site ↗</a><br>`:''}<button data-a="rowlink" data-i="${i}">→ card</button><br><button data-a="rowdel" data-i="${i}">remove</button></td></tr>`).join('')}</tbody></table>${n.rows.length?'':'<div class="empty">Add competitors by hand or ask the AI</div>'}`;
@@ -435,25 +456,23 @@ function body(n){
   const ins=inputs(n).length;
   return `<div class="sel2"><select data-f="mode" aria-label="Mode">${opts(MODES,n.mode)}</select><select data-f="op" aria-label="Method">${opts(OPS,n.op)}</select><select data-f="n" aria-label="How many">${[3,4,6,8,12].map(k=>`<option${+n.n===k?' selected':''}>${k}</option>`).join('')}</select></div>`
   +`<div class="sel2" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)"><select data-f="brain" aria-label="AI depth">${opts(BRAINS,n.brain||'default')}</select>${n.mode==='prompts'?`<select data-f="target" aria-label="Target model">${TARGETS.map(t=>`<option${n.target===t?' selected':''}>${esc(t)}</option>`).join('')}</select>`:'<span></span>'}</div>`
-  +`<div class="note">${n.f==='brief'?'Reads every input on this floor.':`Inputs: ${ins}.`} Runs on Claude now: text${n.mode==='sketch'?' and SVG sketches':''}. Image and video models connect through Weave or Krea.</div>`
   +(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
   +(n.out.length?`<div class="outs sc">${n.out.map((o,i)=>`<div class="o">${o.svg&&svgSrc(o.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(o.svg))}">`:''}<b>${esc(o.title)}</b><p>${esc(o.text)}</p><div class="r"><button data-a="outup" data-i="${i}">${n.f==='research'?'+ add as idea':'+ add as card'}</button><button data-a="outdel" data-i="${i}">remove</button></div></div>`).join('')}</div>`:'');
  }
  if(n.t==='check'){
   const ins=inputs(n);
   return `<div class="lbl">Tests</div><div class="chips">${Object.entries(TESTS).map(([k,v])=>`<button class="chip${n.tests.includes(k)?' on':''}" data-a="test" data-v="${k}" title="${esc(v[1])}">${esc(v[0])}</button>`).join('')}</div><div class="lbl">Rooms</div><div class="chips">${Object.entries(ROOMS).map(([k,v])=>`<button class="chip${n.rooms.includes(k)?' on':''}" data-a="room" data-v="${k}" title="${esc(v[1])}">${esc(v[0])}</button>`).join('')}</div>`
-  +`<div class="note">Checks ${ins.length} connected node${ins.length===1?'':'s'}. The room predicts objections; it does not vote.</div>`
   +(n.busy?'<div class="busy"></div>':'')+(n.err?`<div class="err">${esc(n.err)}</div>`:'')
   +(n.res.length?`<div class="outs sc">${n.res.map(r=>`<div class="o"><b><span class="v ${esc(r.verdict)}">${esc(r.verdict)}</span>${esc(r.title)}</b><p>${esc(r.notes)}</p></div>`).join('')}</div>`:'');
  }
- if(n.t==='prod')return `<div class="lbl">Tools</div><div class="chips">${TOOLS.map(t=>`<button class="chip${n.tools.includes(t)?' on':''}" data-a="tool" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="lbl">Formats</div><div class="chips">${FMTS.map(t=>`<button class="chip${n.fmt.includes(t)?' on':''}" data-a="fmt" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="lbl">Status</div><select class="sel1" data-f="st">${STS.map(s=>`<option${n.st===s?' selected':''}>${s}</option>`).join('')}</select><textarea data-f="text" placeholder="Production notes">${esc(n.text)}</textarea><div class="note">Kling, Veo and Cinema 4D are tracked by hand for now.</div>`;
+ if(n.t==='prod')return `<div class="lbl">Tools</div><div class="chips">${TOOLS.map(t=>`<button class="chip${n.tools.includes(t)?' on':''}" data-a="tool" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="lbl">Formats</div><div class="chips">${FMTS.map(t=>`<button class="chip${n.fmt.includes(t)?' on':''}" data-a="fmt" data-v="${esc(t)}">${esc(t)}</button>`).join('')}</div><div class="lbl">Status</div><select class="sel1" data-f="st">${STS.map(s=>`<option${n.st===s?' selected':''}>${s}</option>`).join('')}</select><textarea data-f="text" placeholder="Production notes">${esc(n.text)}</textarea>`;
  return '';
 }
 function foot(n){
  const a=[];
  if(n.t==='task')a.push(['task','Rewrite from inputs',1]);
- if(n.t==='brief'){a.push(['auto','Auto pass ▾',1]);a.push(['bq','Questions for the client']);}
- if((n.t==='brief'||n.t==='card')&&DICT)a.push(['dict',dictFor===n.id?'Stop dictation':'Dictate']);
+ if(n.t==='brief'||n.doc)return '';
+ if(n.t==='card'&&DICT)a.push(['dict',dictFor===n.id?'Stop dictation':'Dictate']);
  if(n.t==='files'||n.t==='brief')a.push(['addfile','+ files']);
  if(n.t==='table'){a.push(['rowadd','+ row']);a.push(['aifind','Find with AI']);}
  if(n.t==='board'||n.t==='link'||n.t==='source'){a.push(['addimg','+ images']);if(n.items.length&&LIM&&LIM.images)a.push(['readrefs','Read the refs']);}
@@ -477,12 +496,12 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}<div class="nb">${body(n)}</div>${n.drop?`<div class="why"><input data-f="why" placeholder="Why it was dropped" value="${esc(n.why||'')}"></div>`:''}<div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'||n.t==='brief'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}<div class="nb">${body(n)}</div>${n.drop?`<div class="why"><input data-f="why" placeholder="Why it was dropped" value="${esc(n.why||'')}"></div>`:''}<div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
 function grow(t){t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';}
-function cls(n){return 'node'+(n.t!=='task'&&!n.open?' shut':'')+(n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(n.drop?' drop':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
+function cls(n){return 'node'+(n.t!=='task'&&n.t!=='brief'&&!n.open?' shut':'')+(n.t==='brief'?' brief':n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(n.drop?' drop':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
 function renderNode(n,fresh){
  let el=els[n.id];
  if(!el){el=document.createElement('div');el.dataset.id=n.id;nodesEl.appendChild(el);els[n.id]=el;ro.observe(el);}
@@ -506,7 +525,7 @@ function layout(){
   if(P.open[k]){let m=0;for(const n of ns){const el=els[n.id];m=Math.max(m,n.y+(el?el.offsetHeight:160));}h=Math.max(260,m+60);}
   geo[k]={top:y,h,c:ns.length};y+=h;
  }
- for(const b of bandsEl.children){const g=geo[b.dataset.band];b.style.top=g.top+'px';b.style.height=g.h+'px';b.firstChild.textContent=P.open[b.dataset.band]&&!g.c?'Empty. Press + next to the floor name, double-click here, or drag a tool from the dock':'';}
+ for(const b of bandsEl.children){const g=geo[b.dataset.band];b.style.top=g.top+'px';b.style.height=g.h+'px';b.firstChild.textContent='';}
  for(const n of P.nodes){const el=els[n.id];if(!el)continue;el.classList.toggle('hid',!P.open[n.f]);const p=pos(n);el.style.transform=`translate(${p.x}px,${p.y}px)`;}
  drawEdges();placeRail();placePop();
 }
@@ -633,7 +652,8 @@ function nodeMenu(n,x,y){
  const sl=n.f==='research'&&n.t==='card';
  openMenu(x,y,[['pick',n.pick?(sl?'Remove from shortlist':'Remove from chosen path'):(sl?'Shortlist':'Add to chosen path'),0,()=>{snap();n.pick=!n.pick;renderNode(n);save();}],
   ['drop',n.drop?'Bring back':'Drop, with a reason',0,()=>{snap();n.drop=!n.drop;renderNode(n);save();}],
-  ...(n.f!=='prod'&&n.t!=='task'?[['up',n.f==='research'?'Develop in production':'Move up to Ideas',0,()=>promote(n)]]:[]),
+  ...(n.t==='brief'?[['bq','Questions for the client',0,()=>briefQ(n)]]:[]),
+  ...(n.f!=='prod'&&n.t!=='task'&&n.t!=='brief'&&!n.doc?[['up',n.f==='research'?'Develop in production':'Move up to Ideas',0,()=>promote(n)]]:[]),
   ['dup','Duplicate',0,()=>{const c=JSON.parse(JSON.stringify(n));delete c.id;delete c.busy;delete c.basis;c.thread=[];addNode(n.t,n.f,c,null,{x:n.x+30,y:n.y+30});}],
   ['del','Delete',1,()=>delNode(n.id)]]);
 }
@@ -717,7 +737,7 @@ const RUNS=window.CT_MODELS||[['quick','Fast model'],['default','Balanced model'
 const wOf=n=>n.t==='task'?560:['table','gen','check'].includes(n.t)?420:264;
 async function autoPass(brief,runs){
  if(!S)return flash('AI is not available in this view');
- if(!brief.text.trim()&&!brief.title.trim()&&!(brief.items||[]).length)return flash('Fill the brief first');
+ if(!brief.text.trim()&&!briefNodes().some(x=>x.doc||(x.items||[]).length))return flash('Write the brief or attach a document first');
  const f=await filesOf(briefNodes());
  const x0=Math.max(...P.nodes.map(n=>n.x+wOf(n)))+160;
  const lanes=runs.map(([tier,name],k)=>{const x=x0+k*1340;const read=addNode('card','brief',{title:`${name} is reading the brief…`,run:name,kind:'read',busy:true,open:false},brief.id,{x:x+290,y:brief.y});return {tier,name,x,read};});
@@ -824,6 +844,7 @@ world.addEventListener('click',e=>{
  if(a==='ai'||a==='pop')return void openPop(n,a==='ai');
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
+ if(a==='go'){const m=n.model||'default',rs=m==='all'?RUNS:RUNS.filter(r=>r[0]===m);return void autoPass(n,rs.length?rs:[RUNS[1]||RUNS[0]]);}
  if(a==='auto'){const r=b.getBoundingClientRect();openMenu(r.left,r.bottom+4,[...RUNS.map(([t,name])=>[t,name,0,()=>autoPass(n,[[t,name]])]),['all','All of them, side by side',0,()=>autoPass(n,RUNS)]]);return;}
  if(a==='goto'){const t=byId(b.dataset.i);if(t){select('n',t.id);reveal(t);}return;}
  if(a==='up')return void promote(n);
@@ -854,7 +875,31 @@ document.addEventListener('keydown',e=>{
 
 let pickFor=null;
 $('#fi').onchange=e=>{const n=byId(pickFor);if(n)addImages(n,[...e.target.files]);e.target.value='';};
+function docSpot(brief,at){
+ if(at)return at;
+ const y=brief?brief.y:56;let x=brief?brief.x+(brief.t==='brief'?440:264)+40:viewX();
+ const ns=P.nodes.filter(m=>m.f==='brief');
+ while(ns.some(m=>m.x<x+264+20&&m.x+wOf(m)+20>x&&Math.abs(m.y-y)<140))x+=24;
+ return {x,y};
+}
+async function addDocs(brief,files,at){
+ snap();let last=null;
+ for(const f of files){
+  const kind=/^image\//.test(f.type)?'image':/^video\//.test(f.type)?'video':'file';let it=null;
+  if(AS){try{const r=await AS.upload(f);it={id:uid(),asset:r.id,kind,name:f.name};}catch(err){}}
+  if(!it&&kind==='image'&&f.size<400000){const src=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f);});it={id:uid(),src,local:1,kind,name:f.name};}
+  if(!it){flash(`Can't keep ${f.name}${AS?' (up to 1.9 MB here)':''}; add a link instead`);continue;}
+  const pos=docSpot(brief,at);at=null;
+  const m=addNode('files','brief',{doc:true,open:true,title:f.name.replace(/\.[^.]+$/,'').slice(0,120),items:[it]},null,pos);
+  if(brief&&brief.t==='brief'){P.edges.push({id:uid(),a:m.id,b:brief.id});}
+  last=m;
+ }
+ schedule();P.nodes.filter(x=>x.t==='task').forEach(x=>renderNode(x));save();
+ if(last)reveal(last);
+}
+const briefOf=n=>n&&n.t==='brief'?n:n&&n.doc?byId((P.edges.find(e=>e.a===n.id)||{}).b)||null:null;
 async function addImages(n,files){
+ if(n.t==='brief'||n.doc)return addDocs(briefOf(n)||n,files);
  const any=n.t==='files'||n.t==='brief';
  const list=files.filter(f=>any||/^image\//.test(f.type));
  if(!list.length){if(files.length)flash('Only images go here; put documents in a Files node on Inputs');return;}
@@ -882,7 +927,10 @@ cv.addEventListener('drop',e=>{e.preventDefault();
   if(src)useKit(it,src);else{const w=toWorld(e.clientX,e.clientY);useKit(it,null,{x:w.x-132});}return;}
  const files=[...(e.dataTransfer.files||[])];if(!files.length)return;
  const t=e.target.closest('.node');let n=t&&byId(t.dataset.id);
- if(!n||!n.items||(n.t!=='files'&&n.t!=='brief'&&files.some(f=>!/^image\//.test(f.type)))){const w=toWorld(e.clientX,e.clientY);let f=floorAt(w.y);if(!P.open[f])f='prod';const doc=f==='brief'||files.some(f=>!/^image\//.test(f.type));if(doc)f='brief';n=addNode(doc?'files':'board',f,{},null,{x:w.x-132,y:doc&&f!==floorAt(w.y)?56:w.y-geo[f].top-20});}
+ const w0=toWorld(e.clientX,e.clientY);
+ if(n&&(n.t==='brief'||n.doc))return void addDocs(briefOf(n),files);
+ if(!n&&floorAt(w0.y)==='brief'){const bs=P.nodes.filter(x=>x.t==='brief');return void addDocs(bs.length===1?bs[0]:null,files,{x:w0.x-132,y:Math.max(40,w0.y-geo.brief.top-20)});}
+ if(!n||!n.items||(n.t!=='files'&&files.some(f=>!/^image\//.test(f.type)))){const w=w0;let f=floorAt(w.y);if(!P.open[f])f='prod';const doc=f==='brief'||files.some(f=>!/^image\//.test(f.type));if(doc)f='brief';n=addNode(doc?'files':'board',f,{},null,{x:w.x-132,y:doc&&f!==floorAt(w.y)?56:w.y-geo[f].top-20});}
  addImages(n,files);});
 document.addEventListener('paste',e=>{
  if(e.target.closest&&e.target.closest('input,textarea'))return;
@@ -1007,18 +1055,18 @@ $('#t-kit').onclick=()=>sidePanel('kit');$('#t-chat').onclick=()=>sidePanel('cha
 $('#tkit').onclick=()=>sidePanel('kit');$('#tchat').onclick=()=>sidePanel('chat');$('#sidex').onclick=()=>sidePanel(null);
 
 let saveT=0,saving=false,again=false,stTxt='';
-function status(t){if(t)stTxt=t;$('#st').textContent=stTxt;}
+function status(t){if(t!==undefined)stTxt=t;$('#st').textContent=stTxt;}
 function clean(){return JSON.parse(JSON.stringify(P,(k,v)=>k==='busy'||k==='err'||k==='_ax'||k==='_ay'?undefined:v));}
-function save(){clearTimeout(saveT);status('Edited');saveT=setTimeout(flush,900);markStale();}
+function save(){clearTimeout(saveT);saveT=setTimeout(flush,900);markStale();}
 let viewT=0;function saveView(){clearTimeout(viewT);viewT=setTimeout(()=>{P.view={...V};save();},1200);}
 async function flush(){
  clearTimeout(saveT);P.upd=Date.now();const c=clean();
  try{localStorage.setItem('ctree:'+P.id,JSON.stringify(c));localStorage.setItem('ctree:last',P.id);}catch(_){}
  {const p=projects.find(x=>x.id===P.id);if(p){p.name=P.name;p.upd=P.upd;}else projects.push({id:P.id,name:P.name,upd:P.upd});}
- if(!DB){status('Saved in this browser');return;}
- if(saving){again=true;return;}saving=true;status('Saving…');
+ if(!DB)return;
+ if(saving){again=true;return;}saving=true;
  c.nodes.forEach(n=>{if(n.items)n.items=n.items.filter(i=>!i.local);});
- try{await DB.doc('projects/'+P.id).set({name:P.name,upd:P.upd,data:c});status('Saved');const p=projects.find(x=>x.id===P.id);if(p){p.name=P.name;p.upd=P.upd;}else projects.push({id:P.id,name:P.name,upd:P.upd});fillList();}
+ try{await DB.doc('projects/'+P.id).set({name:P.name,upd:P.upd,data:c});status('');const p=projects.find(x=>x.id===P.id);if(p){p.name=P.name;p.upd=P.upd;}else projects.push({id:P.id,name:P.name,upd:P.upd});fillList();}
  catch(e){status(e&&e.code==='quota_exceeded'?'Storage is full':'Not saved; working locally');}
  saving=false;if(again){again=false;flush();}
 }
@@ -1043,7 +1091,9 @@ function migrate(d){
   if(n.prompt){n.title=(n.title&&!n.title.includes(n.prompt)?n.title+': ':'')+n.prompt;n.title=n.title.slice(0,300);}
   delete n.gist;delete n.prompt;
  });
- p.nodes.forEach(n=>{if(n.t==='brief'&&!Array.isArray(n.items)){n.items=[];n.links=n.links||'';}});
+ p.nodes.slice().forEach(n=>{if(n.t!=='brief')return;if(!Array.isArray(n.items))n.items=[];
+  n.items.forEach((it,i)=>{const d=mk('files','brief',{doc:true,open:true,title:String(it.name||'Document').replace(/\.[^.]+$/,''),items:[it],x:n.x+480+i*290,y:n.y});p.nodes.push(d);p.edges.push({id:uid(),a:d.id,b:n.id});});
+  n.items=[];});
  p.open={brief:true,research:true,prod:true,...Object.fromEntries(ORDER.filter(k=>d.open&&k in d.open).map(k=>[k,d.open[k]]))};
  p.v=5;
  const tmp=P;P=p;p.nodes.forEach(n=>{if(!n.basis||old)n.basis=basisOf(n);});P=tmp;
@@ -1067,7 +1117,7 @@ async function delProject(){
 addEventListener('resize',()=>{placeRail();placePop();});
 try{const last=localStorage.getItem('ctree:last');const d=last&&JSON.parse(localStorage.getItem('ctree:'+last)||'null');if(d)P=migrate(d);else P=migrate(P);}catch(_){P=migrate(P);}
 try{const sd=localStorage.getItem('ctree:side');if(sd)sidePanel(sd);}catch(_){}
-renderKit();renderAll();if(P.view){V={...P.view};applyView();}else{applyView();requestAnimationFrame(()=>requestAnimationFrame(fit));}fillList();status('Changes save automatically');
+renderKit();renderAll();if(P.view){V={...P.view};applyView();}else{applyView();requestAnimationFrame(()=>requestAnimationFrame(fit));}fillList();
 
 (async()=>{
  const [db,as,s,dc]=await Promise.all([use('db'),use('assets'),use('sample'),use('dictation')]);
@@ -1082,7 +1132,7 @@ renderKit();renderAll();if(P.view){V={...P.view};applyView();}else{applyView();r
  if(!db){status('Saved in this browser only');return;}
  DB=db;const timer=setTimeout(()=>status('Storage is not answering; working locally'),10000);
  try{const q=await DB.collection('projects').get();clearTimeout(timer);projects=q.docs.map(d=>{const v=d.data()||{};return {id:d.id,name:String(v.name||''),upd:+v.upd||0};});
-  if(projects.length){const own=projects.find(p=>p.id===P.id),top=projects.slice().sort((a,b)=>b.upd-a.upd)[0];await openProject((own||top).id,true);status('Saved');}
+  if(projects.length){const own=projects.find(p=>p.id===P.id),top=projects.slice().sort((a,b)=>b.upd-a.upd)[0];await openProject((own||top).id,true);status('');}
   else{fillList();await flush();}
   let seeded='1';try{seeded=localStorage.getItem('ctree:bare1');localStorage.setItem('ctree:bare1','1');}catch(_){}
   if(!seeded&&!projects.some(p=>/^empty tree/i.test(p.name)))await newTree();
