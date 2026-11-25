@@ -48,7 +48,9 @@ textarea{resize:none;field-sizing:content;min-height:2.6em;overflow:hidden}
 .top{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--bg)}
 .logo{font:500 15px/1 'Inter Tight',Inter,sans-serif;letter-spacing:-.01em;white-space:nowrap}
 .top select{width:auto;max-width:180px;border-color:var(--line)}
-#pname{max-width:240px;font-weight:500}
+#pname{width:auto;field-sizing:content;min-width:80px;max-width:340px;font-weight:500;font-size:14px}
+#pmenu{border:0;padding:4px 6px;color:var(--mute)}
+.top .sl{color:var(--faint)}
 .st{color:var(--faint);font-size:12px;white-space:nowrap;margin-left:auto}
 .tb{white-space:nowrap}
 .tb.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
@@ -172,7 +174,10 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .note{color:var(--faint);font-size:11.5px;margin:4px 3px}
 .err{color:var(--acc);font-size:12px;margin:4px 3px}
-.menu{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--edge);border-radius:8px;padding:4px;min-width:190px;display:grid}
+.menu{position:fixed;z-index:20;background:var(--paper);border:1px solid var(--edge);border-radius:8px;padding:4px;min-width:190px;max-width:340px;max-height:70vh;overflow-y:auto;display:grid}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 2px;width:auto}
+.menu .cur{font-weight:500}
+.menu .cur::before{content:'✓ ';color:var(--acc)}
 .menu button{border:0;text-align:left;padding:7px 10px;border-radius:5px}
 .menu button:hover{background:var(--paper2)}
 .menu .dz{color:var(--acc)}
@@ -219,7 +224,7 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .cf .row select{width:auto;margin-right:auto;border-color:var(--line);font-size:12px}
 .cf .pri{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .empty{color:var(--faint);font-size:12.5px}
-@media (max-width:900px){.logo,#pname{display:none}}
+@media (max-width:900px){.logo,.top .sl{display:none}}
 @media (max-width:760px){
 .app,.app.noside{grid-template-columns:minmax(0,1fr)}
 .st,.tb .lt{display:none}
@@ -235,10 +240,9 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 <div class="app noside" id="app">
 <header class="top">
 <span class="logo">Creative Tree</span>
-<select id="plist" aria-label="Project"></select>
-<button class="tb" id="newp" title="Start an empty tree with just a brief">+ New tree</button>
-<input id="pname" aria-label="Project name">
-<button id="pmenu" aria-label="Project actions">⋯</button>
+<span class="sl">/</span>
+<input id="pname" aria-label="Tree name" title="Rename">
+<button id="pmenu" aria-label="Switch tree" aria-haspopup="menu">▾</button>
 <span class="st" id="st">Loading…</span>
 <button class="tb" id="sum" title="Write a clear one-line title for every node that has none">✦ <span class="lt">Fill titles</span></button>
 <button class="tb" id="refall" hidden>↻ Refresh</button>
@@ -622,7 +626,7 @@ $('#dock').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const w
 
 let menuEl=null;
 function closeMenu(){if(menuEl){menuEl.remove();menuEl=null;}}
-function openMenu(x,y,items){closeMenu();menuEl=document.createElement('div');menuEl.className='menu';menuEl.innerHTML=items.map(([k,v,d],i)=>`<button data-m="${i}"${d?' class="dz"':''}>${esc(v)}</button>`).join('');document.body.appendChild(menuEl);
+function openMenu(x,y,items){closeMenu();menuEl=document.createElement('div');menuEl.className='menu';menuEl.innerHTML=items.map((it,i)=>it?`<button data-m="${i}"${it[2]===1?' class="dz"':it[2]===2?' class="cur"':''}>${esc(it[1])}</button>`:'<hr>').join('');document.body.appendChild(menuEl);
  const w=menuEl.offsetWidth,h=menuEl.offsetHeight;menuEl.style.left=clamp(x,8,innerWidth-w-8)+'px';menuEl.style.top=clamp(y,8,innerHeight-h-8)+'px';
  menuEl.onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const it=items[+b.dataset.m];closeMenu();it[3]();};menuEl.querySelector('button').focus();}
 function nodeMenu(n,x,y){
@@ -1010,6 +1014,7 @@ let viewT=0;function saveView(){clearTimeout(viewT);viewT=setTimeout(()=>{P.view
 async function flush(){
  clearTimeout(saveT);P.upd=Date.now();const c=clean();
  try{localStorage.setItem('ctree:'+P.id,JSON.stringify(c));localStorage.setItem('ctree:last',P.id);}catch(_){}
+ {const p=projects.find(x=>x.id===P.id);if(p){p.name=P.name;p.upd=P.upd;}else projects.push({id:P.id,name:P.name,upd:P.upd});}
  if(!DB){status('Saved in this browser');return;}
  if(saving){again=true;return;}saving=true;status('Saving…');
  c.nodes.forEach(n=>{if(n.items)n.items=n.items.filter(i=>!i.local);});
@@ -1017,7 +1022,7 @@ async function flush(){
  catch(e){status(e&&e.code==='quota_exceeded'?'Storage is full':'Not saved; working locally');}
  saving=false;if(again){again=false;flush();}
 }
-function fillList(){const l=$('#plist');const ps=projects.slice().sort((a,b)=>(b.upd||0)-(a.upd||0));if(!ps.some(p=>p.id===P.id))ps.unshift({id:P.id,name:P.name});l.innerHTML=ps.map(p=>`<option value="${esc(p.id)}"${p.id===P.id?' selected':''}>${esc(p.name||'Untitled')}</option>`).join('');}
+function fillList(){const t=$('#pname');if(document.activeElement!==t)t.value=P.name;}
 async function openProject(id,fresh){
  if(!fresh)await flush();let d=null;
  if(DB){try{const s=await DB.doc('projects/'+id).get();if(s.exists)d=s.data().data;}catch(_){}}
@@ -1045,15 +1050,13 @@ function migrate(d){
  return p;
 }
 function load(d){closePop();P=migrate(d);U=[];R=[];sel=null;renderAll();if(P.view){V={...P.view};applyView();}else requestAnimationFrame(fit);fillList();}
-async function newTree(){await flush();load(blank());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}
-$('#newp').onclick=newTree;
-$('#plist').onchange=e=>openProject(e.target.value);
+async function newTree(){await flush();const b=blank();const taken=new Set(projects.map(p=>p.name));let k=1;while(taken.has(k===1?b.name:b.name+' '+k))k++;if(k>1)b.name+=' '+k;load(b);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}
 $('#pname').oninput=e=>{P.name=e.target.value;save();};
-$('#pmenu').onclick=e=>{const r=e.currentTarget.getBoundingClientRect();openMenu(r.left,r.bottom+4,[
- ['new','New empty tree',0,newTree],
- ['demo','New demo project (Avride)',0,async()=>{await flush();load(template());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
- ['dup','Duplicate project',0,async()=>{await flush();const c=clean();c.id=uid();c.name=P.name+' copy';load(c);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
- ['del','Delete project…',1,()=>openMenu(r.left,r.bottom+4,[['no','Keep it',0,()=>{}],['yes',`Delete “${P.name||'Untitled'}” for good`,1,delProject]])]]);};
+$('#pmenu').onclick=e=>{const r=$('#pname').getBoundingClientRect();const ps=projects.slice();if(!ps.some(p=>p.id===P.id))ps.push({id:P.id,name:P.name,upd:Date.now()});ps.sort((a,b)=>(b.upd||0)-(a.upd||0));openMenu(r.left,r.bottom+4,[
+ ...ps.map(p=>[p.id,p.id===P.id?P.name||'Untitled':p.name||'Untitled',p.id===P.id?2:0,()=>{if(p.id!==P.id)openProject(p.id);}]),null,
+ ['new','New tree',0,newTree],
+ ['dup','Duplicate',0,async()=>{await flush();const c=clean();c.id=uid();c.name=P.name+' copy';load(c);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
+ ['del','Delete…',1,()=>openMenu(r.left,r.bottom+4,[['no','Keep it',0,()=>{}],['yes',`Delete “${P.name||'Untitled'}” for good`,1,delProject]])]]);};
 async function delProject(){
  const id=P.id;try{localStorage.removeItem('ctree:'+id);}catch(_){}
  if(DB){try{await DB.doc('projects/'+id).delete();}catch(_){flash('Could not delete');return;}}
