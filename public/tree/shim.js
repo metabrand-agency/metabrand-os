@@ -4,6 +4,7 @@
   if (window.claude && window.claude.use) return;
   window.CT_BLOB = '/api/tree/files/';
   window.CT_SHOT = '/api/shot?u=';
+  window.CT_MODELS = [['quick', 'Claude Haiku'], ['default', 'Claude Sonnet'], ['complex', 'Claude Opus'], ['fable', 'Claude Fable']];
 
   const err = (code, text) => Object.assign(new Error(text || code), { code });
   async function call(path, opt) {
@@ -63,14 +64,15 @@
   };
 
   // ---- sample: Claude through /api/tree/ai, with the tool loop run here so tools change the canvas
-  const TIERS = ['quick', 'default', 'complex'];
+  const TIERS = ['quick', 'default', 'complex', 'fable'];
   const b64 = (blob) => new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(',')[1]); f.onerror = rej; f.readAsDataURL(blob); });
-  async function toMessages(input, images) {
+  async function toMessages(input, images, documents) {
     const msgs = typeof input === 'string' ? [{ role: 'user', content: input }] : input.map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content) }));
-    if (images && images.length) {
+    if ((images && images.length) || (documents && documents.length)) {
       const last = msgs.map((m) => m.role).lastIndexOf('user');
       const blocks = [];
-      for (const im of images.slice(0, 4)) blocks.push({ type: 'image', source: { type: 'base64', media_type: im.type, data: await b64(im) } });
+      for (const d of (documents || []).slice(0, 3)) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: await b64(d) } });
+      for (const im of (images || []).slice(0, 4)) blocks.push({ type: 'image', source: { type: 'base64', media_type: im.type, data: await b64(im) } });
       msgs[last] = { role: 'user', content: [...blocks, { type: 'text', text: msgs[last].content }] };
     }
     return msgs;
@@ -80,7 +82,7 @@
     const tier = TIERS.includes(opts.modelTier) ? opts.modelTier : 'default';
     const tools = Array.isArray(opts.tools) ? opts.tools : [];
     const defs = tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema || { type: 'object', properties: {} } }));
-    const messages = await toMessages(input, opts.images);
+    const messages = await toMessages(input, opts.images, opts.documents);
     let text = '';
     for (let i = 0; i < 10; i++) {
       let r;
@@ -119,7 +121,7 @@
     if (m) { try { return JSON.parse(m[0]); } catch (_) {} }
     throw err('invalid_json');
   };
-  sample.limits = async () => ({ images: { maxCount: 4, mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] }, tools: true });
+  sample.limits = async () => ({ images: { maxCount: 4, mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] }, documents: { maxCount: 3, mediaTypes: ['application/pdf'] }, tools: true });
 
   // ---- dictation: the browser's own speech recognition (Chrome, Edge, Safari)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;

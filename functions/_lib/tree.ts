@@ -18,7 +18,7 @@ async function ensure(db: D1Database) {
 const MAX_PROJECT = 1_800_000; // D1 keeps a value up to ~2 MB
 const MAX_FILE = 1_900_000;
 const FILE_TYPES = /^(image\/(png|jpeg|webp|gif|svg\+xml|avif)|video\/(mp4|webm|quicktime)|application\/pdf|text\/(plain|markdown|csv)|application\/json|font\/(woff2?|ttf|otf))$/;
-const MODELS: Record<string, string> = { quick: 'claude-haiku-5-5', complex: 'claude-opus-5-5' };
+const MODELS: Record<string, string> = { quick: 'claude-haiku-5-5', complex: 'claude-opus-5-5', fable: 'claude-fable-5-2' };
 
 type Vars = { user: SessionUser };
 
