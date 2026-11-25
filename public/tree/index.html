@@ -159,7 +159,9 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .nobig{color:#ddd;display:grid;place-items:center;height:100%;text-align:center;font-size:14px;line-height:1.6}
 .lpv{display:block;width:100%;aspect-ratio:16/10;border-radius:6px;overflow:hidden;background:var(--paper2);margin:2px 0 4px;cursor:zoom-in}
 .lpv img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
-.lurl{font-size:11.5px;color:var(--faint)}
+.lurl{display:block;font-size:11.5px;color:var(--mute);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px 3px 4px;cursor:pointer}
+.lurl:hover{color:var(--ink);text-decoration:underline}
+.ib svg{display:block}
 .hov{display:none}
 .node.shut:hover .hov{display:block;position:absolute;left:-1px;right:-1px;top:calc(100% + 6px);z-index:6;border-radius:8px;overflow:hidden;border:1px solid var(--edge);background:var(--paper2);pointer-events:none}
 .hov img,.hov video{display:block;width:100%;max-height:260px;object-fit:cover;object-position:top}
@@ -510,8 +512,8 @@ function body(n){
  if(n.t==='folder'){const fs=n.files||[];if(!fs.length)return `<button class="pickf" data-a="pickdir">Choose a folder…</button>`;
   const order=fs.map((f,i)=>i).sort((a,b)=>(fs[b].thumb?1:0)-(fs[a].thumb?1:0));const lim=n.all?order.length:18,shown=order.slice(0,lim);
   return `<div class="ftiles">${shown.map(i=>{const f=fs[i],t=thumbSrc(f),ext=(String(f.name).match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();return t?`<button class="ft" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><img alt="" loading="lazy" src="${esc(t)}"><span>${esc(f.name)}</span></button>`:`<button class="ft nt0" data-a="ftile" data-i="${i}" title="${esc(f.path)}"><b>${esc(ext)}</b><span>${esc(f.name)}</span></button>`;}).join('')}${order.length>lim?`<button class="ft nt0" data-a="fall"><b>+${order.length-lim}</b></button>`:''}</div>`;}
- if(n.t==='link'){if(!okUrl(n.url))return `<input data-f="url" placeholder="Paste a link" value="${esc(n.url)}" aria-label="Link">`;const pv=prevOf(n);
-  return (pv?`<div class="lpv" data-a="look"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'')+`<input class="lurl" data-f="url" value="${esc(n.url)}" aria-label="Link">`;}
+ if(n.t==='link'){if(!okUrl(n.url)||n._edit)return `<input data-f="url" placeholder="Paste a link" value="${esc(n.url)}" aria-label="Link">`;const pv=prevOf(n);
+  return (pv?`<div class="lpv" data-a="look"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'')+`<a class="lurl" href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.url.replace(/^https:\/\/(www\.)?/,''))}</a>`;}
  if(n.t==='source'){const l=libOf(n.lib);return `<div class="lbl">${l[5]?'Search query':'Search there for'} · ${esc(l[3])}</div><input data-f="q" placeholder="a few words" value="${esc(n.q)}">`+thumbs(n);}
  if(n.t==='table')return `<table class="tbl"><tbody>${n.rows.map((r,i)=>`<tr><td><input data-f="row:${i}:name" value="${esc(r.name)}" placeholder="Name"><input data-f="row:${i}:url" value="${esc(r.url)}" placeholder="https://"><input data-f="row:${i}:note" value="${esc(r.note)}" placeholder="Note"></td><td class="ac">${okUrl(r.url)?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Site ↗</a><br>`:''}<button data-a="rowlink" data-i="${i}">→ card</button><br><button data-a="rowdel" data-i="${i}">remove</button></td></tr>`).join('')}</tbody></table>${n.rows.length?'':'<div class="empty">Add competitors by hand or ask the AI</div>'}`;
  if(n.t==='gen'){
@@ -574,7 +576,7 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${iconOf(n)}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='folder'&&(n.files||[]).length?`<button class="ib" data-a="rescan" aria-label="Read the folder again" title="Read the folder again">↻</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)&&!n._edit?`<button class="ib" data-a="editurl" aria-label="Edit link" title="Edit link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/></svg></button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
@@ -999,12 +1001,13 @@ $('#fit').onclick=fit;
 $('#cut').onclick=()=>{if(sel&&sel.k==='e')cutEdge(sel.id);};
 
 let typed=false;
+world.addEventListener('focusout',e=>{const t=e.target;if(!t.matches||!t.matches('input[data-f="url"]'))return;const el=t.closest('.node'),n=el&&byId(el.dataset.id);if(n&&n._edit&&t.value===n.url)setTimeout(()=>{if(n._edit){delete n._edit;renderNode(n);}},0);});
 world.addEventListener('focusin',e=>{if(e.target.dataset.f)typed=false;});
 function setField(n,f,v){if(f.startsWith('row:')){const[,i,k]=f.split(':');if(n.rows[+i])n.rows[+i][k]=v;return;}n[f]=f==='n'?+v:v;}
 world.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f||t.tagName==='SELECT')return;const n=byId(t.closest('.node').dataset.id);if(!n)return;if(!typed){snap();typed=true;}setField(n,f,t.value);if(t.tagName==='TEXTAREA'&&!FS)grow(t);if(f==='title')kitSel();save();});
 world.addEventListener('change',e=>{const t=e.target,f=t.dataset.f;if(!f)return;const n=byId(t.closest('.node').dataset.id);if(!n)return;
  if(t.tagName==='SELECT'){snap();setField(n,f,t.value);if(f==='mode')renderNode(n);save();return;}
- if(f==='url'&&n.t==='link'){n.meta=null;renderNode(n);linkMeta(n);}
+ if(f==='url'&&n.t==='link'){delete n._edit;n.meta=null;renderNode(n);linkMeta(n);}
  else if(f==='q'||f.endsWith(':url')||f==='links')renderNode(n);
  if(n.f==='brief')P.nodes.filter(x=>x.t==='task').forEach(x=>renderNode(x));});
 let noClick=0;
@@ -1019,6 +1022,7 @@ world.addEventListener('click',e=>{
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
  if(a==='look')return void lightbox(n);
+ if(a==='editurl'){n._edit=true;renderNode(n);const i=els[n.id]&&els[n.id].querySelector('input[data-f="url"]');if(i){i.focus();i.select();}return;}
  if(a==='pickdir')return void pickDir(n);
  if(a==='ftile')return void openLocal(n,+b.dataset.i);
  if(a==='fall'){n.all=true;renderNode(n);return;}
@@ -1049,6 +1053,8 @@ document.addEventListener('keydown',e=>{
  const ed=e.target.closest&&e.target.closest('input,textarea,select');
  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!ed){e.preventDefault();e.shiftKey?redo():undo();return;}
  if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('nt')){e.preventDefault();e.target.blur();return;}
+ if(e.key==='Enter'&&e.target.matches&&e.target.matches('input[data-f="url"]')){e.preventDefault();e.target.blur();return;}
+ if(e.key==='Escape'&&e.target.matches&&e.target.matches('input[data-f="url"]')){const n=byId(e.target.closest('.node').dataset.id);if(n&&n._edit){e.target.value=n.url;delete n._edit;renderNode(n);}return;}
  if(e.key==='Escape'){closeMenu();closeDock();closePop();if(!ed)select(null);return;}
  if(ed)return;
  if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();if(sel.k==='n')delNode(sel.id);else{snap();P.edges=P.edges.filter(x=>x.id!==sel.id);sel=null;drawEdges();save();}}
@@ -1078,6 +1084,7 @@ function docSpot(task,at){
  return {x,y};
 }
 async function linkMeta(n){
+ if(okUrl(n.url)&&!n.title&&service(n.url)==='Notion'){n.title=slugTitle(n.url);renderNode(n);save();}
  if(!window.CT_META||!okUrl(n.url))return;const u=n.url;
  if(window.CT_FIGMA&&service(u)==='Figma'){try{const r=await fetch(window.CT_FIGMA+'meta?u='+encodeURIComponent(u),{credentials:'same-origin'});
   if(r.ok){const m=await r.json();if(n.url!==u||!byId(n.id))return;n.meta={figma:true,title:String(m.title||'').slice(0,200),file:String(m.file||''),kind:String(m.type||''),v:Date.now()};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();return;}}catch(_){}}
@@ -1280,7 +1287,7 @@ $('#tkit').onclick=()=>sidePanel('kit');$('#tchat').onclick=()=>sidePanel('chat'
 
 let saveT=0,saving=false,again=false,stTxt='';
 function status(t){if(t!==undefined)stTxt=t;$('#st').textContent=stTxt;}
-function clean(){return JSON.parse(JSON.stringify(P,(k,v)=>k==='busy'||k==='err'||k==='_ax'||k==='_ay'?undefined:v));}
+function clean(){return JSON.parse(JSON.stringify(P,(k,v)=>k==='busy'||k==='err'||k==='_ax'||k==='_ay'||k==='_edit'?undefined:v));}
 function save(){clearTimeout(saveT);saveT=setTimeout(flush,900);markStale();}
 let viewT=0;function saveView(){clearTimeout(viewT);viewT=setTimeout(()=>{P.view={...V};save();},1200);}
 async function flush(){
