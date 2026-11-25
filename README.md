@@ -49,5 +49,5 @@ Market map data can be replaced from the Market map tab (agency only → Data (J
 A canvas for creative work: Inputs → Ideas → Production, with generators, checks, reference libraries and model prompts. Agency members only; projects are shared across the agency.
 
 - `public/tree/index.html` is the same page as the Claude artifact "Creative Tree", plus one line loading `public/tree/shim.js`.
-- `shim.js` gives the page its storage, files, AI and dictation through `/api/tree/*` (`functions/_lib/tree.ts`): projects in D1 (`tree_projects`), dropped files up to 1.9 MB in D1 (`tree_files`), Claude through the Anthropic API (`ANTHROPIC_API_KEY`, logged in `usage` as `anthropic:tree`), voice notes through the browser's speech recognition.
+- `shim.js` gives the page its storage, files, AI and dictation through `/api/tree/*` (`functions/_lib/tree.ts`): projects in D1 (`tree_projects`), dropped files up to 25 MB in D1 (`tree_files`, larger ones split into `tree_chunks`), Claude through the Anthropic API (`ANTHROPIC_API_KEY`, logged in `usage` as `anthropic:tree`), voice notes through the browser's speech recognition.
 - Link nodes show a homepage preview through `/api/shot`.

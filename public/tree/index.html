@@ -139,7 +139,7 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .msel{width:auto;border-color:transparent;font-size:12.5px;color:var(--mute);padding:4px 2px;cursor:pointer}
 .go{width:30px;height:30px;padding:0;border-radius:50%;background:var(--ink);color:var(--paper);border-color:var(--ink);font-size:15px;line-height:1}
 .nf:empty{display:none}
-.docv{display:block;width:100%;border-radius:6px;margin:2px 0 4px;background:var(--paper2);cursor:zoom-in}
+.docv{display:block;max-width:100%;max-height:70vh;width:auto;height:auto;margin:2px auto 4px;border-radius:6px;cursor:zoom-in}
 .doca{display:block;width:100%;height:36px;margin:4px 0}
 .lpv{display:block;width:100%;aspect-ratio:16/10;border-radius:6px;overflow:hidden;background:var(--paper2);margin:2px 0 4px;cursor:zoom-in}
 .lpv img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
@@ -164,6 +164,8 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .lnk{color:var(--ink);border:1px solid var(--line);border-radius:6px;text-decoration:none;display:inline-block}
 .why input{color:var(--acc);font-size:12px}
 .why{padding:0 8px 6px}
+.rz{position:absolute;right:-1px;bottom:-1px;width:14px;height:14px;cursor:nwse-resize;opacity:0;background:linear-gradient(135deg,transparent 55%,var(--edge) 55%,var(--edge) 63%,transparent 63%,transparent 75%,var(--edge) 75%,var(--edge) 83%,transparent 83%);border-bottom-right-radius:9px}
+.node:hover .rz,.node.sel .rz{opacity:1}
 .port{position:absolute;left:50%;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:var(--paper);border:1px solid var(--edge);opacity:0;cursor:crosshair}
 .pt{top:-6px}
 .pb{bottom:-6px}
@@ -538,7 +540,7 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
@@ -547,7 +549,7 @@ function cls(n){return 'node'+(n.t!=='task'&&!n.open?' shut':'')+(n.t==='brief'?
 function renderNode(n,fresh){
  let el=els[n.id];
  if(!el){el=document.createElement('div');el.dataset.id=n.id;nodesEl.appendChild(el);els[n.id]=el;ro.observe(el);}
- el.className=cls(n)+(fresh?' new':'');el.innerHTML=nodeHTML(n);
+ el.className=cls(n)+(fresh?' new':'');el.style.width=n.w?n.w+'px':'';el.innerHTML=nodeHTML(n);
  if(!FS)el.querySelectorAll('textarea').forEach(grow);
  schedule();
 }
@@ -783,7 +785,7 @@ $('#sum').onclick=async()=>{
  }catch(e){flash(errTxt(e));}
 };
 const RUNS=window.CT_MODELS||[['quick','Fast model'],['default','Balanced model'],['complex','Deep model']];
-const wOf=n=>n.t==='task'?560:['table','gen','check'].includes(n.t)?420:264;
+const wOf=n=>n.w?n.w:n.t==='brief'?440:n.t==='task'?560:['table','gen','check'].includes(n.t)?420:264;
 async function autoPass(brief,runs){
  if(!S)return flash('AI is not available in this view');
  if(!brief.text.trim()&&!briefNodes().some(x=>x.doc||(x.items||[]).length))return flash('Write the brief or attach a document first');
@@ -840,6 +842,7 @@ cv.addEventListener('pointerdown',e=>{
  if(ad){const k=ad.dataset.add,r=ad.getBoundingClientRect();openMenu(r.right+6,r.top,ADDS[k].map(([t,v])=>[t,v,0,()=>addOf(t,k)]));return;}
  if(e.target.closest('.zoom,.dock'))return;
  const port=e.target.closest('[data-port]'),nel=e.target.closest('.node'),hit=e.target.closest('[data-edge]');
+ if(e.target.closest('[data-rz]')&&nel){e.preventDefault();const id=nel.dataset.id;select('n',id);drag={k:'r',id,sx:e.clientX,w0:nel.offsetWidth,moved:0};cv.setPointerCapture(e.pointerId);return;}
  if(port&&nel){e.preventDefault();drag={k:'c',id:nel.dataset.id,port:port.dataset.port};cv.setPointerCapture(e.pointerId);return;}
  if(nel){const id=nel.dataset.id;if(!(sel&&sel.id===id))select('n',id);
   if(!e.target.closest('input,button,select,textarea:not(.nt),a,audio,.port')){const p=pos(byId(id));drag={k:'n',id,sx:e.clientX,sy:e.clientY,ax:p.x,ay:p.y,moved:0};}
@@ -853,11 +856,13 @@ cv.addEventListener('pointermove',e=>{
  if(drag.k==='p'){V.x=drag.vx+e.clientX-drag.sx;V.y=drag.vy+e.clientY-drag.sy;applyView();return;}
  if(drag.k==='n'){const n=byId(drag.id);const dx=(e.clientX-drag.sx)/V.z,dy=(e.clientY-drag.sy)/V.z;if(!drag.moved&&Math.hypot(dx,dy)<3)return;if(!drag.moved){snap();drag.moved=1;try{cv.setPointerCapture(e.pointerId);}catch(_){}const ae=document.activeElement;if(ae&&ae.classList&&ae.classList.contains('nt')){ae.blur();getSelection().removeAllRanges();}document.body.classList.add('dragging');}
   n._ax=drag.ax+dx;n._ay=drag.ay+dy;els[n.id].style.transform=`translate(${n._ax}px,${n._ay}px)`;drawEdges();placePop();return;}
+ if(drag.k==='r'){const n=byId(drag.id),w=Math.round(clamp(drag.w0+(e.clientX-drag.sx)/V.z,200,1400));if(!drag.moved){snap();drag.moved=1;}n.w=w;els[n.id].style.width=w+'px';schedule();return;}
  if(drag.k==='c'){const r=rect(byId(drag.id)),w=toWorld(e.clientX,e.clientY),a={x:r.x+r.w/2,y:drag.port==='t'?r.y:r.y+r.h};const k=(w.y<a.y?-1:1)*Math.max(30,Math.abs(w.y-a.y)*.45);tmpPath=`M${a.x} ${a.y}C${a.x} ${a.y+k} ${w.x} ${w.y-k} ${w.x} ${w.y}`;drawEdges();}
 });
 function endDrag(e){
  if(!drag)return;const d=drag;drag=null;cv.classList.remove('pan');document.body.classList.remove('dragging');
  if(d.k==='p'){saveView();return;}
+ if(d.k==='r'){if(d.moved){noClick=Date.now();save();}return;}
  if(d.k==='n'){const n=byId(d.id);if(d.moved){noClick=Date.now();const f=floorAt(n._ay+16);if(P.open[f]){n.f=f;n.y=Math.max(40,Math.round(n._ay-geo[f].top));}else n.y=Math.max(40,Math.round(n._ay-geo[n.f].top));n.x=Math.round(n._ax);delete n._ax;delete n._ay;renderNode(n);save();}return;}
  if(d.k==='c'){const t=document.elementFromPoint(e.clientX,e.clientY),tn=t&&t.closest('.node');
   // released on empty canvas: offer what can grow here, at the end of the line
@@ -969,9 +974,9 @@ async function addDocs(brief,files,at,lk){
  snap();let last=null;const made=[];
  for(const f of files){
   const kind=/^image\//.test(f.type)?'image':/^video\//.test(f.type)?'video':/^audio\//.test(f.type)?'audio':'file';let it=null;
-  if(AS){try{const r=await AS.upload(f);it={id:uid(),asset:r.id,kind,name:f.name};}catch(err){}}
+  if(AS){if(f.size>1500000)flash(`Uploading ${f.name}…`);try{const r=await AS.upload(f);it={id:uid(),asset:r.id,kind,name:f.name};}catch(err){}}
   if(!it&&kind==='image'&&f.size<400000){const src=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(f);});it={id:uid(),src,local:1,kind,name:f.name};}
-  if(!it){flash(`Can't keep ${f.name}${AS?' (up to 1.9 MB here)':''}; add a link instead`);continue;}
+  if(!it){flash(`Can't keep ${f.name}${AS&&window.CT_SHOT?' (files up to 25 MB here)':''}; add a link instead`);continue;}
   const pos=docSpot(brief,at);at=null;
   const m=addNode('files','brief',{doc:true,open:true,title:f.name.replace(/\.[^.]+$/,'').slice(0,120),items:[it]},null,pos);
   if(lk)linkEdge(m,lk);else if(brief&&brief.t==='brief'){P.edges.push({id:uid(),a:m.id,b:brief.id});}

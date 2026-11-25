@@ -19,4 +19,5 @@ export const SCHEMA: string[] = [
   "CREATE TABLE IF NOT EXISTS tree_projects (\n  id TEXT PRIMARY KEY,\n  org_id TEXT NOT NULL,\n  name TEXT NOT NULL DEFAULT '',\n  upd INTEGER NOT NULL,\n  data TEXT NOT NULL\n)",
   "CREATE INDEX IF NOT EXISTS tree_projects_org ON tree_projects(org_id, upd)",
   "CREATE TABLE IF NOT EXISTS tree_files (\n  id TEXT PRIMARY KEY,\n  org_id TEXT NOT NULL,\n  name TEXT,\n  type TEXT NOT NULL,\n  data BLOB NOT NULL,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS tree_chunks (\n  file_id TEXT NOT NULL,\n  n INTEGER NOT NULL,\n  data BLOB NOT NULL,\n  PRIMARY KEY (file_id, n)\n)",
 ];

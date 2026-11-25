@@ -7,6 +7,8 @@ const TABLES = [
   'CREATE TABLE IF NOT EXISTS tree_projects (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT NOT NULL DEFAULT \'\', upd INTEGER NOT NULL, data TEXT NOT NULL)',
   'CREATE INDEX IF NOT EXISTS tree_projects_org ON tree_projects(org_id, upd)',
   'CREATE TABLE IF NOT EXISTS tree_files (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, name TEXT, type TEXT NOT NULL, data BLOB NOT NULL, created_at INTEGER NOT NULL)',
+  // files bigger than one D1 value are stored in pieces
+  'CREATE TABLE IF NOT EXISTS tree_chunks (file_id TEXT NOT NULL, n INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY (file_id, n))',
 ];
 let ready = false;
 async function ensure(db: D1Database) {
@@ -16,7 +18,9 @@ async function ensure(db: D1Database) {
 }
 
 const MAX_PROJECT = 1_800_000; // D1 keeps a value up to ~2 MB
-const MAX_FILE = 1_900_000;
+const MAX_FILE = 25_000_000;
+const CHUNK = 1_500_000;
+const u8 = (d: ArrayBuffer | number[] | Uint8Array) => (d instanceof Uint8Array ? d : d instanceof ArrayBuffer ? new Uint8Array(d) : new Uint8Array(d));
 const FILE_TYPES = /^(image\/(png|jpeg|webp|gif|svg\+xml|avif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp4|wav|x-wav|wave|ogg|webm|aac|x-m4a|flac)|application\/pdf|text\/(plain|markdown|csv)|application\/json|font\/(woff2?|ttf|otf)|model\/[a-z0-9.+-]+|application\/(octet-stream|zip|x-zip-compressed|msword|vnd\.[a-z0-9.+-]+))$/;
 const INLINE = /^(image\/(png|jpeg|webp|gif|avif)|video\/|audio\/|application\/pdf|text\/(plain|markdown|csv)|application\/json)/;
 const MODELS: Record<string, string> = { quick: 'claude-haiku-5-5', complex: 'claude-opus-5-5', fable: 'claude-fable-5-2' };
@@ -66,23 +70,42 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
     const type = (c.req.header('content-type') || '').split(';')[0].trim().toLowerCase();
     if (!FILE_TYPES.test(type)) return c.json({ error: 'This file type is not kept here' }, 415);
     const buf = await c.req.arrayBuffer();
-    if (buf.byteLength > MAX_FILE) return c.json({ error: 'Files up to 1.9 MB; add bigger ones as links', code: 'too_large' }, 413);
+    if (buf.byteLength > MAX_FILE) return c.json({ error: 'Files up to 25 MB; add bigger ones as links', code: 'too_large' }, 413);
     const id = crypto.randomUUID().replace(/-/g, '');
     const name = decodeURIComponent(c.req.header('x-name') || '').slice(0, 200);
+    const all = new Uint8Array(buf);
+    const small = all.byteLength <= CHUNK;
+    if (!small) {
+      for (let i = 0, n = 0; i < all.byteLength; i += CHUNK, n++)
+        await c.env.DB.prepare('INSERT INTO tree_chunks (file_id, n, data) VALUES (?, ?, ?)').bind(id, n, all.slice(i, i + CHUNK)).run();
+    }
     await c.env.DB.prepare('INSERT INTO tree_files (id, org_id, name, type, data, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(id, c.get('orgId'), name, type, buf, Date.now()).run();
+      .bind(id, c.get('orgId'), name, type, small ? all : new Uint8Array(0), Date.now()).run();
     return c.json({ id, url: `/api/tree/files/${id}` });
   });
 
   app.get('/tree/files/:id', async (c) => {
-    const r = await c.env.DB.prepare('SELECT type, data FROM tree_files WHERE id = ? AND org_id = ?').bind(c.req.param('id'), c.get('orgId')).first<{ type: string; data: ArrayBuffer | number[] }>();
+    const id = c.req.param('id');
+    const r = await c.env.DB.prepare('SELECT type, data FROM tree_files WHERE id = ? AND org_id = ?').bind(id, c.get('orgId')).first<{ type: string; data: ArrayBuffer | number[] }>();
     if (!r) return c.body(null, 404);
-    const bytes = r.data instanceof ArrayBuffer ? new Uint8Array(r.data) : new Uint8Array(r.data as number[]);
+    let bytes = u8(r.data);
+    if (!bytes.byteLength) {
+      const list: Uint8Array[] = [];
+      for (let n = 0; ; n++) {
+        const p = await c.env.DB.prepare('SELECT data FROM tree_chunks WHERE file_id = ? AND n = ?').bind(id, n).first<{ data: ArrayBuffer | number[] }>();
+        if (!p) break;
+        list.push(u8(p.data));
+      }
+      const out = new Uint8Array(list.reduce((s, p) => s + p.byteLength, 0));
+      let at = 0;
+      for (const p of list) { out.set(p, at); at += p.byteLength; }
+      bytes = out;
+    }
     const h: Record<string, string> = { 'content-type': r.type, 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' };
     // SVG can carry script: lock it down; anything not viewable inline downloads instead
     if (r.type === 'image/svg+xml') h['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'";
     else if (!INLINE.test(r.type)) h['content-disposition'] = 'attachment';
-    return new Response(bytes, { headers: h });
+    return new Response(bytes as unknown as BodyInit, { headers: h });
   });
 
   // Title, preview image and icon of a page, for link nodes. Cached at the edge for a day.

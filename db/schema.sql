@@ -156,3 +156,10 @@ CREATE TABLE IF NOT EXISTS tree_files (
   data BLOB NOT NULL,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS tree_chunks (
+  file_id TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  data BLOB NOT NULL,
+  PRIMARY KEY (file_id, n)
+);
