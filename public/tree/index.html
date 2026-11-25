@@ -560,7 +560,7 @@ function fit(){
  if(!vis.length){V={x:180,y:20,z:.9};applyView();return;}
  let x0=1e9,x1=-1e9;for(const n of vis){const q=rect(n);x0=Math.min(x0,q.x);x1=Math.max(x1,q.x+q.w);}
  const y1=geo.brief.top+geo.brief.h;
- let z=clamp(Math.min((r.width-260)/(x1-x0+80),(r.height-90)/y1),.25,1.2);
+ let z=clamp(Math.floor(Math.min((r.width-260)/(x1-x0+80),(r.height-90)/y1)*20)/20,.25,1.2);
  const minZ=r.width<600?.55:.45;
  if(z<minZ){z=minZ;const b=P.nodes.find(n=>n.t==='task')||vis[0],q=rect(b);V={z,x:Math.min(200,r.width/2-(q.x+q.w/2)*z),y:r.height-80-y1*z};}
  else V={z,x:240-(x0-40)*z,y:10};
@@ -822,8 +822,10 @@ cv.addEventListener('wheel',e=>{
  else{V.x-=e.deltaX;V.y-=e.deltaY;applyView();saveView();}
 },{passive:false});
 cv.addEventListener('dblclick',e=>{const h=e.target.closest('.nh');if(h&&!e.target.closest('button')){const n=byId(h.closest('.node').dataset.id);if(n&&n.t!=='task'){n.open=!n.open;renderNode(n);save();}return;}if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;addNode('card',f,{},null,{x:w.x-132,y:w.y-geo[f].top-20});});
-$('#zi').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1.2);};
-$('#zo').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/1.2);};
+const ZS=[.25,.33,.5,.67,.75,1,1.25,1.5,2];
+function stepZoom(d){const z=V.z,t=d>0?ZS.find(s=>s>z+.005):[...ZS].reverse().find(s=>s<z-.005);if(!t)return;const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,t/z);}
+$('#zi').onclick=()=>stepZoom(1);
+$('#zo').onclick=()=>stepZoom(-1);
 $('#zl').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/V.z);};
 $('#fit').onclick=fit;
 
