@@ -112,6 +112,11 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 .cm{min-width:22px;height:20px;padding:0 6px;font-size:11px;border-radius:10px 10px 10px 2px;background:var(--paper2)}
 .cm.al{background:var(--acc);border-color:var(--acc);color:#fff}
 .nb{padding:0 8px 6px}
+.node.shut .nb,.node.shut .nf,.node.shut .why{display:none}
+.meta{display:none;color:var(--faint);font-size:11.5px;padding:0 10px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node.shut .meta{display:block}
+.node.shut .nt{margin-bottom:0}
+.fold{border:0;padding:2px 5px;color:var(--faint);font-size:12px;line-height:1}
 .nb>textarea[data-f=text]{color:var(--mute);font-size:12.5px}
 .nf{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
 .nf button,.nf .lnk{font-size:12px;padding:4px 9px}
@@ -231,6 +236,7 @@ svg.edges{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
 <header class="top">
 <span class="logo">Creative Tree</span>
 <select id="plist" aria-label="Project"></select>
+<button class="tb" id="newp" title="Start an empty tree with just a brief">+ New tree</button>
 <input id="pname" aria-label="Project name">
 <button id="pmenu" aria-label="Project actions">⋯</button>
 <span class="st" id="st">Loading…</span>
@@ -303,7 +309,7 @@ const TIC={sec:'1s',bad:'BD',swap:'LS',scale:'Sc',task:'TF',make:'Pr',cliche:'Cl
 const RIC={founder:'Fo',board:'IC',buyer:'By',cand:'Ca',lay:'ND',rival:'RC'};
 
 const mk=(t,f,o={})=>Object.assign({id:uid(),t,f,x:40,y:56,title:'',text:'',thread:[]},
- t==='board'?{items:[]}:t==='files'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
+ t==='board'?{items:[]}:t==='files'||t==='brief'?{items:[],links:''}:t==='table'?{rows:[]}:t==='link'?{url:'',items:[]}:t==='source'?{lib:'pinterest',q:'',items:[]}:t==='gen'?{mode:'ideas',op:'none',n:6,brain:'default',target:'Krea 2',out:[]}:t==='check'?{tests:['sec','bad','swap'],rooms:[],res:[]}:t==='prod'?{tools:[],fmt:[],st:'Planned'}:{},o);
 
 function template(){
  const T=mk('task','brief',{id:'t0',x:40,y:56,title:'Task',text:'Need an animated banner for Avride\'s robotaxi launch in Miami (LinkedIn 1200×627 plus a 9:16 cut, [TBD: duration]) that answers why Avride when Waymo, Zoox and Tesla are already here. Follow the brand guide [TBD: awaiting], keep the voice confident and safety-first, use the real vehicle model, and avoid everything on the no-go list.',pick:true});
@@ -325,7 +331,7 @@ function template(){
  return {v:5,id:uid(),name:'Avride · demo',open:{brief:true,research:true,prod:true},nodes:[T,b,t,z,fs,an,g,i1,i3,i4,i2,ch,d1,d2,d3,p1],
   edges:[['t0','r4'],['r4','c1'],['r4','c4'],['r4','c5'],['r4','c2'],['c1','c3'],['c4','c3'],['c5','c3'],['c1','d1'],['c4','d2'],['c5','d3'],['c1','p1']].map(([a,b])=>({id:uid(),a,b})),chat:[],view:null};
 }
-function blank(){return {v:5,id:uid(),name:'Untitled project',open:{brief:true,research:true,prod:true},nodes:[mk('task','brief',{x:40,y:56,title:'Task'}),mk('brief','brief',{x:40,y:300})],edges:[],chat:[],view:null};}
+function blank(){return {v:5,id:uid(),name:'Empty tree',open:{brief:true,research:true,prod:true},nodes:[mk('brief','brief',{x:40,y:56,open:true})],edges:[],chat:[],view:null};}
 
 let DICT=null,dictFor=null,livePart='';
 let P=template(),V={x:220,y:20,z:.8},sel=null,geo={},els={},U=[],R=[],DB=null,AS=null,S=null,LIM=null,projects=[];
@@ -398,7 +404,7 @@ const itemHTML=it=>{const k=it.kind||'image';const x=`<button data-a="imgdel" da
  if(k==='image')return `<div class="th"><img alt="" src="${esc(imgSrc(it))}">${x}</div>`;
  if(k==='video'&&blob(it))return `<div class="th"><video src="${esc(blob(it))}" muted loop autoplay playsinline></video>${x}</div>`;
  return `<div class="th fileth"><a href="${esc(blob(it))}" target="_blank" rel="noopener">${esc(it.name||'file')}</a>${x}</div>`;};
-const thumbs=n=>n.items.length?`<div class="grid">${n.items.map(itemHTML).join('')}</div>`:`<div class="drophere">${n.t==='files'?'Drop guides, PDFs, videos, images':'Drop or paste images'}${n.t==='link'?(window.CT_SHOT?' of the site':': a site screenshot'):n.t==='source'?' you found here':''}</div>`;
+const thumbs=n=>n.items.length?`<div class="grid">${n.items.map(itemHTML).join('')}</div>`:`<div class="drophere">${n.t==='brief'?'Drop the brief, guides, references':n.t==='files'?'Drop guides, PDFs, videos, images':'Drop or paste images'}${n.t==='link'?(window.CT_SHOT?' of the site':': a site screenshot'):n.t==='source'?' you found here':''}</div>`;
 function sources(){
  const out=[];
  for(const n of P.nodes.filter(x=>x.f==='brief'&&x.t!=='task')){
@@ -412,7 +418,7 @@ function sources(){
 function body(n){
  if(n.t==='task'){const ins=P.nodes.filter(x=>x.f==='brief'&&x.t!=='task');const src=sources();
   return `<textarea class="tk" data-f="text" placeholder="One clear prompt: what, for whom, which formats, by which brief and guide, what to avoid">${esc(n.text)}</textarea><div class="lbl">From ${ins.length} input${ins.length===1?'':'s'}</div><div class="srcs">${ins.map(x=>`<button data-a="goto" data-i="${esc(x.id)}" title="${esc(x.title)}">${esc(x.title||lab(x))}</button>`).join('')}${src.map(([t,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join('')}</div>`;}
- if(n.t==='brief'||n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, constraints, timing':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'');
+ if(n.t==='brief'||n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.t==='brief'?thumbs(n):'');
  if(n.t==='board')return thumbs(n);
  if(n.t==='files')return thumbs(n)+`<textarea data-f="links" placeholder="Links: 3D models, Drive, Figma, previous videos">${esc(n.links)}</textarea><div class="note">3D files are kept as links for now.</div>`;
  if(n.t==='link')return (window.CT_SHOT&&okUrl(n.url)?`<a class="shot" href="${esc(n.url)}" target="_blank" rel="noopener"><img alt="Homepage of ${esc(n.url)}" loading="lazy" src="${esc(window.CT_SHOT+encodeURIComponent(n.url))}"></a>`:'')+`<input data-f="url" placeholder="https://site" value="${esc(n.url)}"><textarea data-f="text" placeholder="Notes">${esc(n.text)}</textarea>`+thumbs(n);
@@ -441,7 +447,7 @@ function foot(n){
  if(n.t==='task')a.push(['task','Rewrite from inputs',1]);
  if(n.t==='brief')a.push(['bq','Questions for the client']);
  if((n.t==='brief'||n.t==='card')&&DICT)a.push(['dict',dictFor===n.id?'Stop dictation':'Dictate']);
- if(n.t==='files')a.push(['addfile','+ files']);
+ if(n.t==='files'||n.t==='brief')a.push(['addfile','+ files']);
  if(n.t==='table'){a.push(['rowadd','+ row']);a.push(['aifind','Find with AI']);}
  if(n.t==='board'||n.t==='link'||n.t==='source'){a.push(['addimg','+ images']);if(n.items.length&&LIM&&LIM.images)a.push(['readrefs','Read the refs']);}
  if(n.t==='gen'||n.t==='check')a.push(['run',n.busy?'Running…':'Run',1]);
@@ -451,14 +457,24 @@ function foot(n){
  if(n.t==='source'){const l=libOf(n.lib);h+=`<a class="lnk" href="${esc(srcUrl(n))}" target="_blank" rel="noopener">${l[5]&&n.q?'Search':'Open'} ${esc(l[1])} ↗</a>`;}
  return h;
 }
+function meta(n){
+ const k=(n.items||[]).length,pl=(c,w)=>c+' '+w+(c===1?'':'s');
+ if(n.t==='brief'||n.t==='files'||n.t==='board'||n.t==='link')return [k?pl(k,'file'):'',n.t==='link'&&n.url?n.url.replace(/^https:\/\//,''):''].filter(Boolean).join(' · ');
+ if(n.t==='source')return libOf(n.lib)[1]+(n.q?' · '+n.q:'')+(k?' · '+pl(k,'ref'):'');
+ if(n.t==='table')return pl(n.rows.length,'row')+(n.rows.length?': '+n.rows.map(r=>r.name).filter(Boolean).join(', '):'');
+ if(n.t==='gen')return n.busy?'Running…':n.out.length?pl(n.out.length,'result'):'Not run yet';
+ if(n.t==='check'){if(n.busy)return 'Running…';if(!n.res.length)return 'Not run yet';const c={pass:0,risk:0,fail:0};n.res.forEach(r=>c[r.verdict]++);return Object.entries(c).filter(([,v])=>v).map(([x,v])=>v+' '+x).join(' · ');}
+ if(n.t==='prod')return [n.st,...n.tools].join(' · ');
+ return '';
+}
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button></span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea><div class="nb">${body(n)}</div>${n.drop?`<div class="why"><input data-f="why" placeholder="Why it was dropped" value="${esc(n.why||'')}"></div>`:''}<div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}<div class="nb">${body(n)}</div>${n.drop?`<div class="why"><input data-f="why" placeholder="Why it was dropped" value="${esc(n.why||'')}"></div>`:''}<div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
 function grow(t){t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';}
-function cls(n){return 'node'+(n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(n.drop?' drop':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
+function cls(n){return 'node'+(n.t!=='task'&&!n.open?' shut':'')+(n.t==='task'?' task':['table','gen','check'].includes(n.t)?' wide':'')+(n.pick?' pick':'')+(n.drop?' drop':'')+(sel&&sel.k==='n'&&sel.id===n.id?' sel':'')+(P.open[n.f]?'':' hid');}
 function renderNode(n,fresh){
  let el=els[n.id];
  if(!el){el=document.createElement('div');el.dataset.id=n.id;nodesEl.appendChild(el);els[n.id]=el;ro.observe(el);}
@@ -533,6 +549,7 @@ function addNode(t,f,o={},from,at){
  const n=mk(t,f,Object.assign({x:at&&at.x!=null?Math.round(at.x):viewX(),y:0},o));
  n.y=at&&at.y!=null?Math.max(40,Math.round(at.y)):freeSpot(f,n.x);
  if(!Array.isArray(n.thread))n.thread=[];
+ if(o.open===undefined)n.open=t!=='card'||!n.title;
  P.nodes.push(n);if(from)P.edges.push({id:uid(),a:from,b:n.id});
  n.basis=basisOf(n);
  renderNode(n,1);select('n',n.id);save();return n;
@@ -734,7 +751,7 @@ cv.addEventListener('wheel',e=>{
  if(e.ctrlKey||e.metaKey)zoomAt(e.clientX,e.clientY,Math.exp(-clamp(e.deltaY,-50,50)*.01));
  else{V.x-=e.deltaX;V.y-=e.deltaY;applyView();saveView();}
 },{passive:false});
-cv.addEventListener('dblclick',e=>{if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;addNode('card',f,{},null,{x:w.x-132,y:w.y-geo[f].top-20});});
+cv.addEventListener('dblclick',e=>{const h=e.target.closest('.nh');if(h&&!e.target.closest('button')){const n=byId(h.closest('.node').dataset.id);if(n&&n.t!=='task'){n.open=!n.open;renderNode(n);save();}return;}if(e.target.closest('.node,.rail,.zoom,.dock'))return;const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);if(!P.open[f])return;addNode('card',f,{},null,{x:w.x-132,y:w.y-geo[f].top-20});});
 $('#zi').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1.2);};
 $('#zo').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/1.2);};
 $('#zl').onclick=()=>{const r=cv.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,1/V.z);};
@@ -753,6 +770,7 @@ world.addEventListener('click',e=>{
  if(b.dataset.k){useKit(kitAt(b.dataset.k),n);return;}
  const a=b.dataset.a,i=+b.dataset.i;
  if(a==='menu'){const r=b.getBoundingClientRect();nodeMenu(n,r.right-190,r.bottom+4);return;}
+ if(a==='fold'){n.open=!n.open;renderNode(n);save();return;}
  if(a==='ai'||a==='pop')return void openPop(n,a==='ai');
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
@@ -786,7 +804,7 @@ document.addEventListener('keydown',e=>{
 let pickFor=null;
 $('#fi').onchange=e=>{const n=byId(pickFor);if(n)addImages(n,[...e.target.files]);e.target.value='';};
 async function addImages(n,files){
- const any=n.t==='files';
+ const any=n.t==='files'||n.t==='brief';
  const list=files.filter(f=>any||/^image\//.test(f.type));
  if(!list.length){if(files.length)flash('Only images go here; put documents in a Files node on Inputs');return;}
  snap();
@@ -813,7 +831,7 @@ cv.addEventListener('drop',e=>{e.preventDefault();
   if(src)useKit(it,src);else{const w=toWorld(e.clientX,e.clientY);useKit(it,null,{x:w.x-132});}return;}
  const files=[...(e.dataTransfer.files||[])];if(!files.length)return;
  const t=e.target.closest('.node');let n=t&&byId(t.dataset.id);
- if(!n||!n.items||(n.t!=='files'&&files.some(f=>!/^image\//.test(f.type)))){const w=toWorld(e.clientX,e.clientY);let f=floorAt(w.y);if(!P.open[f])f='prod';const doc=f==='brief'||files.some(f=>!/^image\//.test(f.type));if(doc)f='brief';n=addNode(doc?'files':'board',f,{},null,{x:w.x-132,y:doc&&f!==floorAt(w.y)?56:w.y-geo[f].top-20});}
+ if(!n||!n.items||(n.t!=='files'&&n.t!=='brief'&&files.some(f=>!/^image\//.test(f.type)))){const w=toWorld(e.clientX,e.clientY);let f=floorAt(w.y);if(!P.open[f])f='prod';const doc=f==='brief'||files.some(f=>!/^image\//.test(f.type));if(doc)f='brief';n=addNode(doc?'files':'board',f,{},null,{x:w.x-132,y:doc&&f!==floorAt(w.y)?56:w.y-geo[f].top-20});}
  addImages(n,files);});
 document.addEventListener('paste',e=>{
  if(e.target.closest&&e.target.closest('input,textarea'))return;
@@ -954,17 +972,19 @@ function migrate(d){
   if(n.prompt){n.title=(n.title&&!n.title.includes(n.prompt)?n.title+': ':'')+n.prompt;n.title=n.title.slice(0,300);}
   delete n.gist;delete n.prompt;
  });
- if(!p.nodes.some(n=>n.t==='task')){p.nodes.forEach(n=>{if(n.f==='brief')n.y+=290;});p.nodes.unshift(mk('task','brief',{x:40,y:56,title:'Task'}));}
+ p.nodes.forEach(n=>{if(n.t==='brief'&&!Array.isArray(n.items)){n.items=[];n.links=n.links||'';}});
  p.open={brief:true,research:true,prod:true,...Object.fromEntries(ORDER.filter(k=>d.open&&k in d.open).map(k=>[k,d.open[k]]))};
  p.v=5;
  const tmp=P;P=p;p.nodes.forEach(n=>{if(!n.basis||old)n.basis=basisOf(n);});P=tmp;
  return p;
 }
 function load(d){closePop();P=migrate(d);U=[];R=[];sel=null;renderAll();if(P.view){V={...P.view};applyView();}else requestAnimationFrame(fit);fillList();}
+async function newTree(){await flush();load(blank());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}
+$('#newp').onclick=newTree;
 $('#plist').onchange=e=>openProject(e.target.value);
 $('#pname').oninput=e=>{P.name=e.target.value;save();};
 $('#pmenu').onclick=e=>{const r=e.currentTarget.getBoundingClientRect();openMenu(r.left,r.bottom+4,[
- ['new','New project',0,async()=>{await flush();load(blank());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
+ ['new','New empty tree',0,newTree],
  ['demo','New demo project (Avride)',0,async()=>{await flush();load(template());projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
  ['dup','Duplicate project',0,async()=>{await flush();const c=clean();c.id=uid();c.name=P.name+' copy';load(c);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
  ['del','Delete project…',1,()=>openMenu(r.left,r.bottom+4,[['no','Keep it',0,()=>{}],['yes',`Delete “${P.name||'Untitled'}” for good`,1,delProject]])]]);};
@@ -994,7 +1014,9 @@ renderKit();renderAll();if(P.view){V={...P.view};applyView();}else{applyView();r
  DB=db;const timer=setTimeout(()=>status('Storage is not answering; working locally'),10000);
  try{const q=await DB.collection('projects').get();clearTimeout(timer);projects=q.docs.map(d=>{const v=d.data()||{};return {id:d.id,name:String(v.name||''),upd:+v.upd||0};});
   if(projects.length){const own=projects.find(p=>p.id===P.id),top=projects.slice().sort((a,b)=>b.upd-a.upd)[0];await openProject((own||top).id,true);status('Saved');}
-  else{fillList();flush();}
+  else{fillList();await flush();}
+  let seeded='1';try{seeded=localStorage.getItem('ctree:bare1');localStorage.setItem('ctree:bare1','1');}catch(_){}
+  if(!seeded&&!projects.some(p=>/^empty tree/i.test(p.name)))await newTree();
  }catch(e){clearTimeout(timer);status('Storage unavailable; working locally');DB=null;}
 })();
 }
