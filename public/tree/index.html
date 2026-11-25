@@ -433,6 +433,8 @@ const okUrl=u=>/^https:\/\/[^\s"'<>]+$/.test(String(u||''));
 const BLOBP=window.CT_BLOB||'/_blob/';
 const imgSrc=it=>it.asset?BLOBP+encodeURIComponent(it.asset):(/^data:image\//.test(it.src||'')?it.src:'');
 const blob=it=>it.asset?BLOBP+encodeURIComponent(it.asset):'';
+// a stored image or video that fails to load (busy server after a refresh) is asked for once more
+document.addEventListener('error',e=>{const t=e.target;if(!t||!/^(IMG|VIDEO|AUDIO)$/.test(t.tagName))return;const u=t.getAttribute('src')||'';if(!u.startsWith(BLOBP)||t.dataset.retry)return;t.dataset.retry='1';setTimeout(()=>{if(t.isConnected)t.setAttribute('src',u+(u.includes('?')?'&':'?')+'r=1');},1500);},true);
 const svgSrc=s=>typeof s==='string'&&/^\s*<svg[\s>]/i.test(s)&&s.length<40000?'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s):'';
 function docKind(it){const nm=String(it.name||'').toLowerCase();if(it.kind==='image')return 'Image';if(it.kind==='video')return 'Video';if(it.kind==='audio'||/\.(mp3|wav|m4a|aac|ogg|flac)$/.test(nm))return 'Audio';if(/\.(glb|gltf|obj|fbx|c4d|usdz|blend|stl|3ds|abc|ma|mb)$/.test(nm))return '3D';if(/\.pdf$/.test(nm))return 'PDF';return 'Document';}
 const HOSTS=[[/(^|\.)notion\.(so|site)$/,'Notion'],[/(^|\.)pinterest\.[a-z.]+$/,'Pinterest'],[/(^|\.)figma\.com$/,'Figma'],[/(^|\.)(youtube\.com|youtu\.be)$/,'YouTube'],[/(^|\.)vimeo\.com$/,'Vimeo'],[/(^|\.)loom\.com$/,'Loom'],[/^docs\.google\.com$/,'Google Docs'],[/^drive\.google\.com$/,'Google Drive'],[/(^|\.)miro\.com$/,'Miro'],[/(^|\.)are\.na$/,'Are.na'],[/(^|\.)behance\.net$/,'Behance'],[/(^|\.)dribbble\.com$/,'Dribbble'],[/(^|\.)dropbox\.com$/,'Dropbox']];

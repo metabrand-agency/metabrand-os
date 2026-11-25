@@ -20,7 +20,15 @@ async function ensure(db: D1Database) {
 const MAX_PROJECT = 1_800_000; // D1 keeps a value up to ~2 MB
 const MAX_FILE = 25_000_000;
 const CHUNK = 1_500_000;
-const u8 = (d: ArrayBuffer | number[] | Uint8Array) => (d instanceof Uint8Array ? d : d instanceof ArrayBuffer ? new Uint8Array(d) : new Uint8Array(d));
+const PIECE = 512 * 1024; // bytes read from D1 per step when sending a file
+const HEXV = new Uint8Array(128);
+for (let i = 0; i < 10; i++) HEXV[48 + i] = i;
+for (let i = 0; i < 6; i++) { HEXV[65 + i] = 10 + i; HEXV[97 + i] = 10 + i; }
+function fromHex(t: string) {
+  const out = new Uint8Array(t.length >> 1);
+  for (let i = 0, j = 0; i < out.length; i++, j += 2) out[i] = (HEXV[t.charCodeAt(j)] << 4) | HEXV[t.charCodeAt(j + 1)];
+  return out;
+}
 const FILE_TYPES = /^(image\/(png|jpeg|webp|gif|svg\+xml|avif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp4|wav|x-wav|wave|ogg|webm|aac|x-m4a|flac)|application\/pdf|text\/(plain|markdown|csv)|application\/json|font\/(woff2?|ttf|otf)|model\/[a-z0-9.+-]+|application\/(octet-stream|zip|x-zip-compressed|msword|vnd\.[a-z0-9.+-]+))$/;
 const INLINE = /^(image\/(png|jpeg|webp|gif|avif)|video\/|audio\/|application\/pdf|text\/(plain|markdown|csv)|application\/json)/;
 const MODELS: Record<string, string> = { quick: 'claude-haiku-5-5', complex: 'claude-opus-5-5', fable: 'claude-fable-5-2' };
@@ -84,28 +92,63 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
     return c.json({ id, url: `/api/tree/files/${id}` });
   });
 
+  // Files are sent as a stream, half a megabyte at a time, and answer Range requests, so a page that asks for
+  // many images and videos at once (a refresh) never holds whole files in the Worker's memory.
   app.get('/tree/files/:id', async (c) => {
     const id = c.req.param('id');
-    const r = await c.env.DB.prepare('SELECT type, data FROM tree_files WHERE id = ? AND org_id = ?').bind(id, c.get('orgId')).first<{ type: string; data: ArrayBuffer | number[] }>();
+    const db = c.env.DB;
+    const r = await db.prepare('SELECT type, length(data) AS len FROM tree_files WHERE id = ? AND org_id = ?').bind(id, c.get('orgId')).first<{ type: string; len: number }>();
     if (!r) return c.body(null, 404);
-    let bytes = u8(r.data);
-    if (!bytes.byteLength) {
-      const list: Uint8Array[] = [];
-      for (let n = 0; ; n++) {
-        const p = await c.env.DB.prepare('SELECT data FROM tree_chunks WHERE file_id = ? AND n = ?').bind(id, n).first<{ data: ArrayBuffer | number[] }>();
-        if (!p) break;
-        list.push(u8(p.data));
-      }
-      const out = new Uint8Array(list.reduce((s, p) => s + p.byteLength, 0));
-      let at = 0;
-      for (const p of list) { out.set(p, at); at += p.byteLength; }
-      bytes = out;
-    }
-    const h: Record<string, string> = { 'content-type': r.type, 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' };
+    // where the bytes live: in the row itself (small files) or in numbered pieces
+    let parts: { n: number | null; len: number }[];
+    if (r.len > 0) parts = [{ n: null, len: r.len }];
+    else parts = (await db.prepare('SELECT n, length(data) AS len FROM tree_chunks WHERE file_id = ? ORDER BY n').bind(id).all<{ n: number; len: number }>()).results;
+    const size = parts.reduce((s, p) => s + p.len, 0);
+
+    const h: Record<string, string> = { 'content-type': r.type, 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'accept-ranges': 'bytes' };
     // SVG can carry script: lock it down; anything not viewable inline downloads instead
     if (r.type === 'image/svg+xml') h['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'";
     else if (!INLINE.test(r.type)) h['content-disposition'] = 'attachment';
-    return new Response(bytes as unknown as BodyInit, { headers: h });
+
+    let start = 0, end = size - 1, status = 200;
+    const m = /^bytes=(\d*)-(\d*)$/.exec((c.req.header('range') || '').trim());
+    if (m && (m[1] || m[2])) {
+      if (!m[1]) start = Math.max(0, size - Number(m[2]));
+      else { start = Number(m[1]); if (m[2]) end = Math.min(size - 1, Number(m[2])); }
+      if (start >= size || start > end) return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } });
+      status = 206;
+      h['content-range'] = `bytes ${start}-${end}/${size}`;
+    }
+    const length = size ? end - start + 1 : 0;
+    h['content-length'] = String(length);
+    if (!length || c.req.method === 'HEAD') return new Response(null, { status, headers: h });
+
+    const reads: { n: number | null; off: number; len: number }[] = [];
+    let base = 0;
+    for (const p of parts) {
+      const a = Math.max(start, base), b = Math.min(end, base + p.len - 1);
+      for (let x = a; x <= b; x += PIECE) reads.push({ n: p.n, off: x - base, len: Math.min(PIECE, b - x + 1) });
+      base += p.len;
+    }
+    let i = 0;
+    const source = new ReadableStream<Uint8Array>({
+      async pull(ctrl) {
+        if (i >= reads.length) return ctrl.close();
+        const q = reads[i++];
+        const row = q.n === null
+          ? await db.prepare('SELECT hex(substr(data, ?, ?)) AS h FROM tree_files WHERE id = ?').bind(q.off + 1, q.len, id).first<{ h: string }>()
+          : await db.prepare('SELECT hex(substr(data, ?, ?)) AS h FROM tree_chunks WHERE file_id = ? AND n = ?').bind(q.off + 1, q.len, id, q.n).first<{ h: string }>();
+        if (!row) return ctrl.error(new Error('missing piece'));
+        ctrl.enqueue(fromHex(row.h));
+      },
+    }, { highWaterMark: 0 });
+    const FLS = (globalThis as any).FixedLengthStream;
+    if (FLS) {
+      const fixed = new FLS(length);
+      source.pipeTo(fixed.writable).catch(() => {});
+      return new Response(fixed.readable, { status, headers: h });
+    }
+    return new Response(source, { status, headers: h });
   });
 
   // Title, preview image and icon of a page, for link nodes. Cached at the edge for a day.

@@ -59,7 +59,7 @@
     },
   };
 
-  // ---- assets: files up to 1.9 MB stored in D1
+  // ---- assets: files up to 25 MB stored in D1
   const assets = {
     async upload(file) {
       const r = await call('/files', { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream', 'x-name': encodeURIComponent(file.name || '') }, body: file });
