@@ -3,6 +3,7 @@ export type Env = {
   ANTHROPIC_API_KEY?: string;
   APOLLO_API_KEY?: string;
   AHREFS_API_KEY?: string;
+  FIGMA_TOKEN?: string;
   SESSION_SECRET: string;
   ACCESS_CODE: string;
   MODEL?: string;

@@ -5,6 +5,8 @@
   window.CT_BLOB = '/api/tree/files/';
   window.CT_SHOT = '/api/shot?u=';
   window.CT_META = '/api/tree/meta?u=';
+  window.CT_FIGMA = '/api/tree/figma/';
+  window.CT_PDF = '/tree/vendor/';
   window.CT_MODELS = [['quick', 'Claude Haiku'], ['default', 'Claude Sonnet'], ['complex', 'Claude Opus'], ['fable', 'Claude Fable']];
 
   const err = (code, text) => Object.assign(new Error(text || code), { code });

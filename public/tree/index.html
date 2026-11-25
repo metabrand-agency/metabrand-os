@@ -131,7 +131,7 @@ body.dragging,body.dragging *{user-select:none!important;cursor:grabbing!importa
 .node.brief .nk{display:none}
 .node.brief .nt{font:500 15px/1.3 'Inter Tight',Inter,sans-serif;padding:11px 96px 4px 11px}
 .node.brief .nb{padding:0 10px 8px}
-.bt{min-height:6em;font-size:14px;line-height:1.5;padding:4px 5px;color:var(--ink)}
+.bt{min-height:3.2em;font-size:14px;line-height:1.5;padding:4px 5px;color:var(--ink)}
 .cmp{display:flex;align-items:center;gap:6px;padding:4px 0 0}
 .cmp .sp{flex:1}
 .ci{width:30px;height:30px;padding:0;border-radius:50%;display:grid;place-items:center;font-size:18px;line-height:1;color:var(--mute)}
@@ -311,7 +311,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ORDER=['brief','research','prod'];
 const NAMES={brief:'Inputs',research:'Ideas',prod:'Production'};
 const CARDL={brief:'Input',research:'Idea',prod:'Branch'};
-const TL={brief:'Inputs',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
+const TL={brief:'Task',board:'Ref board',table:'Competitors',link:'Link',gen:'Generator',prod:'Production',check:'Check',source:'Library',files:'Files',task:'Task'};
 const ADDS={brief:[['doc','File…'],['link','Link'],['card','Note'],['table','Competitors']],research:[['card','Idea'],['gen','Generator'],['check','Check']],prod:[['card','Branch'],['gen','Sketches'],['source','Library'],['board','Final refs'],['check','Check'],['prod','Production tracker']]};
 const MODES={insights:'Input analysis',ideas:'Ideas',collide:'Collisions',prompts:'Prompts for a model',sketch:'Composition sketches'};
 const BRAINS={quick:'Fast',default:'Balanced',complex:'Deep'};
@@ -373,7 +373,7 @@ function template(){
  return {v:5,id:uid(),name:'Avride · demo',open:{brief:true,research:true,prod:true},nodes:[T,b,t,z,fs,an,g,i1,i3,i4,i2,ch,d1,d2,d3,p1],
   edges:[['t0','r4'],['r4','c1'],['r4','c4'],['r4','c5'],['r4','c2'],['c1','c3'],['c4','c3'],['c5','c3'],['c1','d1'],['c4','d2'],['c5','d3'],['c1','p1']].map(([a,b])=>({id:uid(),a,b})),chat:[],view:null};
 }
-function blank(){return {v:5,id:uid(),name:'Empty tree',open:{brief:true,research:true,prod:true},nodes:[mk('brief','brief',{x:40,y:56,open:true})],edges:[],chat:[],view:null};}
+function blank(){return {v:5,trash:[],id:uid(),name:'Empty tree',open:{brief:true,research:true,prod:true},nodes:[mk('brief','brief',{x:40,y:56,open:true})],edges:[],chat:[],view:null};}
 
 let DICT=null,dictFor=null,livePart='';
 let P=template(),V={x:220,y:20,z:.8},sel=null,geo={},els={},U=[],R=[],DB=null,AS=null,S=null,LIM=null,projects=[];
@@ -401,7 +401,7 @@ function embedOf(u){let x;try{x=new URL(u);}catch(_){return '';}const h=x.hostna
  if(/\.notion\.site$/.test(h))return u;
  return '';}
 const isImgUrl=u=>/\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(u);
-function prevOf(n){if(!okUrl(n.url))return '';if(!window.CT_SHOT)return '';if(isImgUrl(n.url))return n.url;if(n.meta&&okUrl(n.meta.image))return n.meta.image;return window.CT_SHOT+encodeURIComponent(n.url);}
+function prevOf(n){if(!okUrl(n.url))return '';if(!window.CT_SHOT)return '';if(n.meta&&n.meta.figma&&window.CT_FIGMA)return window.CT_FIGMA+'img?u='+encodeURIComponent(n.url)+(n.meta.v?'&v='+n.meta.v:'');if(isImgUrl(n.url))return n.url;if(n.meta&&okUrl(n.meta.image))return n.meta.image;return window.CT_SHOT+encodeURIComponent(n.url);}
 function lab(n){
  const pre=n.run?n.run+' · ':'';
  if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card'&&(x.run||'')===(n.run||'')).indexOf(n);return pre+'Idea '+(i+1);}
@@ -458,7 +458,7 @@ function quick(n){
  if(n.f==='prod'&&['card','source','board'].includes(n.t))return ['Composition sketches','Kling 4.0','Seedance 2.5','Krea 2'];
  return [];
 }
-const PH=n=>n.t==='brief'?'Inputs':n.t==='files'?'What these files are':n.t==='table'?'Who already competes, in one line':n.t==='link'?'What this site shows':n.t==='source'?'What refs to find':n.t==='board'?'What these refs are for':n.t==='prod'?'What gets made, with which tool':n.t==='check'?'What this gate decides':n.t==='gen'?(n.mode==='insights'?'What to look for in the inputs':'Direction in one line: what to look for'):n.nogo?'What to avoid, in one line':n.f==='brief'?'What this input says, in one line':n.f==='research'?'The idea as a prompt: format, subject, action':'This branch as a prompt: what we make and how';
+const PH=n=>n.t==='brief'?'Task':n.t==='files'?'What these files are':n.t==='table'?'Who already competes, in one line':n.t==='link'?'What this site shows':n.t==='source'?'What refs to find':n.t==='board'?'What these refs are for':n.t==='prod'?'What gets made, with which tool':n.t==='check'?'What this gate decides':n.t==='gen'?(n.mode==='insights'?'What to look for in the inputs':'Direction in one line: what to look for'):n.nogo?'What to avoid, in one line':n.f==='brief'?'What this input says, in one line':n.f==='research'?'The idea as a prompt: format, subject, action':'This branch as a prompt: what we make and how';
 const tileHTML=(k,cls)=>{const it=kitAt(k);return it?`<button class="${cls}" data-k="${k}" draggable="true" title="${esc(it.desc)}"><span class="ico">${esc(it.ic)}</span>${cls==='tile'?`<span><b style="font-weight:500">${esc(it.name)}</b><small>${esc(it.desc)}</small></span>`:esc(it.name)}</button>`:'';};
 
 const opts=(obj,cur)=>Object.entries(obj).map(([k,v])=>`<option value="${k}"${cur===k?' selected':''}>${esc(Array.isArray(v)?v[0]:v)}</option>`).join('');
@@ -480,9 +480,10 @@ function sources(){
 function body(n){
  if(n.t==='task'){const ins=P.nodes.filter(x=>x.f==='brief'&&x.t!=='task'&&!x.run);const src=sources();
   return `<textarea class="tk" data-f="text" placeholder="One clear prompt: what, for whom, which formats, by which brief and guide, what to avoid">${esc(n.text)}</textarea><div class="lbl">From ${ins.length} input${ins.length===1?'':'s'}</div><div class="srcs">${ins.map(x=>`<button data-a="goto" data-i="${esc(x.id)}" title="${esc(x.title)}">${esc(x.title||lab(x))}</button>`).join('')}${src.map(([t,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join('')}</div>`;}
- if(n.t==='brief')return `<textarea class="bt" data-f="text" placeholder="Write or paste the inputs" aria-label="Inputs">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')
+ if(n.t==='brief')return `<textarea class="bt" data-f="text" placeholder="What are we making? One or two lines" aria-label="Task">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')
   +`<div class="cmp"><button class="ci" data-a="addfile" aria-label="Attach documents" title="Attach documents">+</button>${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sp"></span><select class="msel" data-f="model" aria-label="Model">${RUNS.map(([t,nm])=>`<option value="${t}"${(n.model||'default')===t?' selected':''}>${esc(nm)}</option>`).join('')}<option value="all"${n.model==='all'?' selected':''}>All models</option></select><button class="go" data-a="go" aria-label="Run a pass with this model" title="Run a pass with this model">↑</button></div>`;
  if(n.doc){const it=n.items[0];if(!it)return '';const k=it.kind||'image',u=k==='image'?imgSrc(it):blob(it),ext=(String(it.name||'').match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();
+  if(docKind(it)==='PDF'){if(it.thumb)return `<img class="docv" data-a="look" alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}">`;if(window.CT_PDF&&AS)setTimeout(()=>pdfThumb(n),0);if(window.CT_SHOT)return `<div class="docf" data-a="look" role="button" tabindex="0"><b>PDF</b>${esc(it.name||'file')}</div>`;}
   return k==='image'&&u?`<img class="docv" data-a="look" alt="" src="${esc(u)}">`:k==='video'&&u?`<video class="docv" data-a="look" src="${esc(u)}" muted loop autoplay playsinline></video>`:docKind(it)==='Audio'&&u?`<audio class="doca" controls preload="none" src="${esc(u)}"></audio>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
  if(n.t==='card')return (n.svg&&svgSrc(n.svg)?`<img class="svgimg" alt="" src="${esc(svgSrc(n.svg))}">`:'')+`<textarea data-f="text" placeholder="${n.t==='brief'?'Paste the brief: task, audience, formats, timing, what to avoid':n.f==='brief'?'Inputs, constraints, what to avoid':'Details'}">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')+(n.t==='brief'?thumbs(n):'');
  if(n.t==='board')return thumbs(n);
@@ -523,13 +524,14 @@ function foot(n){
 }
 function hovHTML(n){
  if(n.t==='link'){const pv=prevOf(n);return pv?`<div class="hov"><img alt="" loading="lazy" src="${esc(pv)}"></div>`:'';}
- if(n.doc){const it=n.items[0];if(!it)return '';if(it.kind==='image'&&imgSrc(it))return `<div class="hov"><img alt="" src="${esc(imgSrc(it))}"></div>`;if(it.kind==='video'&&blob(it))return `<div class="hov"><video src="${esc(blob(it))}" muted loop autoplay playsinline></video></div>`;}
+ if(n.doc){const it=n.items[0];if(!it)return '';if(it.thumb)return `<div class="hov"><img alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}"></div>`;if(it.kind==='image'&&imgSrc(it))return `<div class="hov"><img alt="" src="${esc(imgSrc(it))}"></div>`;if(it.kind==='video'&&blob(it))return `<div class="hov"><video src="${esc(blob(it))}" muted loop autoplay playsinline></video></div>`;}
  return '';
 }
 function meta(n){
  if(n.busy)return 'Running…';
  const k=(n.items||[]).length,pl=(c,w)=>c+' '+w+(c===1?'':'s');
- if(n.doc||n.t==='link')return '';
+ if(n.doc){const it=n.items[0]||{};return it.pages?it.pages+' page'+(it.pages===1?'':'s'):'';}
+ if(n.t==='link')return '';
  if(n.t==='brief'||n.t==='files'||n.t==='board')return k?pl(k,'file'):'';
  if(n.t==='source')return libOf(n.lib)[1]+(n.q?' · '+n.q:'')+(k?' · '+pl(k,'ref'):'');
  if(n.t==='table')return pl(n.rows.length,'row')+(n.rows.length?': '+n.rows.map(r=>r.name).filter(Boolean).join(', '):'');
@@ -540,7 +542,7 @@ function meta(n){
 }
 function nodeHTML(n){
  const th=n.thread||[];const st=isStale(n);
- return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
+ return `<div class="qt">${quick(n).map(kitByName).filter(Boolean).map(k=>tileHTML(k,'')).join('')}</div><div class="nh"><span class="nk">${n.t==='link'&&n.meta&&okUrl(n.meta.icon)&&window.CT_SHOT?`<img class="fav" alt="" src="${esc(n.meta.icon)}">`:''}${esc(lab(n))}</span><span class="nc"><button class="stl" data-a="refresh"${st?'':' hidden'} title="Something upstream changed: check this node">↻ Inputs changed</button>${th.length?`<button class="cm${n.alert?' al':''}" data-a="pop" aria-label="${th.length} comment${th.length===1?'':'s'}">${th.length}</button>`:''}${n.f==='research'&&n.t==='card'?`<button class="star${n.pick?' on':''}" data-a="star" aria-label="${n.pick?'Remove from shortlist':'Shortlist'}" aria-pressed="${!!n.pick}">${n.pick?'★':'☆'}</button>`:''}${n.t==='link'&&n.meta&&n.meta.figma?`<button class="ib" data-a="frames" aria-label="Bring in the frames" title="Bring in the frames">⊞</button><button class="ib" data-a="remeta" aria-label="Refresh from Figma" title="Refresh from Figma">↻</button>`:''}${n.t==='link'&&okUrl(n.url)?`<a href="${esc(n.url)}" target="_blank" rel="noopener" aria-label="Open link" title="Open">↗</a>`:''}<button class="spk" data-a="ai" aria-label="Ask AI about this node" title="Ask AI here">✦</button><button class="ib" data-a="menu" aria-label="Node actions">⋯</button>${n.t==='task'?'':`<button class="fold" data-a="fold" aria-expanded="${!!n.open}" aria-label="${n.open?'Hide details':'Show details'}" title="${n.open?'Hide details':'Show details'}">${n.open?'▴':'▾'}</button>`}</span></div><textarea class="nt" data-f="title" rows="1" placeholder="${esc(PH(n))}" aria-label="Title">${esc(n.title)}</textarea>${(m=>m?`<div class="meta">${esc(m)}</div>`:'')(meta(n))}${hovHTML(n)}<div class="nb">${body(n)}</div><div class="nf">${foot(n)}</div><i class="port pt" data-port="t"></i><i class="port pb" data-port="b"></i>${n.t==='task'?'':'<i class="rz" data-rz></i>'}`;
 }
 const ro=new ResizeObserver(()=>schedule());
 const FS=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));
@@ -686,6 +688,19 @@ $('#dock').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const w
  dockPop.style.left=clamp(r.left+r.width/2-w/2,12,innerWidth-w-12)+'px';dockPop.style.top=Math.max(12,r.top-h-8)+'px';
  dockPop.onclick=kitClick;};
 
+const thumbBusy=new Set();
+async function pdfThumb(n){
+ const it=n&&n.items&&n.items[0];if(!window.CT_PDF||!AS||!it||it.thumb||thumbBusy.has(it.id)||!blob(it))return;thumbBusy.add(it.id);
+ try{const lib=await import(window.CT_PDF+'pdf.min.mjs');lib.GlobalWorkerOptions.workerSrc=window.CT_PDF+'pdf.worker.min.mjs';
+  const doc=await lib.getDocument({url:blob(it),withCredentials:true}).promise;const pg=await doc.getPage(1);
+  const w1=pg.getViewport({scale:1}).width,vp=pg.getViewport({scale:Math.min(2,900/w1)});
+  const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);
+  await pg.render({canvas:c,canvasContext:c.getContext('2d'),viewport:vp}).promise;
+  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.86));if(!b)return;
+  const up=await AS.upload(new File([b],(it.name||'pdf')+'.jpg',{type:'image/jpeg'}));
+  it.thumb=up.id;it.pages=doc.numPages;if(byId(n.id))renderNode(n);save();
+ }catch(_){}finally{thumbBusy.delete(it.id);}
+}
 function lightbox(n){
  let inner='',open='';
  if(n.t==='link'&&okUrl(n.url)){open=n.url;const em=window.CT_SHOT?embedOf(n.url):'';const pv=prevOf(n);
@@ -708,7 +723,7 @@ function nodeMenu(n,x,y){
  openMenu(x,y,[['dup','Duplicate',0,()=>{const c=JSON.parse(JSON.stringify(n));delete c.id;delete c.busy;delete c.basis;c.thread=[];addNode(n.t,n.f,c,null,{x:n.x+30,y:n.y+30});}],
   ['del','Delete',1,()=>delNode(n.id)]]);
 }
-function delNode(id){snap();if(popFor===id)closePop();P.nodes=P.nodes.filter(n=>n.id!==id);P.edges=P.edges.filter(e=>e.a!==id&&e.b!==id);const el=els[id];if(el){ro.unobserve(el);el.remove();delete els[id];}sel=null;kitSel();schedule();save();}
+function delNode(id){snap();if(popFor===id)closePop();const gone=byId(id);if(gone){P.trash=[{n:JSON.parse(JSON.stringify(gone,(k,v)=>k==='busy'||k==='_ax'||k==='_ay'?undefined:v)),e:P.edges.filter(e=>e.a===id||e.b===id).map(e=>({...e})),at:Date.now()},...(P.trash||[])].slice(0,200);flash('Moved to trash');}P.nodes=P.nodes.filter(n=>n.id!==id);P.edges=P.edges.filter(e=>e.a!==id&&e.b!==id);const el=els[id];if(el){ro.unobserve(el);el.remove();delete els[id];}sel=null;kitSel();schedule();save();}
 
 /* comment popover, Figma-style */
 let pop=null,popFor=null,popCtl=null;
@@ -909,6 +924,8 @@ world.addEventListener('click',e=>{
  if(a==='refresh')return void refresh([n],true);
  if(a==='task')return void rewriteTask(n);
  if(a==='look')return void lightbox(n);
+ if(a==='remeta')return void linkMeta(n);
+ if(a==='frames')return void pullFrames(n);
  if(a==='go'){const m=n.model||'default',rs=m==='all'?RUNS:RUNS.filter(r=>r[0]===m);return void autoPass(n,rs.length?rs:[RUNS[1]||RUNS[0]]);}
  if(a==='auto'){const r=b.getBoundingClientRect();openMenu(r.left,r.bottom+4,[...RUNS.map(([t,name])=>[t,name,0,()=>autoPass(n,[[t,name]])]),['all','All of them, side by side',0,()=>autoPass(n,RUNS)]]);return;}
  if(a==='goto'){const t=byId(b.dataset.i);if(t){select('n',t.id);reveal(t);}return;}
@@ -953,17 +970,28 @@ function addOf(t,k,at,lk){
  return m;
 }
 $('#fi').onchange=e=>{const fs=[...e.target.files];const n=byId(pickFor);if(n)addImages(n,fs);else if(fs.length){const bs=P.nodes.filter(x=>x.t==='brief');addDocs(pickLink?null:bs.length===1?bs[0]:null,fs,pickAt||undefined,pickLink);}pickFor=null;pickAt=null;pickLink=null;e.target.value='';};
-function docSpot(brief,at){
+function docSpot(task,at){
  if(at)return at;
- const y=brief?brief.y:56;let x=brief?brief.x+(brief.t==='brief'?440:264)+40:viewX();
+ const el=task&&els[task.id],y=task?task.y+(el?el.offsetHeight:160)+80:56;let x=task?task.x:viewX();
  const ns=P.nodes.filter(m=>m.f==='brief');
- while(ns.some(m=>m.x<x+264+20&&m.x+wOf(m)+20>x&&Math.abs(m.y-y)<140))x+=24;
+ while(ns.some(m=>m.x<x+264+20&&m.x+wOf(m)+20>x&&m.y<y+200&&m.y+(els[m.id]?els[m.id].offsetHeight:150)>y-20))x+=24;
  return {x,y};
 }
 async function linkMeta(n){
  if(!window.CT_META||!okUrl(n.url))return;const u=n.url;
+ if(window.CT_FIGMA&&service(u)==='Figma'){try{const r=await fetch(window.CT_FIGMA+'meta?u='+encodeURIComponent(u),{credentials:'same-origin'});
+  if(r.ok){const m=await r.json();if(n.url!==u||!byId(n.id))return;n.meta={figma:true,title:String(m.title||'').slice(0,200),file:String(m.file||''),kind:String(m.type||''),v:Date.now()};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();return;}}catch(_){}}
  try{const r=await fetch(window.CT_META+encodeURIComponent(u),{credentials:'same-origin'});if(!r.ok)return;const m=await r.json();if(n.url!==u||!byId(n.id))return;
   n.meta={title:String(m.title||'').slice(0,200),image:okUrl(m.image)?m.image:'',icon:okUrl(m.icon)?m.icon:''};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();}catch(_){}
+}
+async function pullFrames(n){
+ if(!window.CT_FIGMA)return;flash('Asking Figma for the frames…');
+ try{const r=await fetch(window.CT_FIGMA+'frames?u='+encodeURIComponent(n.url),{credentials:'same-origin'});const j=await r.json().catch(()=>({}));
+  if(!r.ok)return flash(j.error||'Figma did not answer');const fr=(j.frames||[]).filter(f=>okUrl(f.url));if(!fr.length)return flash('No frames on that page');
+  snap();const el=els[n.id],y0=n.y+(el?el.offsetHeight:200)+80;let made=0;
+  fr.slice(0,24).forEach((f,i)=>{if(P.nodes.some(m=>m.url===f.url))return;const m=addNode('link',n.f,{url:f.url,title:String(f.name||'').slice(0,160),open:true,meta:{figma:true,title:f.name,v:Date.now()}},null,{x:n.x+(i%4)*290,y:y0+Math.floor(i/4)*260});P.edges.push({id:uid(),a:m.id,b:n.id});made++;});
+  schedule();save();flash(made?`Brought in ${made} frame${made===1?'':'s'}${j.page?' from '+j.page:''}`:'All frames are already here');
+ }catch(_){flash('Figma did not answer');}
 }
 function addLink(url,at){
  const bs=P.nodes.filter(x=>x.t==='brief'),b=bs.length===1?bs[0]:null;
@@ -1186,6 +1214,7 @@ function migrate(d){
   n.items=[];});
  p.open={brief:true,research:true,prod:true,...Object.fromEntries(ORDER.filter(k=>d.open&&k in d.open).map(k=>[k,d.open[k]]))};
  p.v=5;
+ if(!Array.isArray(p.trash))p.trash=[];
  const tmp=P;P=p;p.nodes.forEach(n=>{if(!n.basis||old)n.basis=basisOf(n);});P=tmp;
  return p;
 }
@@ -1196,7 +1225,11 @@ $('#pmenu').onclick=e=>{const r=$('#pname').getBoundingClientRect();const ps=pro
  ...ps.map(p=>[p.id,p.id===P.id?P.name||'Untitled':p.name||'Untitled',p.id===P.id?2:0,()=>{if(p.id!==P.id)openProject(p.id);}]),null,
  ['new','New tree',0,newTree],
  ['dup','Duplicate',0,async()=>{await flush();const c=clean();c.id=uid();c.name=P.name+' copy';load(c);projects.push({id:P.id,name:P.name,upd:Date.now()});fillList();save();}],
+ ['trash',`Trash${(P.trash||[]).length?' ('+P.trash.length+')':''}`,0,()=>trashMenu(r.left,r.bottom+4)],
  ['del','Delete…',1,()=>openMenu(r.left,r.bottom+4,[['no','Keep it',0,()=>{}],['yes',`Delete “${P.name||'Untitled'}” for good`,1,delProject]])]]);};
+function restore(i){const t=(P.trash||[])[i];if(!t)return;snap();P.trash.splice(i,1);const n=t.n;if(byId(n.id))n.id=uid();P.open[n.f]=true;P.nodes.push(n);
+ t.e.forEach(e=>{if(byId(e.a)&&byId(e.b)&&!P.edges.some(x=>x.a===e.a&&x.b===e.b))P.edges.push({id:uid(),a:e.a,b:e.b});});renderNode(n,1);select('n',n.id);reveal(n);save();}
+function trashMenu(x,y){const tr=P.trash||[];openMenu(x,y,tr.length?[...tr.slice(0,40).map((t,i)=>[String(i),`${lab(t.n)}${t.n.title?': '+t.n.title:''}`.slice(0,70),0,()=>restore(i)]),null,['empty','Empty the trash…',1,()=>openMenu(x,y,[['no','Keep it',0,()=>{}],['yes',`Delete ${tr.length} block${tr.length===1?'':'s'} for good`,1,()=>{snap();P.trash=[];save();}]])]]:[['none','Trash is empty',0,()=>{}]]);}
 async function delProject(){
  const id=P.id;try{localStorage.removeItem('ctree:'+id);}catch(_){}
  if(DB){try{await DB.doc('projects/'+id).delete();}catch(_){flash('Could not delete');return;}}

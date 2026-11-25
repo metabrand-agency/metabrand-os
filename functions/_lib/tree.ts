@@ -135,6 +135,93 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
     return res;
   });
 
+  // ---------- Figma: read-only, with the agency's token (FIGMA_TOKEN). Figma's API cannot write into files.
+  const figmaRef = (u: string) => {
+    let x: URL;
+    try { x = new URL(u); } catch { return null; }
+    if (!/(^|\.)figma\.com$/.test(x.hostname)) return null;
+    const m = x.pathname.match(/^\/(?:file|design|board|proto|slides|deck)\/([A-Za-z0-9]+)(?:\/[^/]*)?(?:\/branch\/([A-Za-z0-9]+))?/);
+    if (!m) return null;
+    const node = (x.searchParams.get('node-id') || '').replace(/-/g, ':');
+    return { key: m[2] || m[1], node: /^\d+:\d+$/.test(node) ? node : '', base: `${x.origin}${x.pathname}` };
+  };
+  const figma = async (env: Env, path: string) => {
+    const r = await fetch('https://api.figma.com/v1/' + path, { headers: { 'X-Figma-Token': env.FIGMA_TOKEN || '' }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw Object.assign(new Error(r.status === 403 || r.status === 404 ? 'No access to this Figma file with the agency token' : `Figma error ${r.status}`), { status: r.status });
+    return r.json() as Promise<any>;
+  };
+  const edge = (globalThis as any).caches?.default as Cache | undefined;
+  const cached = async (c: any, key: string, ttl: number, make: () => Promise<Response>) => {
+    const k = new Request(`https://figma.metabrand-os/${encodeURIComponent(c.get('orgId'))}/${key}`);
+    const hit = await edge?.match(k).catch(() => undefined);
+    if (hit) return hit;
+    const res = await make();
+    if (edge && res.status < 400) { const copy = new Response(res.clone().body, res); copy.headers.set('cache-control', `private, max-age=${ttl}`); const put = edge.put(k, copy).catch(() => {}); try { c.executionCtx.waitUntil(put); } catch { await put; } }
+    return res;
+  };
+  const figmaGate = (c: any) => {
+    if (!c.env.FIGMA_TOKEN) return { err: c.json({ error: 'Figma is not connected yet', code: 'not_connected' }, 409) };
+    const ref = figmaRef(c.req.query('u') || '');
+    if (!ref) return { err: c.json({ error: 'Not a Figma file link' }, 400) };
+    return { ref };
+  };
+
+  app.get('/tree/figma/meta', async (c) => {
+    const g = figmaGate(c); if (g.err) return g.err; const ref = g.ref!;
+    try {
+      return await cached(c, `meta/${ref.key}/${ref.node}`, 600, async () => {
+        if (ref.node) {
+          const d = await figma(c.env, `files/${ref.key}/nodes?ids=${encodeURIComponent(ref.node)}&depth=1`);
+          const doc = d.nodes?.[ref.node]?.document;
+          return c.json({ title: doc?.name || d.name || '', file: d.name || '', type: doc?.type || '' });
+        }
+        const d = await figma(c.env, `files/${ref.key}?depth=1`);
+        return c.json({ title: d.name || '', file: d.name || '', type: 'FILE' });
+      });
+    } catch (e: any) { return c.json({ error: e.message }, e.status === 403 || e.status === 404 ? 403 : 502); }
+  });
+
+  // a fresh render of the frame (Figma's image links expire), or the file thumbnail
+  app.get('/tree/figma/img', async (c) => {
+    const g = figmaGate(c); if (g.err) return g.err; const ref = g.ref!;
+    try {
+      return await cached(c, `img/${ref.key}/${ref.node}`, 3600, async () => {
+        let url = '';
+        if (ref.node) {
+          const d = await figma(c.env, `images/${ref.key}?ids=${encodeURIComponent(ref.node)}&format=png&scale=0.5`);
+          url = d.images?.[ref.node] || '';
+        }
+        if (!url) { const f = await figma(c.env, `files/${ref.key}?depth=1`); url = f.thumbnailUrl || ''; }
+        if (!url) return c.body(null, 404);
+        const img = await fetch(url, { signal: AbortSignal.timeout(20000) });
+        if (!img.ok) return c.body(null, 502);
+        return new Response(img.body, { headers: { 'content-type': img.headers.get('content-type') || 'image/png', 'cache-control': 'private, max-age=3600' } });
+      });
+    } catch (e: any) { return c.body(null, e.status === 403 || e.status === 404 ? 403 : 502); }
+  });
+
+  // the top-level frames of the linked page (or of the first page)
+  app.get('/tree/figma/frames', async (c) => {
+    const g = figmaGate(c); if (g.err) return g.err; const ref = g.ref!;
+    try {
+      let page = ref.node, pageName = '';
+      if (page) {
+        const d = await figma(c.env, `files/${ref.key}/nodes?ids=${encodeURIComponent(page)}&depth=1`);
+        const doc = d.nodes?.[page]?.document;
+        if (doc && doc.type !== 'CANVAS' && doc.type !== 'SECTION') return c.json({ page: doc.name, frames: [{ id: page, name: doc.name, url: `${ref.base}?node-id=${page.replace(':', '-')}` }] });
+        pageName = doc?.name || '';
+        var kids: any[] = doc?.children || [];
+      } else {
+        const f = await figma(c.env, `files/${ref.key}?depth=2`);
+        const first = (f.document?.children || [])[0];
+        pageName = first?.name || ''; var kids: any[] = first?.children || [];
+      }
+      const frames = kids.filter((k) => ['FRAME', 'SECTION', 'COMPONENT', 'COMPONENT_SET', 'GROUP'].includes(k.type)).slice(0, 40)
+        .map((k) => ({ id: k.id, name: k.name, url: `${ref.base}?node-id=${String(k.id).replace(':', '-')}` }));
+      return c.json({ page: pageName, frames });
+    } catch (e: any) { return c.json({ error: e.message }, e.status === 403 || e.status === 404 ? 403 : 502); }
+  });
+
   // One turn of the Messages API. The page runs the tool loop itself, so tools act on the canvas in the browser.
   app.post('/tree/ai', async (c) => {
     if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'AI is not configured: add ANTHROPIC_API_KEY', code: 'sampling_disabled' }, 503);
