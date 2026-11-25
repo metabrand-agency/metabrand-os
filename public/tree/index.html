@@ -698,7 +698,7 @@ function lightbox(n){
  document.body.appendChild(d);d.querySelector('[data-x]').focus({preventScroll:true});
 }
 let menuEl=null;
-function closeMenu(){if(menuEl){menuEl.remove();menuEl=null;}}
+function closeMenu(){if(menuEl){menuEl.remove();menuEl=null;}if(tmpPath&&!drag){tmpPath='';drawEdges();}}
 function openMenu(x,y,items){closeMenu();menuEl=document.createElement('div');menuEl.className='menu';menuEl.innerHTML=items.map((it,i)=>it?`<button data-m="${i}"${it[2]===1?' class="dz"':it[2]===2?' class="cur"':''}>${esc(it[1])}</button>`:'<hr>').join('');document.body.appendChild(menuEl);
  const w=menuEl.offsetWidth,h=menuEl.offsetHeight;menuEl.style.left=clamp(x,8,innerWidth-w-8)+'px';menuEl.style.top=clamp(y,8,innerHeight-h-8)+'px';
  menuEl.onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const it=items[+b.dataset.m];closeMenu();it[3]();};menuEl.querySelector('button').focus();}
@@ -859,8 +859,13 @@ function endDrag(e){
  if(!drag)return;const d=drag;drag=null;cv.classList.remove('pan');document.body.classList.remove('dragging');
  if(d.k==='p'){saveView();return;}
  if(d.k==='n'){const n=byId(d.id);if(d.moved){noClick=Date.now();const f=floorAt(n._ay+16);if(P.open[f]){n.f=f;n.y=Math.max(40,Math.round(n._ay-geo[f].top));}else n.y=Math.max(40,Math.round(n._ay-geo[n.f].top));n.x=Math.round(n._ax);delete n._ax;delete n._ay;renderNode(n);save();}return;}
- if(d.k==='c'){tmpPath='';const t=document.elementFromPoint(e.clientX,e.clientY),tn=t&&t.closest('.node');
-  if(tn&&tn.dataset.id!==d.id){const a=d.port==='t'?d.id:tn.dataset.id,b=d.port==='t'?tn.dataset.id:d.id;if(!P.edges.some(x=>x.a===a&&x.b===b)){snap();P.edges.push({id:uid(),a,b});const g=byId(b);if(g&&(g.t==='gen'||g.t==='check'))renderNode(g);save();}}
+ if(d.k==='c'){const t=document.elementFromPoint(e.clientX,e.clientY),tn=t&&t.closest('.node');
+  // released on empty canvas: offer what can grow here, at the end of the line
+  if(!tn&&tmpPath){const w=toWorld(e.clientX,e.clientY),f=floorAt(w.y);
+   if(P.open[f]){const keep=tmpPath,at={x:Math.round(w.x-132),y:Math.max(40,Math.round(w.y-geo[f].top-(d.port==='t'?90:10)))};
+    openMenu(e.clientX,e.clientY,ADDS[f].map(([k,v])=>[k,v,0,()=>addOf(k,f,at,{id:d.id,port:d.port})]));tmpPath=keep;drawEdges();return;}}
+  tmpPath='';
+  if(tn&&tn.dataset.id!==d.id){const a=d.port==='t'?d.id:tn.dataset.id,b=d.port==='t'?tn.dataset.id:d.id;if(!P.edges.some(x=>x.a===a&&x.b===b)){snap();P.edges.push({id:uid(),a,b});const g=byId(b);if(g){g.basis=basisOf(g);if(g.t==='gen'||g.t==='check')renderNode(g);}save();}}
   drawEdges();}
 }
 cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
@@ -930,16 +935,19 @@ document.addEventListener('keydown',e=>{
 
 let pickFor=null,pickAt=null;
 // add a node of a kind to a floor; the double-click and the + next to a floor both come here
-function addOf(t,k,at){
- if(t==='doc'){pickFor=null;pickAt=at||null;$('#fi').accept='';$('#fi').click();return;}
+function linkEdge(m,lk){const a=lk.port==='t'?lk.id:m.id,b=lk.port==='t'?m.id:lk.id;if(!byId(lk.id))return;P.edges.push({id:uid(),a,b});const g=byId(b);if(g){g.basis=basisOf(g);renderNode(g);}schedule();}
+let pickLink=null;
+function addOf(t,k,at,lk){
+ if(t==='doc'){pickFor=null;pickAt=at||null;pickLink=lk||null;$('#fi').accept='';$('#fi').click();return;}
  const o=t==='gen'&&k==='prod'?{mode:'sketch',n:4}:t==='gen'&&k==='brief'?{mode:'insights',n:5,title:'Tensions, white space and gaps in the inputs'}:t==='nogo'?{nogo:true}:{};
  const bs=P.nodes.filter(x=>x.t==='brief');
  const m=addNode(t==='nogo'?'card':t,k,o,null,at||(k==='brief'&&bs.length===1?docSpot(bs[0]):undefined));if(!at)reveal(m);
- if(k==='brief'&&t!=='brief'&&bs.length===1){P.edges.push({id:uid(),a:m.id,b:bs[0].id});schedule();save();}
+ if(lk){linkEdge(m,lk);save();}
+ else if(k==='brief'&&t!=='brief'&&bs.length===1){P.edges.push({id:uid(),a:m.id,b:bs[0].id});schedule();save();}
  const ta=els[m.id]&&els[m.id].querySelector(m.t==='link'?'input[data-f="url"]':m.t==='brief'?'textarea.bt':'textarea.nt');if(ta)ta.focus();
  return m;
 }
-$('#fi').onchange=e=>{const fs=[...e.target.files];const n=byId(pickFor);if(n)addImages(n,fs);else if(fs.length){const bs=P.nodes.filter(x=>x.t==='brief');addDocs(bs.length===1?bs[0]:null,fs,pickAt||undefined);}pickFor=null;pickAt=null;e.target.value='';};
+$('#fi').onchange=e=>{const fs=[...e.target.files];const n=byId(pickFor);if(n)addImages(n,fs);else if(fs.length){const bs=P.nodes.filter(x=>x.t==='brief');addDocs(pickLink?null:bs.length===1?bs[0]:null,fs,pickAt||undefined,pickLink);}pickFor=null;pickAt=null;pickLink=null;e.target.value='';};
 function docSpot(brief,at){
  if(at)return at;
  const y=brief?brief.y:56;let x=brief?brief.x+(brief.t==='brief'?440:264)+40:viewX();
@@ -957,8 +965,8 @@ function addLink(url,at){
  const m=addNode('link','brief',{url,open:true},null,at||docSpot(b));if(b){P.edges.push({id:uid(),a:m.id,b:b.id});schedule();}
  save();reveal(m);linkMeta(m);return m;
 }
-async function addDocs(brief,files,at){
- snap();let last=null;
+async function addDocs(brief,files,at,lk){
+ snap();let last=null;const made=[];
  for(const f of files){
   const kind=/^image\//.test(f.type)?'image':/^video\//.test(f.type)?'video':/^audio\//.test(f.type)?'audio':'file';let it=null;
   if(AS){try{const r=await AS.upload(f);it={id:uid(),asset:r.id,kind,name:f.name};}catch(err){}}
@@ -966,11 +974,12 @@ async function addDocs(brief,files,at){
   if(!it){flash(`Can't keep ${f.name}${AS?' (up to 1.9 MB here)':''}; add a link instead`);continue;}
   const pos=docSpot(brief,at);at=null;
   const m=addNode('files','brief',{doc:true,open:true,title:f.name.replace(/\.[^.]+$/,'').slice(0,120),items:[it]},null,pos);
-  if(brief&&brief.t==='brief'){P.edges.push({id:uid(),a:m.id,b:brief.id});}
-  last=m;
+  if(lk)linkEdge(m,lk);else if(brief&&brief.t==='brief'){P.edges.push({id:uid(),a:m.id,b:brief.id});}
+  last=m;made.push(m);
  }
  schedule();P.nodes.filter(x=>x.t==='task').forEach(x=>renderNode(x));save();
  if(last)reveal(last);
+ return made;
 }
 const briefOf=n=>n&&n.t==='brief'?n:n&&n.doc?byId((P.edges.find(e=>e.a===n.id)||{}).b)||null:null;
 async function addImages(n,files){
