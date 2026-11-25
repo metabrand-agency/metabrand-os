@@ -535,6 +535,7 @@ function body(n){
  if(n.t==='brief')return `<textarea class="bt" data-f="text" placeholder="What are we making? One or two lines" aria-label="Task">${esc(n.text)}</textarea>`+(dictFor===n.id?`<div class="live">${esc(livePart||'Listening…')}</div>`:'')
   +`<div class="cmp"><button class="ci" data-a="addfile" aria-label="Attach documents" title="Attach documents">+</button>${DICT?`<button class="ci${dictFor===n.id?' on':''}" data-a="dict" aria-label="${dictFor===n.id?'Stop dictation':'Dictate'}" title="${dictFor===n.id?'Stop dictation':'Dictate'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>`:''}<span class="sp"></span></div>`;
  if(n.doc){const it=n.items[0];if(!it)return '';const k=it.kind||'image',u=k==='image'?imgSrc(it):blob(it),ext=(String(it.name||'').match(/\.([a-z0-9]{1,5})$/i)||[,'file'])[1].toUpperCase();
+  if(readable(it)&&it.mem===undefined&&AS)setTimeout(()=>memRead(it),0);
   if(docKind(it)==='PDF'){if(it.thumb)return `<img class="docv" data-a="look" alt="" src="${esc(BLOBP+encodeURIComponent(it.thumb))}">`;if(window.CT_PDF&&AS)setTimeout(()=>pdfThumb(n),0);if(window.CT_SHOT)return `<div class="docf" data-a="look" role="button" tabindex="0"><b>PDF</b>${esc(it.name||'file')}</div>`;}
   return k==='image'&&u?`<img class="docv" data-a="look" alt="" src="${esc(u)}">`:k==='video'&&u?`<div class="vbox"><video class="docv" data-a="look" src="${esc(u)}" muted loop playsinline${n.paused?'':' autoplay'}></video><button class="vpp" data-a="vpause" aria-label="${n.paused?'Play':'Pause'}" title="${n.paused?'Play':'Pause'}">${n.paused?PLAY:PAUSE}</button></div>`:docKind(it)==='Audio'&&u?`<audio class="doca" controls preload="none" src="${esc(u)}"></audio>`:`<a class="docf" href="${esc(u)}" target="_blank" rel="noopener"><b>${esc(ext)}</b>${esc(it.name||'file')}</a>`;}
  if(n.t==='card'){const st=n.st||'p',ups=n.f==='research'?upstream(n).length:0;
@@ -779,6 +780,67 @@ async function pdfThumb(n){
   it.thumb=up.id;it.pages=doc.numPages;if(byId(n.id))renderNode(n);save();
  }catch(_){}finally{thumbBusy.delete(it.id);}
 }
+// ---- project memory: everything on the Inputs floor is known to every model in this project, like a Claude
+// project's knowledge. A document is read once, when it is added or replaced, and its text is kept as a small text file.
+const MEM_DOC=150000,MEM_ALL=480000,memTxt=new Map(),memBusy=new Map();
+let pdfLib=null;
+async function pdfjs(){if(!pdfLib){const l=await import(window.CT_PDF+'pdf.min.mjs');l.GlobalWorkerOptions.workerSrc=window.CT_PDF+'pdf.worker.min.mjs';pdfLib=l;}return pdfLib;}
+async function pdfText(src){
+ const lib=await pdfjs();const doc=await lib.getDocument(typeof src==='string'?{url:src,withCredentials:true}:{data:new Uint8Array(await src.arrayBuffer())}).promise;
+ const out=[];let len=0;
+ for(let i=1;i<=doc.numPages&&len<MEM_DOC;i++){const tc=await (await doc.getPage(i)).getTextContent();
+  const t=tc.items.map(x=>x.str+(x.hasEOL?'\n':' ')).join('').replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  if(t){out.push(`[p. ${i}]\n${t}`);len+=t.length;}}
+ return out.join('\n\n').slice(0,MEM_DOC);
+}
+const readable=it=>!['image','video','audio'].includes(it.kind||'image')&&(docKind(it)==='PDF'||/\.(txt|md|csv|json)$/i.test(it.name||''));
+async function memRead(it){
+ if(typeof it.mem==='string'){if(!it.mem)return '';if(memTxt.has(it.mem))return memTxt.get(it.mem);
+  try{const t=await (await fetch(BLOBP+encodeURIComponent(it.mem),{credentials:'same-origin'})).text();memTxt.set(it.mem,t);return t;}catch(_){return '';}}
+ if(!AS||!blob(it)||!readable(it)||(docKind(it)==='PDF'&&!window.CT_PDF))return '';
+ if(memBusy.has(it.id))return memBusy.get(it.id);
+ const p=(async()=>{try{
+  const t=docKind(it)==='PDF'?await pdfText(blob(it)):(await (await fetch(blob(it),{credentials:'same-origin'})).text()).slice(0,MEM_DOC);
+  if(t.trim()){const up=await AS.upload(new File([t],(it.name||'document')+'.txt',{type:'text/plain'}));memTxt.set(up.id,t);it.mem=up.id;flash(`“${it.name||'Document'}” is in the project memory`);}
+  else it.mem='';
+  save();return t;
+ }catch(_){return '';}finally{memBusy.delete(it.id);}})();
+ memBusy.set(it.id,p);return p;
+}
+// the project memory for one request: the task first, then every other input in reading order
+async function memory(){
+ const t=trunk(),ns=P.nodes.filter(x=>x.f==='brief'&&!x.run&&x.t!=='gen'&&x.t!=='check').sort((a,b)=>(a===t?-1:b===t?1:0)||a.y-b.y||a.x-b.x);
+ const parts=[],cut=[],scans=[],pics=[];let total=0;
+ const add=(head,body)=>{body=String(body||'').trim();if(!body)return;const room=MEM_ALL-total;if(room<500){cut.push(head);return;}const b=body.slice(0,room);parts.push(`=== ${head} ===\n${b}`);total+=b.length;if(b.length<body.length)cut.push(head);};
+ for(const n of ns){
+  add(n===t?'Task':lab(n)+(n.title?': '+n.title:''),n.t==='folder'?`Folder “${n.folder}”: `+(n.files||[]).map(f=>f.path).join(', ').slice(0,4000):nodeText(n));
+  for(const it of n.items||[]){
+   if((it.kind||'image')==='image'){const u=imgSrc(it);if(u)pics.push(u);continue;}
+   if(!readable(it))continue;const tx=await memRead(it);
+   if(tx)add(`Document: ${it.name||'file'}`,tx);else if(docKind(it)==='PDF'&&blob(it))scans.push(it);
+  }
+  if(n.t==='folder'&&n.aiRead)for(const f of (n.files||[]).filter(f=>f.kind==='pdf'||f.kind==='text').slice(0,40)){
+   const key='f:'+n.id+':'+f.path+':'+f.size;let tx=memTxt.get(key);
+   if(tx===undefined){const file=await localFile(n,f);if(!file)continue;try{tx=f.kind==='pdf'?(window.CT_PDF?await pdfText(file):''):(await file.text()).slice(0,MEM_DOC);}catch(_){tx='';}memTxt.set(key,tx);}
+   if(tx)add(`Document: ${n.folder}/${f.path}`,tx);
+  }
+ }
+ const out={text:parts.join('\n\n'),images:[],documents:[],note:''};
+ const maxI=LIM&&LIM.images?LIM.images.maxCount:0;
+ for(const u of pics.slice(0,maxI)){try{const b=await (await fetch(u)).blob();if(LIM.images.mediaTypes.includes(b.type))out.images.push(b);}catch(_){}}
+ for(const it of scans.slice(0,2)){try{const b=await (await fetch(blob(it))).blob();if(b.type==='application/pdf')out.documents.push(b);}catch(_){}}
+ if(cut.length)out.note=`\n(Project memory is full: cut or left out: ${cut.join(', ')}.)`;
+ return out;
+}
+const MEMHEAD='Project memory: everything the designer has put on the Inputs floor (notes, links, documents read in full, reference images). It is the background for every answer; quote it rather than guess.\n\n';
+// puts the memory where the request can cache it (on Metabrand OS) or at the top of the prompt
+function useMemory(M,prompt,opt){
+ if(M.images.length){const seen=new Set((opt.images||[]).map(b=>b.size+b.type));opt.images=[...(opt.images||[]),...M.images.filter(b=>!seen.has(b.size+b.type))].slice(0,LIM&&LIM.images?LIM.images.maxCount:4);}
+ if(M.documents.length)opt.documents=[...(opt.documents||[]),...M.documents].slice(0,LIM&&LIM.documents?LIM.documents.maxCount:3);
+ if(!M.text)return prompt;
+ if(window.CT_BLOB){opt.knowledge=MEMHEAD+M.text+M.note;return prompt;}
+ return MEMHEAD+M.text+M.note+'\n\n---\n\n'+prompt;
+}
 // ---- local folders: files stay on this computer; only small previews are stored
 const FSM=new Map();
 const idb=(()=>{let p=null;return()=>p||(p=new Promise((res,rej)=>{try{const r=indexedDB.open('ctree',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e);}}));})();
@@ -900,7 +962,7 @@ function popClick(e){const b=e.target.closest('[data-p]');if(!b)return;const n=b
  if(b.dataset.p==='check')refresh([n],true);
  if(b.dataset.p==='fit')askNode(n,'Update this node so it fits the current inputs. Keep its core idea and change only what the inputs require. Use update_node, then say in one line what changed.',true);}
 function popSubmit(e){e.preventDefault();const n=byId(popFor);const t=pop.querySelector('textarea');const q=t.value.trim();if(!n||!q)return;t.value='';askNode(n,q);}
-const NODE_RULES=`You are the creative director's assistant inside a single node of "Creative Tree" (floors: brief = Inputs, research = Ideas, prod = Production). Work on this node only unless asked. The node's title is its one-line prompt: short and concrete (max 14 words), e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up". Do not invent facts about companies. Reply briefly in the language the designer writes in.`;
+const NODE_RULES=`You are the creative director's assistant inside a single node of "Creative Tree" (floors: brief = Inputs, research = Ideas, prod = Production). Work on this node only unless asked. The node's title is its one-line prompt: short and concrete (max 14 words), e.g. "Neon sign video: the car rolls in, the Art Deco sign lights up". Do not invent facts about companies. Attached PDFs and images are the connected inputs: read them. When web search and page reading are available, use them for facts the inputs lack or for pages the inputs link to, and say which page a fact comes from. Reply briefly in the language the designer writes in.`;
 function nodeTools(n){return [
  {name:'update_node',description:'Rewrites fields of this node. Any of: title (the one-line prompt, max 14 words), text (details). Returns ok.',inputSchema:{type:'object',properties:{title:{type:'string'},text:{type:'string'}}},
   execute(i){if(!byId(n.id))throw new Error('node is gone');snap();if(n.t==='card'){const t1=typeof i.title==='string'?i.title.slice(0,200):'',tx=typeof i.text==='string'?i.text.slice(0,2000):null;if(tx!==null)n.text=(t1?t1+'\n':'')+tx;else if(t1)n.text=[t1,...String(n.text||'').split('\n').slice(1)].join('\n');n.title=firstLine(n.text);}else{if(typeof i.title==='string')n.title=i.title.slice(0,200);if(typeof i.text==='string')n.text=i.text.slice(0,2000);}renderNode(n);save();return 'ok';}},
@@ -915,11 +977,13 @@ async function askNode(n,msg,fit){
  const ups=upstream(n).map(id=>nodeText(byId(id))).join('\n\n').slice(0,6000);
  const kids=P.edges.filter(e=>e.a===n.id).map(e=>nodeText(byId(e.b))).join('\n\n').slice(0,2500);
  const hist=n.thread.slice(-9,-1).map(m=>`${m.role==='me'?'Designer':'Assistant'}: ${m.text}`).join('\n');
- const input=`${NODE_RULES}\n\nTask:\n${taskText()}\n\nThis node:\nid=${n.id}\n${nodeText(n)}\n\nWhat feeds it:\n${ups||'-'}\n\nWhat grows from it:\n${kids||'-'}\n\nDo not repeat:\n${bans()||'-'}\n\nEarlier on this node:\n${hist||'-'}\n\nDesigner: ${msg}`;
+ let f={images:[],documents:[],text:'',note:''},M={text:'',images:[],documents:[],note:''};try{[f,M]=await Promise.all([filesOf([n,...upstream(n).map(byId)].filter(Boolean)),memory()]);}catch(_){}
+ const input=`${NODE_RULES}\n\nTask:\n${taskText()}\n\nThis node:\nid=${n.id}\n${nodeText(n)}\n\nWhat feeds it:\n${ups||'-'}${f.text}${f.note}\n\nWhat grows from it:\n${kids||'-'}\n\nDo not repeat:\n${bans()||'-'}\n\nEarlier on this node:\n${hist||'-'}\n\nDesigner: ${msg}`;
  popCtl=new AbortController();const id=n.id;
- const opt={signal:popCtl.signal,modelTier:'default',onText:({text})=>{const w=pop&&popFor===id&&pop.querySelector('#pwait');if(w){w.className='pm ai';w.textContent=text;}}};
+ const opt=withFiles(f,{signal:popCtl.signal,modelTier:'default',web:true,onText:({text})=>{const w=pop&&popFor===id&&pop.querySelector('#pwait');if(w){w.className='pm ai';w.textContent=text;}}});
+ const ask=useMemory(M,input,opt);
  if(LIM&&LIM.tools)opt.tools=nodeTools(n);else opt.cache=false;
- try{const{text}=await S(input,opt);n.thread.push({role:'ai',text:text.slice(0,3000)});if(fit)n.basis=basisOf(n);}
+ try{const{text}=await S(ask,opt);n.thread.push({role:'ai',text:text.slice(0,3000)});if(fit)n.basis=basisOf(n);}
  catch(e){if(e&&e.code!=='cancelled')n.thread.push({role:'ai',text:e&&e.text?e.text:errTxt(e)});}
  popCtl=null;renderNode(n);save();if(popFor===id){renderPop();placePop();}
 }
@@ -998,14 +1062,15 @@ async function genIdea(n){
  const dir=n.genBy?'':String(n.text||'').trim();
  n.busy=true;n.err='';renderNode(n);
  try{
-  const f=await filesOf(ups);
-  const prompt=`You are the creative director of a branding studio. Propose ONE idea for the task, using only the connected inputs below. Go past what the category, or any AI, would make by default; make it specific enough to picture. Do not invent facts about the company. ${LANG}
+  const [f,M]=await Promise.all([filesOf(ups),memory()]);
+  const prompt=`You are the creative director of a branding studio. Propose ONE idea for the task. Build it from the connected inputs below; the project memory is the background it must respect. Go past what the category, or any AI, would make by default; make it specific enough to picture. Do not invent facts about the company. ${LANG}
 ${dir?`\nThe designer's direction for this idea: ${dir}\n`:''}
 Connected inputs:
 ${ups.map(nodeText).join('\n\n')}${f.text}${f.note}
 ${nogo?`\nAvoid:\n${nogo}\n`:''}${others?`\nOther ideas already on the board (do not repeat them or their mechanism):\n${others}\n`:''}
 Reply with only JSON: {"title":"the idea as a one-line prompt, max 14 words: format, subject, action","text":"2-4 sentences: what we see, why it answers the task, what makes it not obvious"}`;
-  const r=await S.json(prompt,withFiles(f,{modelTier:n.model||'default',cache:false}));
+  const opt=withFiles(f,{modelTier:n.model||'default',cache:false});
+  const r=await S.json(useMemory(M,prompt,opt),opt);
   if(!r||typeof r.title!=='string')throw {code:'invalid_json'};
   snap();n.title=r.title.slice(0,200);n.text=n.title+(r.text?'\n'+String(r.text).slice(0,1200):'');n.genBy=n.model||'default';n.basis=basisOf(n);
  }catch(e){n.err=errTxt(e);}
@@ -1013,7 +1078,7 @@ Reply with only JSON: {"title":"the idea as a one-line prompt, max 14 words: for
 }
 async function rewriteTask(n){
  if(!S)return flash('AI is not available in this view');n.busy=true;flash('Rewriting the task…');
- try{const f=await filesOf(briefNodes());const{text}=await S(`Write the task as one clear prompt of 1-3 sentences, like: "Need a video banner for Avride, 1200×627 and 9:16, on the theme X, following the brief and the brand guide; avoid Y." Use only facts from the inputs; where a fact is missing write [TBD: what]. Refer to sources by their titles. No preamble. ${LANG}\n\nInputs:\n${briefText()}${f.text}\n\nDo not repeat:\n${bans()||'-'}${f.note}`,withFiles(f,{modelTier:'default',cache:false}));
+ try{const f=await filesOf(briefNodes()),M=await memory();const opt=withFiles(f,{modelTier:'default',cache:false});const{text}=await S(useMemory(M,`Write the task as one clear prompt of 1-3 sentences, like: "Need a video banner for Avride, 1200×627 and 9:16, on the theme X, following the brief and the brand guide; avoid Y." Use only facts from the inputs; where a fact is missing write [TBD: what]. Refer to sources by their titles. No preamble. ${LANG}\n\nInputs:\n${briefText()}${f.text}\n\nDo not repeat:\n${bans()||'-'}${f.note}`,opt),opt);
   snap();n.text=text.trim().slice(0,1200);n.basis=basisOf(n);flash('Task rewritten');
  }catch(e){flash(errTxt(e));}
  delete n.busy;renderNode(n);save();
@@ -1273,7 +1338,7 @@ async function filesOf(ns){
   const s=k==='image'?imgSrc(it):blob(it);if(!s)continue;
   try{const b=await (await fetch(s)).blob();
    if(k==='image'){if(LIM&&LIM.images&&out.images.length<Math.min(4,LIM.images.maxCount)&&LIM.images.mediaTypes.includes(b.type))out.images.push(b);continue;}
-   if(b.type==='application/pdf'){if(out.documents.length<maxDocs)out.documents.push(b);else skipped.push(it.name||'PDF');continue;}
+   if(b.type==='application/pdf'){if(it.mem)continue;if(out.documents.length<maxDocs)out.documents.push(b);else skipped.push(it.name||'PDF');continue;}
    if(/^text\/|json/.test(b.type)&&out.text.length<40000){out.text+=`\n\n--- File: ${it.name||'file'} ---\n`+(await b.text()).slice(0,20000);continue;}
    skipped.push(it.name||'file');
   }catch(_){skipped.push(it.name||'file');}
@@ -1293,8 +1358,9 @@ async function runGen(n){
  const prompt=`You are the creative director of a branding studio. Work wide: do not propose what is obvious for the category, and nothing from the do-not-repeat list. Do not invent facts about companies. ${LANG}\n\nMode: ${modeTxt}\n${OPS[n.op]&&OPS[n.op][1]?'Method: '+OPS[n.op][1]+'\n':''}Direction from the designer: ${[n.title,n.prompt].filter(Boolean).join('. ')||'-'}\n\nTask:\n${taskText()}\n\nInputs:\n${n.f==='brief'?'':briefText().slice(0,4000)+'\n\n'}${ins.map(nodeText).join('\n\n')||'-'}\n\nDo not repeat:\n${bans()||'-'}\n\nReply with only a JSON array of ${n.n} objects shaped like ${shape}.`;
  n.busy=true;n.err='';renderNode(n);
  try{
-  const f=await filesOf(ins.filter(x=>x.items&&x.items.length));
-  const res=await S.json(prompt+f.text+f.note,withFiles(f,{modelTier:n.brain||'default',cache:false}));
+  const [f,M]=await Promise.all([filesOf(ins.filter(x=>x.items&&x.items.length)),memory()]);
+  const opt=withFiles(f,{modelTier:n.brain||'default',cache:false});
+  const res=await S.json(useMemory(M,prompt+f.text+f.note,opt),opt);
   const arr=(Array.isArray(res)?res:[]).filter(o=>o&&typeof o==='object').map(o=>({title:String(o.title||'').slice(0,200),text:String(o.text||'').slice(0,900),svg:typeof o.svg==='string'?o.svg:''}));
   if(!arr.length)throw {code:'invalid_json'};
   snap();n.out=arr.concat(n.out).slice(0,30);n.basis=basisOf(n);

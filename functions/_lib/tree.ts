@@ -31,6 +31,12 @@ function fromHex(t: string) {
 }
 const FILE_TYPES = /^(image\/(png|jpeg|webp|gif|svg\+xml|avif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp4|wav|x-wav|wave|ogg|webm|aac|x-m4a|flac)|application\/pdf|text\/(plain|markdown|csv)|application\/json|font\/(woff2?|ttf|otf)|model\/[a-z0-9.+-]+|application\/(octet-stream|zip|x-zip-compressed|msword|vnd\.[a-z0-9.+-]+))$/;
 const INLINE = /^(image\/(png|jpeg|webp|gif|avif)|video\/|audio\/|application\/pdf|text\/(plain|markdown|csv)|application\/json)/;
+// Anthropic's own web tools, run on their side: search ($10 per 1,000 searches) and reading pages whose links
+// are already in the conversation (a link block, a search result)
+const WEB_TOOLS = [
+  { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+  { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5, max_content_tokens: 40000 },
+];
 const MODELS: Record<string, string> = { quick: 'claude-haiku-5-5', complex: 'claude-opus-5-5', fable: 'claude-fable-5-2' };
 
 type Vars = { user: SessionUser };
@@ -319,20 +325,31 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
   // One turn of the Messages API. The page runs the tool loop itself, so tools act on the canvas in the browser.
   app.post('/tree/ai', async (c) => {
     if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'AI is not configured: add ANTHROPIC_API_KEY', code: 'sampling_disabled' }, 503);
-    const b = await c.req.json<{ system?: string; messages: any[]; tools?: any[]; tier?: string; max_tokens?: number }>();
+    const b = await c.req.json<{ system?: string; messages: any[]; tools?: any[]; tier?: string; max_tokens?: number; web?: boolean }>();
     if (!Array.isArray(b.messages) || !b.messages.length) return c.json({ error: 'No messages' }, 400);
     const model = MODELS[b.tier || ''] || c.env.MODEL || 'claude-sonnet-5-5';
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': c.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        max_tokens: Math.min(Number(b.max_tokens) || 8000, 16000),
-        ...(b.system ? { system: String(b.system).slice(0, 20000) } : {}),
-        ...(Array.isArray(b.tools) && b.tools.length ? { tools: b.tools.slice(0, 12) } : {}),
-        messages: b.messages,
-      }),
-    });
+    const own = Array.isArray(b.tools) ? b.tools.slice(0, 12) : [];
+    const call = (web: boolean) => {
+      const tools = web ? [...own, ...WEB_TOOLS] : own;
+      return fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': c.env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          max_tokens: Math.min(Number(b.max_tokens) || 8000, 16000),
+          ...(b.system ? { system: String(b.system).slice(0, 20000) } : {}),
+          ...(tools.length ? { tools } : {}),
+          messages: b.messages,
+        }),
+      });
+    };
+    let res = await call(!!b.web);
+    let webOff = false;
+    // web search can be switched off for the organization in the Claude Console: answer without it then
+    if (b.web && res.status === 400) {
+      const t = await res.clone().text();
+      if (/web.?search|web.?fetch/i.test(t)) { webOff = true; res = await call(false); }
+    }
     if (!res.ok) {
       const err = await res.text();
       const code = res.status === 429 ? 'rate_limited' : res.status === 401 || res.status === 403 ? 'sampling_disabled' : 'ai_error';
@@ -341,6 +358,6 @@ export function mountTree(app: Hono<{ Bindings: Env; Variables: Vars & any }>) {
     const out: any = await res.json();
     const units = (out.usage?.input_tokens || 0) + (out.usage?.output_tokens || 0);
     await c.env.DB.prepare('INSERT INTO usage (id, workspace_id, provider, units, created_at) VALUES (?, NULL, ?, ?, ?)').bind(crypto.randomUUID(), 'anthropic:tree', units, Date.now()).run().catch(() => {});
-    return c.json({ content: out.content || [], stop_reason: out.stop_reason, model });
+    return c.json({ content: out.content || [], stop_reason: out.stop_reason, model, ...(webOff ? { web_off: true } : {}) });
   });
 }

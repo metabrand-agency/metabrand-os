@@ -70,14 +70,24 @@
   // ---- sample: Claude through /api/tree/ai, with the tool loop run here so tools change the canvas
   const TIERS = ['quick', 'default', 'complex', 'fable'];
   const b64 = (blob) => new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(',')[1]); f.onerror = rej; f.readAsDataURL(blob); });
-  async function toMessages(input, images, documents) {
+  async function toMessages(input, images, documents, knowledge) {
     const msgs = typeof input === 'string' ? [{ role: 'user', content: input }] : input.map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content) }));
+    // the project memory goes first and is cached: the next requests within a few minutes read it at a tenth of the price
+    if (knowledge) {
+      const first = msgs.findIndex((m) => m.role === 'user');
+      const rest = typeof msgs[first].content === 'string' ? [{ type: 'text', text: msgs[first].content }] : msgs[first].content;
+      msgs[first] = { role: 'user', content: [{ type: 'text', text: String(knowledge), cache_control: { type: 'ephemeral' } }, ...rest] };
+    }
     if ((images && images.length) || (documents && documents.length)) {
       const last = msgs.map((m) => m.role).lastIndexOf('user');
       const blocks = [];
       for (const d of (documents || []).slice(0, 3)) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: await b64(d) } });
-      for (const im of (images || []).slice(0, 4)) blocks.push({ type: 'image', source: { type: 'base64', media_type: im.type, data: await b64(im) } });
-      msgs[last] = { role: 'user', content: [...blocks, { type: 'text', text: msgs[last].content }] };
+      for (const im of (images || []).slice(0, 8)) blocks.push({ type: 'image', source: { type: 'base64', media_type: im.type, data: await b64(im) } });
+      // the attachments are sent again on every step of a tool loop: cache them so they are read once
+      blocks[blocks.length - 1].cache_control = { type: 'ephemeral' };
+      const cur = typeof msgs[last].content === 'string' ? [{ type: 'text', text: msgs[last].content }] : msgs[last].content;
+      const head = cur.length > 1 ? cur.slice(0, -1) : [];
+      msgs[last] = { role: 'user', content: [...head, ...blocks, cur[cur.length - 1]] };
     }
     return msgs;
   }
@@ -86,19 +96,24 @@
     const tier = TIERS.includes(opts.modelTier) ? opts.modelTier : 'default';
     const tools = Array.isArray(opts.tools) ? opts.tools : [];
     const defs = tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema || { type: 'object', properties: {} } }));
-    const messages = await toMessages(input, opts.images, opts.documents);
+    const messages = await toMessages(input, opts.images, opts.documents, opts.knowledge);
     let text = '';
     for (let i = 0; i < 10; i++) {
       let r;
       try {
-        r = await call('/ai', { method: 'POST', signal: opts.signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages, tools: defs, tier, max_tokens: opts.maxTokens }) });
+        r = await call('/ai', { method: 'POST', signal: opts.signal, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages, tools: defs, tier, max_tokens: opts.maxTokens, web: !!opts.web }) });
       } catch (e) {
         if (e && e.name === 'AbortError') throw err('cancelled');
         throw e;
       }
       const out = await r.json();
-      const said = (out.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+      // cited answers come as many text pieces of one sentence: join them as written, with a break only where a search sat between them
+      let said = '', gap = false;
+      for (const b of out.content || []) { if (b.type !== 'text') { gap = true; continue; } said += (gap && said ? '\n\n' : '') + b.text; gap = false; }
+      said = said.trim();
       if (said) { text = text ? text + '\n' + said : said; if (opts.onText) try { opts.onText({ text }); } catch (_) {} }
+      // a long web search can pause the turn: send it back as it is and the API carries on
+      if (out.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: out.content }); continue; }
       const uses = (out.content || []).filter((b) => b.type === 'tool_use');
       if (out.stop_reason !== 'tool_use' || !uses.length) return { text };
       messages.push({ role: 'assistant', content: out.content });
@@ -118,14 +133,14 @@
   }
   sample.json = async function (input, opts) {
     const ask = typeof input === 'string' ? input + '\n\nReply with only valid JSON, no prose and no code fences.' : input;
-    const { text } = await sample(ask, Object.assign({}, opts, { tools: undefined }));
+    const { text } = await sample(ask, Object.assign({}, opts, { tools: undefined, web: false }));
     const t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
     try { return JSON.parse(t); } catch (_) {}
     const m = t.match(/[\[{][\s\S]*[\]}]/);
     if (m) { try { return JSON.parse(m[0]); } catch (_) {} }
     throw err('invalid_json');
   };
-  sample.limits = async () => ({ images: { maxCount: 4, mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] }, documents: { maxCount: 3, mediaTypes: ['application/pdf'] }, tools: true });
+  sample.limits = async () => ({ images: { maxCount: 8, mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] }, documents: { maxCount: 3, mediaTypes: ['application/pdf'] }, tools: true });
 
   // ---- dictation: the browser's own speech recognition (Chrome, Edge, Safari)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
