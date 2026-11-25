@@ -415,10 +415,10 @@ function embedOf(u){let x;try{x=new URL(u);}catch(_){return '';}const h=x.hostna
  if(/(^|\.)loom\.com$/.test(h)&&/^\/share\//.test(x.pathname))return 'https://www.loom.com/embed/'+encodeURIComponent(x.pathname.split('/')[2]||'');
  if(h==='docs.google.com'&&/\/d\//.test(x.pathname))return x.origin+x.pathname.replace(/\/(edit|view|pub|preview).*$/,'')+'/preview';
  if(/(^|\.)miro\.com$/.test(h)){const m=x.pathname.match(/\/app\/board\/([^/]+)/);if(m)return 'https://miro.com/app/live-embed/'+encodeURIComponent(m[1])+'/';}
- if(/\.notion\.site$/.test(h))return u;
  return '';}
+const slugTitle=u=>{try{const seg=decodeURIComponent(new URL(u).pathname.split('/').filter(Boolean).pop()||'');return seg.replace(/-?[0-9a-f]{32}$/i,'').replace(/[-_]+/g,' ').trim();}catch(_){return '';}};
 const isImgUrl=u=>/\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(u);
-function prevOf(n){if(!okUrl(n.url))return '';if(!window.CT_SHOT)return '';if(n.meta&&n.meta.figma&&window.CT_FIGMA)return window.CT_FIGMA+'img?u='+encodeURIComponent(n.url)+(n.meta.v?'&v='+n.meta.v:'');if(isImgUrl(n.url))return n.url;if(n.meta&&okUrl(n.meta.image))return n.meta.image;return window.CT_SHOT+encodeURIComponent(n.url);}
+function prevOf(n){if(!okUrl(n.url))return '';if(!window.CT_SHOT)return '';if(service(n.url)==='Notion')return '';if(n.meta&&n.meta.figma&&window.CT_FIGMA)return window.CT_FIGMA+'img?u='+encodeURIComponent(n.url)+(n.meta.v?'&v='+n.meta.v:'');if(isImgUrl(n.url))return n.url;if(n.meta&&okUrl(n.meta.image))return n.meta.image;return window.CT_SHOT+encodeURIComponent(n.url);}
 function lab(n){
  const pre=n.run?n.run+' · ':'';
  if(n.t==='card'&&n.f==='research'){const i=P.nodes.filter(x=>x.f==='research'&&x.t==='card'&&(x.run||'')===(n.run||'')).indexOf(n);return pre+'Idea '+(i+1);}
@@ -1082,7 +1082,10 @@ async function linkMeta(n){
  if(window.CT_FIGMA&&service(u)==='Figma'){try{const r=await fetch(window.CT_FIGMA+'meta?u='+encodeURIComponent(u),{credentials:'same-origin'});
   if(r.ok){const m=await r.json();if(n.url!==u||!byId(n.id))return;n.meta={figma:true,title:String(m.title||'').slice(0,200),file:String(m.file||''),kind:String(m.type||''),v:Date.now()};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();return;}}catch(_){}}
  try{const r=await fetch(window.CT_META+encodeURIComponent(u),{credentials:'same-origin'});if(!r.ok)return;const m=await r.json();if(n.url!==u||!byId(n.id))return;
-  n.meta={title:String(m.title||'').slice(0,200),image:okUrl(m.image)?m.image:'',icon:okUrl(m.icon)?m.icon:''};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();}catch(_){}
+  let t=String(m.title||'').slice(0,200);
+  // a page that is not public shows Notion's own sign-in or home page: name it from the link instead
+  if(service(u)==='Notion'&&(!t||/^notion\b|all-in-one|log ?in|sign ?up|workspace/i.test(t)))t=slugTitle(u);
+  n.meta={title:t,image:okUrl(m.image)?m.image:'',icon:okUrl(m.icon)?m.icon:''};if(!n.title&&n.meta.title)n.title=n.meta.title;renderNode(n);save();}catch(_){}
 }
 async function pullFrames(n){
  if(!window.CT_FIGMA)return;flash('Asking Figma for the frames…');
@@ -1318,6 +1321,7 @@ function migrate(d){
  p.open={brief:true,research:true,prod:true,...Object.fromEntries(ORDER.filter(k=>d.open&&k in d.open).map(k=>[k,d.open[k]]))};
  p.v=5;
  if(!Array.isArray(p.trash))p.trash=[];
+ p.nodes.forEach(n=>{if(n.t==='link'&&okUrl(n.url)&&service(n.url)==='Notion'&&/^notion\b|all-in-one|log ?in|sign ?up|workspace/i.test(n.title||'')){n.title=slugTitle(n.url);if(n.meta){n.meta.title=n.title;n.meta.image='';}}});
  const tmp=P;P=p;p.nodes.forEach(n=>{if(!n.basis||old)n.basis=basisOf(n);});P=tmp;
  return p;
 }
